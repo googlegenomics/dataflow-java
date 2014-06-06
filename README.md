@@ -3,6 +3,8 @@ dataflow-java
 
 ##This project is private. These docs are bad on purpose. 
 
+[Main directory](/src/main/java/com/google/cloud/genomics/dataflow)
+
 ```
 cd dataflow-java
 mvn compile
