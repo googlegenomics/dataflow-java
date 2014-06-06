@@ -55,7 +55,7 @@ import java.util.List;
 public class VariantSimilarity {
 
   /** Emits a callset pair every time they share a variant. */
-  public static class ExtractSimilarCallsets extends DoFn<Variant, String> {
+  public static class ExtractSimilarCallsets extends DoFn<Variant, KV<String, String>> {
 
     @Override
     public void processElement(ProcessContext c) {
@@ -71,7 +71,7 @@ public class VariantSimilarity {
 
       for (String s1 : samplesWithVariant) {
         for (String s2 : samplesWithVariant) {
-          c.output(s1 + "-" + s2);
+          c.output(KV.of(s1, s2));
         }
       }
     }
@@ -84,10 +84,10 @@ public class VariantSimilarity {
     // NOTE: Locally, we can only do about 1k bps before we run out of memory
     String contig = "22";
     long start = 25652000;
-    long end = start + 100000;
-    int basesPerShard = 1000;
+    long end = start + 500;
+    long basesPerShard = 1000;
 
-    double shards = Math.ceil((end - start) / basesPerShard);
+    double shards = Math.ceil((end - start) / (double) basesPerShard);
     List<VariantReader.Options> readers = Lists.newArrayList();
     for (int i = 0; i < shards; i++) {
       long shardStart = start + (i * basesPerShard);
@@ -129,12 +129,14 @@ public class VariantSimilarity {
         .apply(ParDo.named("VariantFetcher")
             .of(new VariantReader.GetVariants())).setCoder(GenericJsonCoder.of(Variant.class))
         .apply(ParDo.named("ExtractSimilarCallsets").of(new ExtractSimilarCallsets()))
-        .apply(new Count<String>())
-        .apply(ParDo.named("FormatCallsetCounts").of(new DoFn<KV<String, Long>, String>() {
+        .apply(new Count<KV<String, String>>())
+        .apply(ParDo.named("FormatCallsetCounts").of(new DoFn<KV<KV<String, String>, Long>, String>() {
           @Override
           public void processElement(ProcessContext c) {
+            KV<String, String> callsets = c.element().getKey();
+            Long count = c.element().getValue();
             // TODO: Hook the pca code itself into the pipeline rather than writing a file with this intermediate data
-            c.output(c.element().getKey() + "-" + c.element().getValue() + ":");
+            c.output(callsets.getKey() + "-" + callsets.getValue() + "-" + count + ":");
           }
         }))
         .apply(TextIO.Write.named("WriteCounts").to(options.getOutput()));
