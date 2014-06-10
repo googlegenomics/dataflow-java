@@ -15,6 +15,7 @@
  */
 package com.google.cloud.genomics.dataflow;
 
+import com.google.api.client.googleapis.auth.oauth2.GoogleCredential;
 import com.google.api.client.googleapis.javanet.GoogleNetHttpTransport;
 import com.google.api.client.json.jackson2.JacksonFactory;
 import com.google.api.services.genomics.Genomics;
@@ -36,15 +37,22 @@ public class VariantReader {
   private static final int API_RETRIES = 3;
 
   public static class Options implements Serializable {
-    private final String datasetId;
+    // Used for access to the genomics API
+    // If the accessToken is null, then an apiKey is required
     private final String apiKey;
+    private final String accessToken;
+
+    // Specific to the variants search request
+    private final String datasetId;
     private final String variantFields;
     private final String contig;
     private final long start;
     private final long end;
 
-    public Options(String apiKey, String datasetId, String variantFields, String contig, long start, long end) {
+    public Options(String apiKey, String accessToken, String datasetId, String variantFields,
+                   String contig, long start, long end) {
       this.apiKey = apiKey;
+      this.accessToken = accessToken;
       this.datasetId = datasetId;
       this.variantFields = variantFields;
       this.contig = contig;
@@ -69,9 +77,10 @@ public class VariantReader {
   public VariantReader(Options options) {
     this.options = options;
 
-    // TODO: Support non-api key based auth
+    GoogleCredential credential = options.accessToken == null ? null :
+        new GoogleCredential().setAccessToken(options.accessToken);
     try {
-      service = new Genomics.Builder(GoogleNetHttpTransport.newTrustedTransport(), new JacksonFactory(), null)
+      service = new Genomics.Builder(GoogleNetHttpTransport.newTrustedTransport(), new JacksonFactory(), credential)
           .setApplicationName("dataflow-reader").build();
     } catch (GeneralSecurityException | IOException e) {
       e.printStackTrace();
