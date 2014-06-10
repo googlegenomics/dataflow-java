@@ -62,6 +62,11 @@
       <version>${google.api.version}</version>
     </dependency>
     <dependency>
+      <groupId>com.google.api-client</groupId>
+      <artifactId>google-api-client-java6</artifactId>
+      <version>${google.api.version}</version>
+    </dependency>
+    <dependency>
       <groupId>com.google.apis</groupId>
       <artifactId>google-api-services-genomics</artifactId>
       <version>v1beta-rev2-1.18.0-rc</version>

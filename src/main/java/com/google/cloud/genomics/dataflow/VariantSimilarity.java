@@ -16,6 +16,15 @@
 
 package com.google.cloud.genomics.dataflow;
 
+import com.google.api.client.auth.oauth2.Credential;
+import com.google.api.client.extensions.java6.auth.oauth2.AuthorizationCodeInstalledApp;
+import com.google.api.client.googleapis.auth.oauth2.GoogleAuthorizationCodeFlow;
+import com.google.api.client.googleapis.auth.oauth2.GoogleClientSecrets;
+import com.google.api.client.googleapis.extensions.java6.auth.oauth2.GooglePromptReceiver;
+import com.google.api.client.googleapis.javanet.GoogleNetHttpTransport;
+import com.google.api.client.http.javanet.NetHttpTransport;
+import com.google.api.client.json.JsonFactory;
+import com.google.api.client.json.jackson2.JacksonFactory;
 import com.google.api.services.genomics.model.Call;
 import com.google.api.services.genomics.model.Variant;
 import com.google.cloud.dataflow.sdk.Pipeline;
@@ -29,30 +38,39 @@ import com.google.cloud.dataflow.sdk.values.KV;
 import com.google.cloud.dataflow.utils.OptionsParser;
 import com.google.common.collect.Lists;
 
+import java.io.*;
+import java.security.GeneralSecurityException;
 import java.util.List;
 
 /**
  * An pipeline that generates similarity data for variants in a dataset.
  *
+ * To access the Google Genomics API, you need to either provide a valid API key
+ * or a client_secrets.json file.
+ *
+ * Follow the instructions at http://developers.google.com/genomics
+ * to generate a client_secrets.json file, and move it into the directory that you run the pipeline from.
+ *
+ * Alternatively, specify the API key with this flag:
+ *   --apiKey=<API_KEY>
+ *
+ *
  * To execute this pipeline locally, specify general pipeline configuration:
  *   --project=<PROJECT ID>  
  * and example configuration:
  *   --output=[<LOCAL FILE> | gs://<OUTPUT PATH>]
- * and the API key that has access to the Google Genomics API:
- *   --apiKey=<API_KEY>
  *
  * To execute this pipeline using the Dataflow service, specify pipeline configuration:
  *   --project=<PROJECT ID> --stagingLocation=gs://<STAGING DIRECTORY> 
  *   --runner=BlockingDataflowPipelineRunner
  * and example configuration:
  *   --output=gs://<OUTPUT PATH>
- * and the API key that has access to the Google Genomics API:
- *   --apiKey=<API_KEY>
  *
- * The input datasetId defaults to 376902546192 and can be
+ * The input datasetId defaults to 376902546192 (1000 genomes) and can be
  * overridden with --datasetId.
  */
 public class VariantSimilarity {
+  private static final JsonFactory JSON_FACTORY = JacksonFactory.getDefaultInstance();
 
   /** Emits a callset pair every time they share a variant. */
   public static class ExtractSimilarCallsets extends DoFn<Variant, KV<String, String>> {
@@ -77,8 +95,16 @@ public class VariantSimilarity {
     }
   }
 
-  private static List<VariantReader.Options> getReaderOptions(Options options) {
+  private static List<VariantReader.Options> getReaderOptions(Options options)
+      throws GeneralSecurityException, IOException {
     String variantFields = "nextPageToken,variants(id,calls(info,callsetName))";
+
+    // Get an access token only if an apiKey is not supplied
+    String accessToken = null;
+    if (options.apiKey == null) {
+      accessToken = getAccessToken(options, Lists.newArrayList("https://www.googleapis.com/auth/genomics"));
+    }
+
 
     // TODO: Get contig bounds here vs hardcoding. Eventually this will run over all available data within a dataset
     // NOTE: Locally, we can only do about 1k bps before we run out of memory
@@ -94,18 +120,48 @@ public class VariantSimilarity {
       long shardEnd = Math.min(end, shardStart + basesPerShard);
 
       System.out.println("Adding reader with " + shardStart + " to " + shardEnd);
-      readers.add(new VariantReader.Options(options.apiKey, options.datasetId, variantFields,
+      readers.add(new VariantReader.Options(options.apiKey, accessToken, options.datasetId, variantFields,
           contig, shardStart, shardEnd));
     }
     return readers;
+  }
+
+  private static GoogleClientSecrets loadClientSecrets(String clientSecretsFilename) throws IOException {
+    File f = new File(clientSecretsFilename);
+    if (f.exists()) {
+      InputStream inputStream = new FileInputStream(new File(clientSecretsFilename));
+      return GoogleClientSecrets.load(JSON_FACTORY, new InputStreamReader(inputStream));
+    }
+
+    throw new RuntimeException("Please provide an --apiKey option or a valid client_secrets.json file."
+        + " Client secrets file " + clientSecretsFilename + " does not exist."
+        + " Visit https://developers.google.com/genomics to learn how to get an api key or"
+        + " install a client_secrets.json file. If you have installed a client_secrets.json"
+        + " in a specific location, use --clientSecretsFilename <path>/client_secrets.json.");
+  }
+
+  private static String getAccessToken(Options options, List<String> scopes)
+      throws GeneralSecurityException, IOException {
+    GoogleClientSecrets clientSecrets = loadClientSecrets(options.clientSecretsFilename);
+
+    NetHttpTransport httpTransport = GoogleNetHttpTransport.newTrustedTransport();
+    GoogleAuthorizationCodeFlow flow = new GoogleAuthorizationCodeFlow.Builder(
+        httpTransport, JSON_FACTORY, clientSecrets, scopes).setAccessType("offline").build();
+    Credential credential = new AuthorizationCodeInstalledApp(flow, new GooglePromptReceiver()).authorize("user");
+    return credential.getAccessToken();
   }
 
   private static class Options extends PipelineOptions {
     @Description("The dataset to read variants from")
     public String datasetId = "376902546192"; // 1000 genomes
 
-    @Description("The Google API key that has access to the variant data")
-    public String apiKey = "AIzaSyCepkTbGZbHcUwLu5VXjxtOGoGpv1o8hhA";
+    @Description("If querying a public dataset, provide a Google API key that has access " +
+        "to variant data and no OAuth will be performed.")
+    public String apiKey = null;
+
+    @Description("If querying private datasets, or performing any write operations, " +
+        "you need to provide the path to client_secrets.json. Do not supply an api key.")
+    public String clientSecretsFilename = "client_secrets.json";
 
     @Description("Path of the file to write to")
     public String output;
@@ -119,7 +175,7 @@ public class VariantSimilarity {
     }
   }
 
-  public static void main(String[] args) {
+  public static void main(String[] args) throws GeneralSecurityException, IOException {
     Options options = OptionsParser.parse(args, Options.class, VariantSimilarity.class.getSimpleName());
     List<VariantReader.Options> readerOptions = getReaderOptions(options);
 
