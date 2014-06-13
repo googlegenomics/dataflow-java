@@ -35,12 +35,15 @@ import com.google.cloud.dataflow.sdk.runners.PipelineOptions;
 import com.google.cloud.dataflow.sdk.runners.PipelineRunner;
 import com.google.cloud.dataflow.sdk.transforms.*;
 import com.google.cloud.dataflow.sdk.values.KV;
+import com.google.cloud.dataflow.sdk.values.PCollection;
+import com.google.cloud.dataflow.sdk.values.PCollectionList;
 import com.google.cloud.dataflow.utils.OptionsParser;
 import com.google.common.collect.Lists;
 
 import java.io.*;
 import java.security.GeneralSecurityException;
 import java.util.List;
+import java.util.logging.Logger;
 
 /**
  * An pipeline that generates similarity data for variants in a dataset.
@@ -70,6 +73,7 @@ import java.util.List;
  * overridden with --datasetId.
  */
 public class VariantSimilarity {
+  private static final Logger LOG = Logger.getLogger(VariantSimilarity.class.getName());
   private static final JsonFactory JSON_FACTORY = JacksonFactory.getDefaultInstance();
 
   /** Emits a callset pair every time they share a variant. */
@@ -119,7 +123,7 @@ public class VariantSimilarity {
       long shardStart = start + (i * basesPerShard);
       long shardEnd = Math.min(end, shardStart + basesPerShard);
 
-      System.out.println("Adding reader with " + shardStart + " to " + shardEnd);
+      LOG.info("Adding reader with " + shardStart + " to " + shardEnd);
       readers.add(new VariantReader.Options(options.apiKey, accessToken, options.datasetId, variantFields,
           contig, shardStart, shardEnd));
     }
@@ -151,6 +155,31 @@ public class VariantSimilarity {
     return credential.getAccessToken();
   }
 
+  /**
+   * We are changing our flat list of VariantReader.Options into a flattened PCollection in an attempt to get our
+   * job to use multiple workers.
+   */
+  private static PCollection<VariantReader.Options> getPCollection(List<VariantReader.Options> readerOptions,
+      Pipeline p, double numWorkers) {
+
+    LOG.info("Turning " + readerOptions.size() + " options into " + numWorkers + " workers");
+    numWorkers = Math.min(readerOptions.size(), numWorkers);
+
+    int optionsPerWorker = (int) Math.ceil(readerOptions.size() / numWorkers);
+    List<PCollection<VariantReader.Options>> pCollections = Lists.newArrayList();
+
+    for (int i = 0; i < numWorkers; i++) {
+      int start = i * optionsPerWorker;
+      int end = Math.min(readerOptions.size(), start + optionsPerWorker);
+
+      LOG.info("Adding collection with " + start + " to " + end);
+      pCollections.add(p.begin().apply(Create.of(readerOptions.subList(start, end)))
+          .setCoder(SerializableCoder.of(VariantReader.Options.class)));
+    }
+
+    return PCollectionList.of(pCollections).apply(new Flatten<VariantReader.Options>());
+  }
+
   private static class Options extends PipelineOptions {
     @Description("The dataset to read variants from")
     public String datasetId = "376902546192"; // 1000 genomes
@@ -180,8 +209,8 @@ public class VariantSimilarity {
     List<VariantReader.Options> readerOptions = getReaderOptions(options);
 
     Pipeline p = Pipeline.create();
-    p.begin()
-        .apply(Create.of(readerOptions)).setCoder(SerializableCoder.of(VariantReader.Options.class))
+
+    getPCollection(readerOptions, p, options.numWorkers)
         .apply(ParDo.named("VariantFetcher")
             .of(new VariantReader.GetVariants())).setCoder(GenericJsonCoder.of(Variant.class))
         .apply(ParDo.named("ExtractSimilarCallsets").of(new ExtractSimilarCallsets()))
