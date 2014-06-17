@@ -24,6 +24,7 @@ import com.google.api.client.googleapis.javanet.GoogleNetHttpTransport;
 import com.google.api.client.http.javanet.NetHttpTransport;
 import com.google.api.client.json.JsonFactory;
 import com.google.api.client.json.jackson2.JacksonFactory;
+import com.google.api.client.util.store.FileDataStoreFactory;
 
 import java.io.*;
 import java.security.GeneralSecurityException;
@@ -33,6 +34,8 @@ public class OAuthHelper {
   public static final String GENOMICS_SCOPE = "https://www.googleapis.com/auth/genomics";
 
   private static final JsonFactory JSON_FACTORY = JacksonFactory.getDefaultInstance();
+  private static final java.io.File DATA_STORE_DIR =
+      new java.io.File(System.getProperty("user.home"), ".store/genomics_dataflow_client");
 
   /**
    * Use this function to get a valid access token from the user before running a dataflow pipeline.
@@ -47,11 +50,13 @@ public class OAuthHelper {
   public String getAccessToken(String clientSecretsFilename, List<String> scopes)
       throws GeneralSecurityException, IOException {
     GoogleClientSecrets clientSecrets = loadClientSecrets(clientSecretsFilename);
+    FileDataStoreFactory dataStoreFactory = new FileDataStoreFactory(DATA_STORE_DIR);
 
     NetHttpTransport httpTransport = GoogleNetHttpTransport.newTrustedTransport();
     GoogleAuthorizationCodeFlow flow = new GoogleAuthorizationCodeFlow.Builder(
-        httpTransport, JSON_FACTORY, clientSecrets, scopes).setAccessType("offline").build();
-    Credential credential = new AuthorizationCodeInstalledApp(flow, new GooglePromptReceiver()).authorize("user");
+        httpTransport, JSON_FACTORY, clientSecrets, scopes).setAccessType("offline")
+        .setDataStoreFactory(dataStoreFactory).build();
+    Credential credential = new AuthorizationCodeInstalledApp(flow, new GooglePromptReceiver()).authorize("dataflow");
     return credential.getAccessToken();
   }
 
