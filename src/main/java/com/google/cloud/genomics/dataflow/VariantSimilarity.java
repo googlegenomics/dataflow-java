@@ -16,15 +16,6 @@
 
 package com.google.cloud.genomics.dataflow;
 
-import com.google.api.client.auth.oauth2.Credential;
-import com.google.api.client.extensions.java6.auth.oauth2.AuthorizationCodeInstalledApp;
-import com.google.api.client.googleapis.auth.oauth2.GoogleAuthorizationCodeFlow;
-import com.google.api.client.googleapis.auth.oauth2.GoogleClientSecrets;
-import com.google.api.client.googleapis.extensions.java6.auth.oauth2.GooglePromptReceiver;
-import com.google.api.client.googleapis.javanet.GoogleNetHttpTransport;
-import com.google.api.client.http.javanet.NetHttpTransport;
-import com.google.api.client.json.JsonFactory;
-import com.google.api.client.json.jackson2.JacksonFactory;
 import com.google.api.services.genomics.model.Call;
 import com.google.api.services.genomics.model.Variant;
 import com.google.cloud.dataflow.sdk.Pipeline;
@@ -74,7 +65,6 @@ import java.util.logging.Logger;
  */
 public class VariantSimilarity {
   private static final Logger LOG = Logger.getLogger(VariantSimilarity.class.getName());
-  private static final JsonFactory JSON_FACTORY = JacksonFactory.getDefaultInstance();
 
   /** Emits a callset pair every time they share a variant. */
   public static class ExtractSimilarCallsets extends DoFn<Variant, KV<String, String>> {
@@ -106,7 +96,8 @@ public class VariantSimilarity {
     // Get an access token only if an apiKey is not supplied
     String accessToken = null;
     if (options.apiKey == null) {
-      accessToken = getAccessToken(options, Lists.newArrayList("https://www.googleapis.com/auth/genomics"));
+      accessToken = new OAuthHelper().getAccessToken(options.clientSecretsFilename,
+          Lists.newArrayList(OAuthHelper.GENOMICS_SCOPE));
     }
 
 
@@ -130,54 +121,29 @@ public class VariantSimilarity {
     return readers;
   }
 
-  private static GoogleClientSecrets loadClientSecrets(String clientSecretsFilename) throws IOException {
-    File f = new File(clientSecretsFilename);
-    if (f.exists()) {
-      InputStream inputStream = new FileInputStream(new File(clientSecretsFilename));
-      return GoogleClientSecrets.load(JSON_FACTORY, new InputStreamReader(inputStream));
-    }
-
-    throw new RuntimeException("Please provide an --apiKey option or a valid client_secrets.json file."
-        + " Client secrets file " + clientSecretsFilename + " does not exist."
-        + " Visit https://developers.google.com/genomics to learn how to get an api key or"
-        + " install a client_secrets.json file. If you have installed a client_secrets.json"
-        + " in a specific location, use --clientSecretsFilename <path>/client_secrets.json.");
-  }
-
-  private static String getAccessToken(Options options, List<String> scopes)
-      throws GeneralSecurityException, IOException {
-    GoogleClientSecrets clientSecrets = loadClientSecrets(options.clientSecretsFilename);
-
-    NetHttpTransport httpTransport = GoogleNetHttpTransport.newTrustedTransport();
-    GoogleAuthorizationCodeFlow flow = new GoogleAuthorizationCodeFlow.Builder(
-        httpTransport, JSON_FACTORY, clientSecrets, scopes).setAccessType("offline").build();
-    Credential credential = new AuthorizationCodeInstalledApp(flow, new GooglePromptReceiver()).authorize("user");
-    return credential.getAccessToken();
-  }
-
   /**
-   * We are changing our flat list of VariantReader.Options into a flattened PCollection in an attempt to get our
-   * job to use multiple workers.
+   * We are changing our flat list of sharding options into a flattened PCollection to force dataflow to use
+   * multiple workers. In the future, this workaround won't be necessary.
    */
-  private static PCollection<VariantReader.Options> getPCollection(List<VariantReader.Options> readerOptions,
+  private static <T extends Serializable> PCollection<T> getPCollection(List<T> shardOptions, Class<T> shardType,
       Pipeline p, double numWorkers) {
 
-    LOG.info("Turning " + readerOptions.size() + " options into " + numWorkers + " workers");
-    numWorkers = Math.min(readerOptions.size(), numWorkers);
+    LOG.info("Turning " + shardOptions.size() + " options into " + numWorkers + " workers");
+    numWorkers = Math.min(shardOptions.size(), numWorkers);
 
-    int optionsPerWorker = (int) Math.ceil(readerOptions.size() / numWorkers);
-    List<PCollection<VariantReader.Options>> pCollections = Lists.newArrayList();
+    int optionsPerWorker = (int) Math.ceil(shardOptions.size() / numWorkers);
+    List<PCollection<T>> pCollections = Lists.newArrayList();
 
     for (int i = 0; i < numWorkers; i++) {
       int start = i * optionsPerWorker;
-      int end = Math.min(readerOptions.size(), start + optionsPerWorker);
+      int end = Math.min(shardOptions.size(), start + optionsPerWorker);
 
       LOG.info("Adding collection with " + start + " to " + end);
-      pCollections.add(p.begin().apply(Create.of(readerOptions.subList(start, end)))
-          .setCoder(SerializableCoder.of(VariantReader.Options.class)));
+      pCollections.add(p.begin().apply(Create.of(shardOptions.subList(start, end)))
+          .setCoder(SerializableCoder.of(shardType)));
     }
 
-    return PCollectionList.of(pCollections).apply(new Flatten<VariantReader.Options>());
+    return PCollectionList.of(pCollections).apply(new Flatten<T>());
   }
 
   private static class Options extends PipelineOptions {
@@ -210,7 +176,7 @@ public class VariantSimilarity {
 
     Pipeline p = Pipeline.create();
 
-    getPCollection(readerOptions, p, options.numWorkers)
+    getPCollection(readerOptions, VariantReader.Options.class, p, options.numWorkers)
         .apply(ParDo.named("VariantFetcher")
             .of(new VariantReader.GetVariants())).setCoder(GenericJsonCoder.of(Variant.class))
         .apply(ParDo.named("ExtractSimilarCallsets").of(new ExtractSimilarCallsets()))
