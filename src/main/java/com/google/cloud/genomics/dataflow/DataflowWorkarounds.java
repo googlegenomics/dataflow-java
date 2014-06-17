@@ -16,6 +16,7 @@
 package com.google.cloud.genomics.dataflow;
 
 import com.google.cloud.dataflow.sdk.Pipeline;
+import com.google.cloud.dataflow.sdk.coders.Coder;
 import com.google.cloud.dataflow.sdk.coders.SerializableCoder;
 import com.google.cloud.dataflow.sdk.transforms.Create;
 import com.google.cloud.dataflow.sdk.transforms.Flatten;
@@ -37,7 +38,7 @@ public class DataflowWorkarounds {
    * Change a flat list of sharding options into a flattened PCollection to force dataflow to use
    * multiple workers. In the future, this shouldn't be necessary.
    */
-  public static <T extends Serializable> PCollection<T> getPCollection(List<T> shardOptions, Class<T> shardType,
+  public static <T extends Serializable> PCollection<T> getPCollection(List<T> shardOptions, Coder<T> coder,
       Pipeline p, double numWorkers) {
 
     LOG.info("Turning " + shardOptions.size() + " options into " + numWorkers + " workers");
@@ -51,8 +52,7 @@ public class DataflowWorkarounds {
       int end = Math.min(shardOptions.size(), start + optionsPerWorker);
 
       LOG.info("Adding collection with " + start + " to " + end);
-      pCollections.add(p.begin().apply(Create.of(shardOptions.subList(start, end)))
-          .setCoder(SerializableCoder.of(shardType)));
+      pCollections.add(p.begin().apply(Create.of(shardOptions.subList(start, end))).setCoder(coder));
     }
 
     return PCollectionList.of(pCollections).apply(new Flatten<T>());
