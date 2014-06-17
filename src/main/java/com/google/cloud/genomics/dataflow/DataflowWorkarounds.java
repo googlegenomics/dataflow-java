@@ -17,14 +17,12 @@ package com.google.cloud.genomics.dataflow;
 
 import com.google.cloud.dataflow.sdk.Pipeline;
 import com.google.cloud.dataflow.sdk.coders.Coder;
-import com.google.cloud.dataflow.sdk.coders.SerializableCoder;
 import com.google.cloud.dataflow.sdk.transforms.Create;
 import com.google.cloud.dataflow.sdk.transforms.Flatten;
 import com.google.cloud.dataflow.sdk.values.PCollection;
 import com.google.cloud.dataflow.sdk.values.PCollectionList;
 import com.google.common.collect.Lists;
 
-import java.io.Serializable;
 import java.util.List;
 import java.util.logging.Logger;
 
@@ -38,7 +36,7 @@ public class DataflowWorkarounds {
    * Change a flat list of sharding options into a flattened PCollection to force dataflow to use
    * multiple workers. In the future, this shouldn't be necessary.
    */
-  public static <T extends Serializable> PCollection<T> getPCollection(List<T> shardOptions, Coder<T> coder,
+  public static <T> PCollection<T> getPCollection(List<T> shardOptions, Coder<T> coder,
       Pipeline p, double numWorkers) {
 
     LOG.info("Turning " + shardOptions.size() + " options into " + numWorkers + " workers");
