@@ -13,21 +13,17 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-
 package com.google.cloud.genomics.dataflow;
 
 import com.google.api.services.genomics.model.Call;
 import com.google.api.services.genomics.model.Variant;
 import com.google.cloud.dataflow.sdk.Pipeline;
-import com.google.cloud.dataflow.sdk.coders.SerializableCoder;
 import com.google.cloud.dataflow.sdk.io.TextIO;
 import com.google.cloud.dataflow.sdk.runners.Description;
 import com.google.cloud.dataflow.sdk.runners.PipelineOptions;
 import com.google.cloud.dataflow.sdk.runners.PipelineRunner;
 import com.google.cloud.dataflow.sdk.transforms.*;
 import com.google.cloud.dataflow.sdk.values.KV;
-import com.google.cloud.dataflow.sdk.values.PCollection;
-import com.google.cloud.dataflow.sdk.values.PCollectionList;
 import com.google.cloud.dataflow.utils.OptionsParser;
 import com.google.common.collect.Lists;
 
@@ -100,7 +96,6 @@ public class VariantSimilarity {
           Lists.newArrayList(OAuthHelper.GENOMICS_SCOPE));
     }
 
-
     // TODO: Get contig bounds here vs hardcoding. Eventually this will run over all available data within a dataset
     // NOTE: Locally, we can only do about 1k bps before we run out of memory
     String contig = "22";
@@ -119,31 +114,6 @@ public class VariantSimilarity {
           contig, shardStart, shardEnd));
     }
     return readers;
-  }
-
-  /**
-   * We are changing our flat list of sharding options into a flattened PCollection to force dataflow to use
-   * multiple workers. In the future, this workaround won't be necessary.
-   */
-  private static <T extends Serializable> PCollection<T> getPCollection(List<T> shardOptions, Class<T> shardType,
-      Pipeline p, double numWorkers) {
-
-    LOG.info("Turning " + shardOptions.size() + " options into " + numWorkers + " workers");
-    numWorkers = Math.min(shardOptions.size(), numWorkers);
-
-    int optionsPerWorker = (int) Math.ceil(shardOptions.size() / numWorkers);
-    List<PCollection<T>> pCollections = Lists.newArrayList();
-
-    for (int i = 0; i < numWorkers; i++) {
-      int start = i * optionsPerWorker;
-      int end = Math.min(shardOptions.size(), start + optionsPerWorker);
-
-      LOG.info("Adding collection with " + start + " to " + end);
-      pCollections.add(p.begin().apply(Create.of(shardOptions.subList(start, end)))
-          .setCoder(SerializableCoder.of(shardType)));
-    }
-
-    return PCollectionList.of(pCollections).apply(new Flatten<T>());
   }
 
   private static class Options extends PipelineOptions {
@@ -176,7 +146,7 @@ public class VariantSimilarity {
 
     Pipeline p = Pipeline.create();
 
-    getPCollection(readerOptions, VariantReader.Options.class, p, options.numWorkers)
+    DataflowWorkarounds.getPCollection(readerOptions, VariantReader.Options.class, p, options.numWorkers)
         .apply(ParDo.named("VariantFetcher")
             .of(new VariantReader.GetVariants())).setCoder(GenericJsonCoder.of(Variant.class))
         .apply(ParDo.named("ExtractSimilarCallsets").of(new ExtractSimilarCallsets()))
