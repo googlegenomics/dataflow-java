@@ -74,7 +74,7 @@
     <dependency>
       <groupId>com.google.cloud.dataflow</groupId>
       <artifactId>dataflow-sdk</artifactId>
-      <version>1.0.140604</version>
+      <version>1.0.140617</version>
     </dependency>
     <dependency>
       <!-- Command line parsing library. -->

@@ -152,7 +152,7 @@ public class VariantSimilarity {
         .apply(ParDo.named("VariantFetcher")
             .of(new VariantReader.GetVariants())).setCoder(GenericJsonCoder.of(Variant.class))
         .apply(ParDo.named("ExtractSimilarCallsets").of(new ExtractSimilarCallsets()))
-        .apply(new Count<KV<String, String>>())
+        .apply(Count.<KV<String, String>>create())
         .apply(ParDo.named("FormatCallsetCounts").of(new DoFn<KV<KV<String, String>, Long>, String>() {
           @Override
           public void processElement(ProcessContext c) {
