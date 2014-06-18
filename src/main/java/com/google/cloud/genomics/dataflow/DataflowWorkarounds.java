@@ -53,6 +53,6 @@ public class DataflowWorkarounds {
       pCollections.add(p.begin().apply(Create.of(shardOptions.subList(start, end))).setCoder(coder));
     }
 
-    return PCollectionList.of(pCollections).apply(new Flatten<T>());
+    return PCollectionList.of(pCollections).apply(Flatten.<T>create());
   }
 }
