@@ -30,7 +30,8 @@ Run deployed
     --project=<PROJECT_ID> \
     --stagingLocation=gs://mybucket/staging \
     --output=gs://mybucket/VariantSimilarity.txt \
-    --numWorkers=16
+    --numWorkers=50 \
+    --zone=us-central1-b
 ```    
 
 The max workers you can have without requesting more quota is 16. (That's the limit on GCE VMs)
