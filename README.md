@@ -16,7 +16,7 @@ Note: when running locally, you can only process about 1000 base positions befor
 
 ```
 java -cp target/googlegenomics-dataflow-java-v1beta.jar \
-    com.google.cloud.genomics.dataflow.VariantSimilarity \
+    com.google.cloud.genomics.dataflow.pipelines.VariantSimilarity \
     --project=<PROJECT_ID> \
     --output=<gs://mybucket/VariantSimilarityLocal.txt>
 ``` 
@@ -25,7 +25,7 @@ Run deployed
 
 ```
   java -cp target/googlegenomics-dataflow-java-v1beta.jar \
-    com.google.cloud.genomics.dataflow.VariantSimilarity \
+    com.google.cloud.genomics.dataflow.pipelines.VariantSimilarity \
     --runner=BlockingDataflowPipelineRunner \
     --project=<PROJECT_ID> \
     --stagingLocation=gs://mybucket/staging \
