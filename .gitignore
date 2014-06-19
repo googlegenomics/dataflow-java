@@ -1,4 +1,7 @@
-client_secrets.json
+client_secrets*.json
 .idea
 *.iml
 target
+.classpath
+.project
+bin
