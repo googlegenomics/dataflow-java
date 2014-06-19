@@ -19,6 +19,7 @@ import com.google.api.services.genomics.model.Call;
 import com.google.api.services.genomics.model.Variant;
 import com.google.cloud.dataflow.sdk.transforms.DoFn;
 import com.google.cloud.dataflow.sdk.values.KV;
+import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.Lists;
 
 import java.util.List;
@@ -31,6 +32,17 @@ public class ExtractSimilarCallsets extends DoFn<Variant, KV<String, String>> {
   @Override
   public void processElement(ProcessContext c) {
     Variant variant = c.element();
+    List<String> samples = getSamplesWithVariant(variant);
+
+    for (String s1 : samples) {
+      for (String s2 : samples) {
+        c.output(KV.of(s1, s2));
+      }
+    }
+  }
+
+  @VisibleForTesting
+  List<String> getSamplesWithVariant(Variant variant) {
     List<String> samplesWithVariant = Lists.newArrayList();
     for (Call call : variant.getCalls()) {
       String genotype = call.getInfo().get("GT").get(0); // TODO: Change to use real genotype field
@@ -39,11 +51,6 @@ public class ExtractSimilarCallsets extends DoFn<Variant, KV<String, String>> {
         samplesWithVariant.add(call.getCallsetName());
       }
     }
-
-    for (String s1 : samplesWithVariant) {
-      for (String s2 : samplesWithVariant) {
-        c.output(KV.of(s1, s2));
-      }
-    }
+    return samplesWithVariant;
   }
 }
