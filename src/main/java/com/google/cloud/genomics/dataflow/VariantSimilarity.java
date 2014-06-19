@@ -24,7 +24,7 @@ import com.google.cloud.dataflow.sdk.runners.Description;
 import com.google.cloud.dataflow.sdk.runners.PipelineOptions;
 import com.google.cloud.dataflow.sdk.runners.PipelineRunner;
 import com.google.cloud.dataflow.sdk.transforms.*;
-import com.google.cloud.dataflow.sdk.values.KV;
+import com.google.cloud.dataflow.sdk.values.*;
 import com.google.cloud.dataflow.utils.OptionsParser;
 import com.google.common.collect.Lists;
 
@@ -98,10 +98,10 @@ public class VariantSimilarity {
     }
 
     // TODO: Get contig bounds here vs hardcoding. Eventually this will run over all available data within a dataset
-    // NOTE: Locally, we can only do about 1k bps before we run out of memory
+    // NOTE: The default end parameter is set to run on tiny local machines
     String contig = "22";
     long start = 25652000;
-    long end = start + 500;
+    long end = start + 10000;
     long basesPerShard = 1000;
 
     double shards = Math.ceil((end - start) / (double) basesPerShard);
@@ -148,18 +148,19 @@ public class VariantSimilarity {
     Pipeline p = Pipeline.create();
 
     DataflowWorkarounds.getPCollection(readerOptions,
-            SerializableCoder.of(VariantReader.Options.class), p, options.numWorkers)
+        SerializableCoder.of(VariantReader.Options.class), p, options.numWorkers)
         .apply(ParDo.named("VariantFetcher")
             .of(new VariantReader.GetVariants())).setCoder(GenericJsonCoder.of(Variant.class))
         .apply(ParDo.named("ExtractSimilarCallsets").of(new ExtractSimilarCallsets()))
         .apply(Count.<KV<String, String>>create())
-        .apply(ParDo.named("FormatCallsetCounts").of(new DoFn<KV<KV<String, String>, Long>, String>() {
+        .apply(AsIterable.<KV<KV<String, String>, Long>>create())
+        .apply(SeqDo.named("PCAAnalysis").of(new PcaAnalysis()))
+        .apply(FromIterable.<PcaAnalysis.GraphResult>create())
+        .apply(ParDo.named("FormatGraphData").of(new DoFn<PcaAnalysis.GraphResult, String>() {
           @Override
           public void processElement(ProcessContext c) {
-            KV<String, String> callsets = c.element().getKey();
-            Long count = c.element().getValue();
-            // TODO: Hook the pca code itself into the pipeline rather than writing a file with this intermediate data
-            c.output(callsets.getKey() + "-" + callsets.getValue() + "-" + count + ":");
+            PcaAnalysis.GraphResult result = c.element();
+            c.output(result.name + "\t\t" + result.graphX + "\t" + result.graphY);
           }
         }))
         .apply(TextIO.Write.named("WriteCounts").to(options.getOutput()));
