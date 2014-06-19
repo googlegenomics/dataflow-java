@@ -23,6 +23,7 @@ import com.google.api.services.genomics.model.SearchVariantsRequest;
 import com.google.api.services.genomics.model.SearchVariantsResponse;
 import com.google.api.services.genomics.model.Variant;
 import com.google.cloud.dataflow.sdk.transforms.DoFn;
+import com.google.cloud.genomics.dataflow.OAuthHelper;
 import com.google.common.collect.Lists;
 
 import java.io.IOException;
@@ -76,16 +77,7 @@ public class VariantReader {
 
   public VariantReader(Options options) {
     this.options = options;
-
-    GoogleCredential credential = options.accessToken == null ? null :
-        new GoogleCredential().setAccessToken(options.accessToken);
-    try {
-      service = new Genomics.Builder(GoogleNetHttpTransport.newTrustedTransport(), new JacksonFactory(), credential)
-          .setApplicationName("dataflow-reader").build();
-    } catch (GeneralSecurityException | IOException e) {
-      e.printStackTrace();
-      throw new RuntimeException(e);
-    }
+    service = new OAuthHelper().getAuthorizedService(options.accessToken);
   }
 
   public List<Variant> getVariants() {
