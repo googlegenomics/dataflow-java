@@ -34,16 +34,16 @@ import com.google.api.services.genomics.model.SearchReadsetsResponse;
 import com.google.cloud.dataflow.sdk.Pipeline;
 import com.google.cloud.dataflow.sdk.coders.KvCoder;
 import com.google.cloud.dataflow.sdk.coders.StringUtf8Coder;
-import com.google.cloud.dataflow.sdk.io.TextIO;
 import com.google.cloud.dataflow.sdk.runners.Description;
 import com.google.cloud.dataflow.sdk.runners.PipelineOptions;
 import com.google.cloud.dataflow.sdk.runners.PipelineRunner;
-import com.google.cloud.dataflow.sdk.transforms.Count;
 import com.google.cloud.dataflow.sdk.transforms.DoFn;
 import com.google.cloud.dataflow.sdk.transforms.ParDo;
 import com.google.cloud.dataflow.sdk.values.KV;
 import com.google.cloud.dataflow.utils.OptionsParser;
 import com.google.cloud.dataflow.utils.RequiredOption;
+import com.google.cloud.genomics.dataflow.coders.GenericJsonCoder;
+import com.google.cloud.genomics.dataflow.functions.OutputPcaFile;
 import com.google.common.collect.Lists;
 
 import java.io.IOException;
@@ -171,19 +171,6 @@ public class KmerIndex {
       }
     }
   };
-  
-  private static DoFn<KV<KV<String, String>, Long>, String> formatOutput =
-      new DoFn<KV<KV<String, String>, Long>, String> () {
-
-        @Override
-        public void processElement(ProcessContext c) {
-          KV<KV<String, String>, Long> elem = c.element();
-          String name = elem.getKey().getKey();
-          String kmer = elem.getKey().getValue();
-          Long count = elem.getValue();
-          c.output(name + "-" + kmer + "-" + count + ":");
-        }
-  };
 
   private static Genomics setAuth(String accessToken) {
     GoogleCredential credential = (accessToken == null) ? null :
@@ -261,14 +248,12 @@ public class KmerIndex {
     Pipeline p = Pipeline.create();
 
     DataflowWorkarounds.getPCollection(
-        readsets, GenericJsonCoder.of(Readset.class), p, options.numWorkers);
-//        .apply(ParDo.named("Readsets To Reads")
-//            .of(readsetToRead(options.accessToken, options.apiKey)))
-//        .setCoder(KvCoder.of(StringUtf8Coder.of(), GenericJsonCoder.of(Read.class)))
-//        .apply(ParDo.named("Generate Kmers").of(genKmers))
-//        .apply(Count.<KV<String, String>>create())
-//        .apply(ParDo.named("Format Output").of(formatOutput))
-//        .apply(TextIO.Write.named("WriteCounts").to(options.output));
+        readsets, GenericJsonCoder.of(Readset.class), p, options.numWorkers)
+        .apply(ParDo.named("Readsets To Reads")
+            .of(readsetToRead(options.accessToken, options.apiKey)))
+        .setCoder(KvCoder.of(StringUtf8Coder.of(), GenericJsonCoder.of(Read.class)))
+        .apply(ParDo.named("Generate Kmers").of(genKmers))
+        .apply(new OutputPcaFile(options.output));
     
     p.run(PipelineRunner.fromOptions(options));
   }
