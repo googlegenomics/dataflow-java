@@ -13,19 +13,23 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package com.google.cloud.genomics.dataflow;
+package com.google.cloud.genomics.dataflow.pipelines;
 
-import com.google.api.services.genomics.model.Call;
 import com.google.api.services.genomics.model.Variant;
 import com.google.cloud.dataflow.sdk.Pipeline;
 import com.google.cloud.dataflow.sdk.coders.SerializableCoder;
-import com.google.cloud.dataflow.sdk.io.TextIO;
 import com.google.cloud.dataflow.sdk.runners.Description;
 import com.google.cloud.dataflow.sdk.runners.PipelineOptions;
 import com.google.cloud.dataflow.sdk.runners.PipelineRunner;
 import com.google.cloud.dataflow.sdk.transforms.*;
-import com.google.cloud.dataflow.sdk.values.*;
 import com.google.cloud.dataflow.utils.OptionsParser;
+import com.google.cloud.dataflow.utils.RequiredOption;
+import com.google.cloud.genomics.dataflow.DataflowWorkarounds;
+import com.google.cloud.genomics.dataflow.OAuthHelper;
+import com.google.cloud.genomics.dataflow.coders.GenericJsonCoder;
+import com.google.cloud.genomics.dataflow.functions.ExtractSimilarCallsets;
+import com.google.cloud.genomics.dataflow.functions.OutputPcaFile;
+import com.google.cloud.genomics.dataflow.readers.VariantReader;
 import com.google.common.collect.Lists;
 
 import java.io.*;
@@ -63,29 +67,6 @@ import java.util.logging.Logger;
 public class VariantSimilarity {
   private static final Logger LOG = Logger.getLogger(VariantSimilarity.class.getName());
 
-  /** Emits a callset pair every time they share a variant. */
-  public static class ExtractSimilarCallsets extends DoFn<Variant, KV<String, String>> {
-
-    @Override
-    public void processElement(ProcessContext c) {
-      Variant variant = c.element();
-      List<String> samplesWithVariant = Lists.newArrayList();
-      for (Call call : variant.getCalls()) {
-        String genotype = call.getInfo().get("GT").get(0); // TODO: Change to use real genotype field
-        genotype = genotype.replaceAll("[\\\\|0]", "");
-        if (!genotype.isEmpty()) {
-          samplesWithVariant.add(call.getCallsetName());
-        }
-      }
-
-      for (String s1 : samplesWithVariant) {
-        for (String s2 : samplesWithVariant) {
-          c.output(KV.of(s1, s2));
-        }
-      }
-    }
-  }
-
   private static List<VariantReader.Options> getReaderOptions(Options options)
       throws GeneralSecurityException, IOException {
     String variantFields = "nextPageToken,variants(id,calls(info,callsetName))";
@@ -101,7 +82,7 @@ public class VariantSimilarity {
     // NOTE: The default end parameter is set to run on tiny local machines
     String contig = "22";
     long start = 25652000;
-    long end = start + 10000;
+    long end = start + 200;
     long basesPerShard = 1000;
 
     double shards = Math.ceil((end - start) / (double) basesPerShard);
@@ -130,15 +111,8 @@ public class VariantSimilarity {
     public String clientSecretsFilename = "client_secrets.json";
 
     @Description("Path of the file to write to")
+    @RequiredOption
     public String output;
-
-    public String getOutput() {
-      if (output != null) {
-        return output;
-      } else {
-        throw new IllegalArgumentException("Must specify --output");
-      }
-    }
   }
 
   public static void main(String[] args) throws GeneralSecurityException, IOException {
@@ -152,18 +126,7 @@ public class VariantSimilarity {
         .apply(ParDo.named("VariantFetcher")
             .of(new VariantReader.GetVariants())).setCoder(GenericJsonCoder.of(Variant.class))
         .apply(ParDo.named("ExtractSimilarCallsets").of(new ExtractSimilarCallsets()))
-        .apply(Count.<KV<String, String>>create())
-        .apply(AsIterable.<KV<KV<String, String>, Long>>create())
-        .apply(SeqDo.named("PCAAnalysis").of(new PcaAnalysis()))
-        .apply(FromIterable.<PcaAnalysis.GraphResult>create())
-        .apply(ParDo.named("FormatGraphData").of(new DoFn<PcaAnalysis.GraphResult, String>() {
-          @Override
-          public void processElement(ProcessContext c) {
-            PcaAnalysis.GraphResult result = c.element();
-            c.output(result.name + "\t\t" + result.graphX + "\t" + result.graphY);
-          }
-        }))
-        .apply(TextIO.Write.named("WriteCounts").to(options.getOutput()));
+        .apply(new OutputPcaFile(options.output));
 
     p.run(PipelineRunner.fromOptions(options));
   }

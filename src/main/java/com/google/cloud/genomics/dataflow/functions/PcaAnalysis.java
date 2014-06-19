@@ -13,7 +13,7 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package com.google.cloud.genomics.dataflow;
+package com.google.cloud.genomics.dataflow.functions;
 
 import Jama.EigenvalueDecomposition;
 import Jama.Matrix;
@@ -27,6 +27,10 @@ import java.io.Serializable;
 import java.util.List;
 import java.util.Map;
 
+/**
+ * This function runs PCA inside of a SeqDo.
+ * It can not be parallelized.
+ */
 public class PcaAnalysis implements
     SerializableFunction<Iterable<KV<KV<String, String>, Long>>, Iterable<PcaAnalysis.GraphResult>> {
 
