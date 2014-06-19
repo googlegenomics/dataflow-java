@@ -43,7 +43,7 @@ public class VariantReader extends DoFn<VariantReader.Options, Variant> {
     private final long end;
 
     public Options(String apiKey, String accessToken, String datasetId, String variantFields,
-                   String contig, long start, long end) {
+        String contig, long start, long end) {
       this.apiKey = apiKey;
       this.accessToken = accessToken;
       this.datasetId = datasetId;
