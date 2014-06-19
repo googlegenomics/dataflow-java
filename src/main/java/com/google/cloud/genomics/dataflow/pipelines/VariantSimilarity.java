@@ -22,7 +22,7 @@ import com.google.cloud.dataflow.sdk.Pipeline;
 import com.google.cloud.dataflow.sdk.coders.SerializableCoder;
 import com.google.cloud.dataflow.sdk.runners.Description;
 import com.google.cloud.dataflow.sdk.runners.PipelineRunner;
-import com.google.cloud.dataflow.sdk.transforms.*;
+import com.google.cloud.dataflow.sdk.transforms.ParDo;
 import com.google.cloud.dataflow.utils.OptionsParser;
 import com.google.cloud.dataflow.utils.RequiredOption;
 import com.google.cloud.genomics.dataflow.DataflowWorkarounds;
@@ -34,7 +34,7 @@ import com.google.cloud.genomics.dataflow.functions.OutputPcaFile;
 import com.google.cloud.genomics.dataflow.readers.VariantReader;
 import com.google.common.collect.Lists;
 
-import java.io.*;
+import java.io.IOException;
 import java.security.GeneralSecurityException;
 import java.util.List;
 import java.util.logging.Logger;
