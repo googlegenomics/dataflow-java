@@ -41,14 +41,15 @@ public class GenomicsOptions extends PipelineOptions {
 
   // Gets the access token to use for this pipeline
   // If there is an apiKey, this will always return null
+  // This should be called before the Pipeline is started
   public String getAccessToken() {
     if (apiKey != null) {
       return null;
     }
 
     try {
-      return new OAuthHelper().getAccessToken(clientSecretsFilename,
-            Lists.newArrayList(OAuthHelper.GENOMICS_SCOPE));
+      return GenomicsApi.getAccessToken(clientSecretsFilename,
+          Lists.newArrayList(GenomicsApi.GENOMICS_SCOPE));
     } catch (GeneralSecurityException | IOException e) {
       throw new RuntimeException("Could not fetch the OAuth access token - please try again", e);
     }
