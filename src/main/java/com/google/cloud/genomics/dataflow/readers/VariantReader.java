@@ -15,23 +15,19 @@
  */
 package com.google.cloud.genomics.dataflow.readers;
 
-import com.google.api.services.genomics.Genomics;
 import com.google.api.services.genomics.GenomicsRequest;
 import com.google.api.services.genomics.model.SearchVariantsRequest;
 import com.google.api.services.genomics.model.SearchVariantsResponse;
 import com.google.api.services.genomics.model.Variant;
 import com.google.cloud.dataflow.sdk.transforms.DoFn;
-import com.google.cloud.genomics.dataflow.OAuthHelper;
+import com.google.cloud.genomics.dataflow.GenomicsApi;
 
 import java.io.IOException;
 import java.io.Serializable;
-import java.rmi.UnexpectedException;
 import java.util.logging.Logger;
 
-// TODO: Turn this into a real dataflow reader
 public class VariantReader extends DoFn<VariantReader.Options, Variant> {
   private static final Logger LOG = Logger.getLogger(VariantReader.class.getName());
-  private static final int API_RETRIES = 3;
 
   public static class Options implements Serializable {
     // Used for access to the genomics API
@@ -61,11 +57,11 @@ public class VariantReader extends DoFn<VariantReader.Options, Variant> {
   @Override
   public void processElement(ProcessContext c) {
     Options options = c.element();
-    Genomics service = new OAuthHelper().getAuthorizedService(options.accessToken);
+    GenomicsApi api = new GenomicsApi(options.accessToken, options.apiKey);
 
     String nextPageToken = null;
     do {
-      SearchVariantsResponse response = getVariantsResponse(service, options, nextPageToken);
+      SearchVariantsResponse response = getVariantsResponse(api, options, nextPageToken);
       if (response.getVariants() == null) {
         break;
       }
@@ -78,7 +74,8 @@ public class VariantReader extends DoFn<VariantReader.Options, Variant> {
     LOG.info("Finished variants at: " + options.contig + "-" + options.start);
   }
 
-  private SearchVariantsResponse getVariantsResponse(Genomics service, Options options, String nextPageToken) {
+  private SearchVariantsResponse getVariantsResponse(GenomicsApi api, Options options,
+      String nextPageToken) {
     SearchVariantsRequest request = new SearchVariantsRequest()
         .setDatasetId(options.datasetId)
         .setContig(options.contig)
@@ -90,21 +87,10 @@ public class VariantReader extends DoFn<VariantReader.Options, Variant> {
     }
 
     try {
-      GenomicsRequest<SearchVariantsResponse> search = service.variants().search(request);
-      return executeRequest(search, options.variantFields, options.apiKey);
+      GenomicsRequest<SearchVariantsResponse> search = api.getService().variants().search(request);
+      return api.executeRequest(search, options.variantFields);
     } catch (IOException e) {
       throw new RuntimeException("Failed to create genomics API request - this shouldn't happen.", e);
     }
-  }
-
-  private <T> T executeRequest(GenomicsRequest<T> search, String fields, String apiKey) {
-    for (int i = 0; i < API_RETRIES; i++) {
-      try {
-        return search.setFields(fields).setKey(apiKey).execute();
-      } catch (Exception e) {
-        e.printStackTrace();
-      }
-    }
-    throw new RuntimeException("Genomics API call failed multiple times in a row.");
   }
 }

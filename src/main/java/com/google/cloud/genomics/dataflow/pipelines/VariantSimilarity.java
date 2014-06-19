@@ -15,6 +15,8 @@
  */
 package com.google.cloud.genomics.dataflow.pipelines;
 
+import com.google.api.services.genomics.model.ContigBound;
+import com.google.api.services.genomics.model.GetVariantsSummaryResponse;
 import com.google.api.services.genomics.model.Variant;
 import com.google.cloud.dataflow.sdk.Pipeline;
 import com.google.cloud.dataflow.sdk.coders.SerializableCoder;
@@ -24,6 +26,7 @@ import com.google.cloud.dataflow.sdk.transforms.*;
 import com.google.cloud.dataflow.utils.OptionsParser;
 import com.google.cloud.dataflow.utils.RequiredOption;
 import com.google.cloud.genomics.dataflow.DataflowWorkarounds;
+import com.google.cloud.genomics.dataflow.GenomicsApi;
 import com.google.cloud.genomics.dataflow.GenomicsOptions;
 import com.google.cloud.genomics.dataflow.coders.GenericJsonCoder;
 import com.google.cloud.genomics.dataflow.functions.ExtractSimilarCallsets;
@@ -71,9 +74,16 @@ public class VariantSimilarity {
     String accessToken = options.getAccessToken();
     String variantFields = "nextPageToken,variants(id,calls(info,callsetName))";
 
-    // TODO: Get contig bounds here vs hardcoding. Eventually this will run over all available data within a dataset
+    GenomicsApi api = new GenomicsApi(accessToken, options.apiKey);
+    GetVariantsSummaryResponse summary = api.executeRequest(
+        api.getService().variants().getSummary().setDatasetId(options.datasetId), "contigBounds");
+
+    ContigBound bound = summary.getContigBounds().get(0);
+
+    // TODO: Run this over all of the available contigBounds
+    // We just happen to know that there is data at this hardcoded start position
     // NOTE: The default end parameter is set to run on tiny local machines
-    String contig = "22";
+    String contig = bound.getContig();
     long start = 25652000;
     long end = start + 200;
     long basesPerShard = 1000;

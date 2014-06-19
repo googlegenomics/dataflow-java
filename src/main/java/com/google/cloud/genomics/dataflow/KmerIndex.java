@@ -58,7 +58,6 @@ public class KmerIndex {
   private static final Logger LOG = Logger.getLogger(KmerIndex.class.getName());
   private static final String READSET_FIELDS = "nextPageToken,readsets(id,name)";
   private static final String READ_FIELDS = "nextPageToken,reads(originalBases)";
-  private static final int API_RETRIES = 3;
   private static int K_VALUE;
 
   // Do not instantiate
@@ -97,25 +96,18 @@ public class KmerIndex {
     return new DoFn<Readset, KV<String, Read>>() {
       @Override
       public void processElement(ProcessContext c) {
-        Genomics service = setAuth(accessToken);
+        GenomicsApi api = new GenomicsApi(accessToken, apiKey);
+
         Readset set = c.element();
-        SearchReadsRequest request = new SearchReadsRequest()
-        .setReadsetIds(Lists.newArrayList(set.getId()));
+        SearchReadsRequest request = new SearchReadsRequest().setReadsetIds(Lists.newArrayList(set.getId()));
         boolean done = false;
         int count = 0;
         while (!done) {
-          SearchReadsResponse response = null;
-          for (int i = 0; i < API_RETRIES; i++) {
-            try {
-              response = service.reads().search(request)
-                  .setFields(READ_FIELDS).setKey(apiKey).execute();
-              break;
-            } catch (Exception e) {
-              e.printStackTrace();
-            }
-          }
-          if (response == null) {
-            throw new RuntimeException("Genomics API call failed multiple times in a row.");
+          SearchReadsResponse response;
+          try {
+            response = api.executeRequest(api.getService().reads().search(request), READ_FIELDS);
+          } catch (IOException e) {
+            throw new RuntimeException("Failed to create genomics API request - this shouldn't happen.", e);
           }
 
           for (Read read : response.getReads()) {
@@ -172,40 +164,14 @@ public class KmerIndex {
     }
   };
 
-  private static Genomics setAuth(String accessToken) {
-    GoogleCredential credential = (accessToken == null) ? null :
-        new GoogleCredential().setAccessToken(accessToken);
-    try {
-      return new Genomics.Builder(GoogleNetHttpTransport.newTrustedTransport(), 
-          new JacksonFactory(), credential)
-      .setApplicationName("dataflow-reader").build();
-    } catch (GeneralSecurityException | IOException e) {
-      e.printStackTrace();
-      throw new RuntimeException(e);
-    }
-  }
-
-  private static List<Readset> getReadsets(Options options) {
-    Genomics service = setAuth(options.accessToken);
+  private static List<Readset> getReadsets(Options options) throws IOException {
+    GenomicsApi api = new GenomicsApi(options.accessToken, options.apiKey);
     SearchReadsetsRequest request = new SearchReadsetsRequest()
         .setDatasetIds(Lists.newArrayList(options.datasetId));
     List<Readset> readsets = Lists.newArrayList();
     boolean done = false;
     while (!done) {
-      SearchReadsetsResponse response = null;
-      
-      for (int i = 0; i < API_RETRIES; i++) {
-        try {
-          response = service.readsets().search(request)
-              .setFields(READSET_FIELDS).setKey(options.apiKey).execute();
-          break;
-        } catch (Exception e) {
-          e.printStackTrace();
-        }
-      }
-      if (response == null) {
-        throw new RuntimeException("Genomics API call failed multiple times in a row.");
-      }
+      SearchReadsetsResponse response = api.executeRequest(api.getService().readsets().search(request), READSET_FIELDS);
       
       readsets.addAll(response.getReadsets());
       if (response.getNextPageToken() != null) {
@@ -217,7 +183,7 @@ public class KmerIndex {
     return readsets;
   }
   
-  public static void main(String[] args) {
+  public static void main(String[] args) throws IOException {
     Options options = OptionsParser.parse(args, Options.class, KmerIndex.class.getSimpleName());
     try {
       K_VALUE = Integer.parseInt(options.kValue);
@@ -233,7 +199,7 @@ public class KmerIndex {
     if (options.apiKey == null) {
       try {
         LOG.info("Using client secrets file for OAuth");
-        options.setAccessToken(new OAuthHelper().getAccessToken(options.clientSecretsFilename,
+        options.setAccessToken(GenomicsApi.getAccessToken(options.clientSecretsFilename,
             Lists.newArrayList("https://www.googleapis.com/auth/genomics")));
       } catch (GeneralSecurityException | IOException e) {
         LOG.severe("Error generating auth tokens");

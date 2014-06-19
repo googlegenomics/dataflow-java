@@ -27,17 +27,28 @@ import com.google.api.client.json.JsonFactory;
 import com.google.api.client.json.jackson2.JacksonFactory;
 import com.google.api.client.util.store.FileDataStoreFactory;
 import com.google.api.services.genomics.Genomics;
+import com.google.api.services.genomics.GenomicsRequest;
 
 import java.io.*;
 import java.security.GeneralSecurityException;
 import java.util.List;
 
-public class OAuthHelper {
+public class GenomicsApi {
   public static final String GENOMICS_SCOPE = "https://www.googleapis.com/auth/genomics";
+  private static final int API_RETRIES = 3;
 
   private static final JsonFactory JSON_FACTORY = JacksonFactory.getDefaultInstance();
   private static final java.io.File DATA_STORE_DIR =
       new java.io.File(System.getProperty("user.home"), ".store/genomics_dataflow_client");
+
+  private final String accessToken;
+  private final String apiKey;
+  private Genomics service;
+
+  public GenomicsApi(String accessToken, String apiKey) {
+    this.accessToken = accessToken;
+    this.apiKey = apiKey;
+  }
 
   /**
    * Use this function to get a valid access token from the user before running a dataflow pipeline.
@@ -49,7 +60,7 @@ public class OAuthHelper {
    * @return An access token that can be used to make a GoogleCredential:
    *     new GoogleCredential().setAccessToken(accessToken)
    */
-  public String getAccessToken(String clientSecretsFilename, List<String> scopes)
+  public static String getAccessToken(String clientSecretsFilename, List<String> scopes)
       throws GeneralSecurityException, IOException {
     GoogleClientSecrets clientSecrets = loadClientSecrets(clientSecretsFilename);
     FileDataStoreFactory dataStoreFactory = new FileDataStoreFactory(DATA_STORE_DIR);
@@ -62,7 +73,7 @@ public class OAuthHelper {
     return credential.getAccessToken();
   }
 
-  private GoogleClientSecrets loadClientSecrets(String clientSecretsFilename) throws IOException {
+  private static GoogleClientSecrets loadClientSecrets(String clientSecretsFilename) throws IOException {
     File f = new File(clientSecretsFilename);
     if (f.exists()) {
       InputStream inputStream = new FileInputStream(new File(clientSecretsFilename));
@@ -76,14 +87,28 @@ public class OAuthHelper {
         + " in a specific location, use --clientSecretsFilename <path>/client_secrets.json.");
   }
 
-  public Genomics getAuthorizedService(String accessToken) {
-    GoogleCredential credential = accessToken == null ? null :
-        new GoogleCredential().setAccessToken(accessToken);
-    try {
-      return new Genomics.Builder(GoogleNetHttpTransport.newTrustedTransport(), new JacksonFactory(), credential)
-          .setApplicationName("dataflow-reader").build();
-    } catch (GeneralSecurityException | IOException e) {
-      throw new RuntimeException("Unable to create the Genomics service", e);
+  public Genomics getService() {
+    if (service == null) {
+      GoogleCredential credential = accessToken == null ? null :
+          new GoogleCredential().setAccessToken(accessToken);
+      try {
+        service = new Genomics.Builder(GoogleNetHttpTransport.newTrustedTransport(), new JacksonFactory(), credential)
+            .setApplicationName("dataflow-reader").build();
+      } catch (GeneralSecurityException | IOException e) {
+        throw new RuntimeException("Unable to create the Genomics service", e);
+      }
     }
+    return service;
+  }
+
+  public <T> T executeRequest(GenomicsRequest<T> search, String fields) {
+    for (int i = 0; i < API_RETRIES; i++) {
+      try {
+        return search.setFields(fields).setKey(apiKey).execute();
+      } catch (Exception e) {
+        e.printStackTrace();
+      }
+    }
+    throw new RuntimeException("Genomics API call failed multiple times in a row.");
   }
 }
