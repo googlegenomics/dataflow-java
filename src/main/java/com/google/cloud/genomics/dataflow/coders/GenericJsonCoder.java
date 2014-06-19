@@ -15,8 +15,6 @@
  */
 package com.google.cloud.genomics.dataflow.coders;
 
-import com.fasterxml.jackson.annotation.JsonCreator;
-import com.fasterxml.jackson.annotation.JsonProperty;
 import com.google.api.client.json.GenericJson;
 import com.google.api.client.json.JsonGenerator;
 import com.google.api.client.json.JsonParser;
@@ -24,6 +22,9 @@ import com.google.api.client.json.jackson2.JacksonFactory;
 import com.google.api.services.dataflow.model.CloudNamedParameter;
 import com.google.cloud.dataflow.sdk.coders.AtomicCoder;
 import com.google.cloud.dataflow.sdk.coders.CoderException;
+
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonProperty;
 
 import java.io.IOException;
 import java.io.InputStream;

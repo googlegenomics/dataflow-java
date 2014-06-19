@@ -13,15 +13,17 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
+
 package com.google.cloud.genomics.dataflow.functions;
 
-import Jama.EigenvalueDecomposition;
-import Jama.Matrix;
 import com.google.api.client.util.Lists;
 import com.google.cloud.dataflow.sdk.transforms.SerializableFunction;
 import com.google.cloud.dataflow.sdk.values.KV;
 import com.google.common.collect.BiMap;
 import com.google.common.collect.HashBiMap;
+
+import Jama.EigenvalueDecomposition;
+import Jama.Matrix;
 
 import java.io.Serializable;
 import java.util.List;
