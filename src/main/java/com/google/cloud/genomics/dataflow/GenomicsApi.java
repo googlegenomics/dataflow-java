@@ -73,18 +73,19 @@ public class GenomicsApi {
     return credential.getAccessToken();
   }
 
-  private static GoogleClientSecrets loadClientSecrets(String clientSecretsFilename) throws IOException {
+  private static GoogleClientSecrets loadClientSecrets(String clientSecretsFilename)
+      throws IOException {
     File f = new File(clientSecretsFilename);
     if (f.exists()) {
       InputStream inputStream = new FileInputStream(new File(clientSecretsFilename));
       return GoogleClientSecrets.load(JSON_FACTORY, new InputStreamReader(inputStream));
     }
 
-    throw new RuntimeException("Please provide an --apiKey option or a valid client_secrets.json file."
-        + " Client secrets file " + clientSecretsFilename + " does not exist."
-        + " Visit https://developers.google.com/genomics to learn how to get an api key or"
-        + " install a client_secrets.json file. If you have installed a client_secrets.json"
-        + " in a specific location, use --clientSecretsFilename <path>/client_secrets.json.");
+    throw new RuntimeException("Please provide an --apiKey option or a valid client_secrets.json " +
+        "file. Client secrets file " + clientSecretsFilename + " does not exist. " +
+        "Visit https://developers.google.com/genomics to learn how to get an api key or install " +
+        "a client_secrets.json file. If you have installed a client_secrets.json in a specific " +
+        "location, use --clientSecretsFilename <path>/client_secrets.json.");
   }
 
   public Genomics getService() {
@@ -92,8 +93,8 @@ public class GenomicsApi {
       GoogleCredential credential = accessToken == null ? null :
           new GoogleCredential().setAccessToken(accessToken);
       try {
-        service = new Genomics.Builder(GoogleNetHttpTransport.newTrustedTransport(), new JacksonFactory(), credential)
-            .setApplicationName("dataflow-reader").build();
+        service = new Genomics.Builder(GoogleNetHttpTransport.newTrustedTransport(),
+            new JacksonFactory(), credential).setApplicationName("dataflow-reader").build();
       } catch (GeneralSecurityException | IOException e) {
         throw new RuntimeException("Unable to create the Genomics service", e);
       }
