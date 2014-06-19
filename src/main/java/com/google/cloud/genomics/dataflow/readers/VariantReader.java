@@ -90,7 +90,8 @@ public class VariantReader extends DoFn<VariantReader.Options, Variant> {
       GenomicsRequest<SearchVariantsResponse> search = api.getService().variants().search(request);
       return api.executeRequest(search, options.variantFields);
     } catch (IOException e) {
-      throw new RuntimeException("Failed to create genomics API request - this shouldn't happen.", e);
+      throw new RuntimeException("Failed to create genomics API request - " +
+          "this shouldn't happen.", e);
     }
   }
 }

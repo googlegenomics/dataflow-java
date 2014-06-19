@@ -50,7 +50,8 @@ public class DataflowWorkarounds {
       int end = Math.min(shardOptions.size(), start + optionsPerWorker);
 
       LOG.info("Adding collection with " + start + " to " + end);
-      pCollections.add(p.begin().apply(Create.of(shardOptions.subList(start, end))).setCoder(coder));
+      pCollections.add(p.begin().apply(Create.of(shardOptions.subList(start, end)))
+          .setCoder(coder));
     }
 
     return PCollectionList.of(pCollections).apply(Flatten.<T>create());

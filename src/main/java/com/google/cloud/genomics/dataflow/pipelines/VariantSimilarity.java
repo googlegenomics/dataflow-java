@@ -46,7 +46,8 @@ import java.util.logging.Logger;
  * or a client_secrets.json file.
  *
  * Follow the instructions at http://developers.google.com/genomics
- * to generate a client_secrets.json file, and move it into the directory that you run the pipeline from.
+ * to generate a client_secrets.json file, and move it into the directory that you run
+ * the pipeline from.
  *
  * Alternatively, specify the API key with this flag:
  *   --apiKey=<API_KEY>
@@ -85,7 +86,7 @@ public class VariantSimilarity {
     // NOTE: The default end parameter is set to run on tiny local machines
     String contig = bound.getContig();
     long start = 25652000;
-    long end = start + 200;
+    long end = start + 100000;
     long basesPerShard = 1000;
 
     double shards = Math.ceil((end - start) / (double) basesPerShard);
@@ -95,8 +96,8 @@ public class VariantSimilarity {
       long shardEnd = Math.min(end, shardStart + basesPerShard);
 
       LOG.info("Adding reader with " + shardStart + " to " + shardEnd);
-      readers.add(new VariantReader.Options(options.apiKey, accessToken, options.datasetId, variantFields,
-          contig, shardStart, shardEnd));
+      readers.add(new VariantReader.Options(options.apiKey, accessToken, options.datasetId,
+          variantFields, contig, shardStart, shardEnd));
     }
     return readers;
   }
@@ -108,14 +109,16 @@ public class VariantSimilarity {
   }
 
   public static void main(String[] args) throws GeneralSecurityException, IOException {
-    Options options = OptionsParser.parse(args, Options.class, VariantSimilarity.class.getSimpleName());
+    Options options = OptionsParser.parse(args, Options.class,
+        VariantSimilarity.class.getSimpleName());
     List<VariantReader.Options> readerOptions = getReaderOptions(options);
 
     Pipeline p = Pipeline.create();
 
     DataflowWorkarounds.getPCollection(readerOptions,
         SerializableCoder.of(VariantReader.Options.class), p, options.numWorkers)
-        .apply(ParDo.named("VariantReader").of(new VariantReader())).setCoder(GenericJsonCoder.of(Variant.class))
+        .apply(ParDo.named("VariantReader").of(new VariantReader()))
+            .setCoder(GenericJsonCoder.of(Variant.class))
         .apply(ParDo.named("ExtractSimilarCallsets").of(new ExtractSimilarCallsets()))
         .apply(new OutputPcaFile(options.output));
 

@@ -31,8 +31,8 @@ import java.util.Map;
  * This function runs PCA inside of a SeqDo.
  * It can not be parallelized.
  */
-public class PcaAnalysis implements
-    SerializableFunction<Iterable<KV<KV<String, String>, Long>>, Iterable<PcaAnalysis.GraphResult>> {
+public class PcaAnalysis implements SerializableFunction<Iterable<KV<KV<String, String>, Long>>,
+    Iterable<PcaAnalysis.GraphResult>> {
 
   public static class GraphResult implements Serializable {
     public String name;
