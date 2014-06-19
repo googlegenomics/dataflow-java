@@ -42,7 +42,7 @@ public class GenomicsOptions extends PipelineOptions {
   // Gets the access token to use for this pipeline
   // If there is an apiKey, this will always return null
   public String getAccessToken() {
-    if (apiKey == null) {
+    if (apiKey != null) {
       return null;
     }
 
