@@ -105,8 +105,7 @@ public class VariantSimilarity {
 
     DataflowWorkarounds.getPCollection(readerOptions,
         SerializableCoder.of(VariantReader.Options.class), p, options.numWorkers)
-        .apply(ParDo.named("VariantFetcher")
-            .of(new VariantReader.GetVariants())).setCoder(GenericJsonCoder.of(Variant.class))
+        .apply(ParDo.named("VariantReader").of(new VariantReader())).setCoder(GenericJsonCoder.of(Variant.class))
         .apply(ParDo.named("ExtractSimilarCallsets").of(new ExtractSimilarCallsets()))
         .apply(new OutputPcaFile(options.output));
 

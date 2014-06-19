@@ -15,25 +15,21 @@
  */
 package com.google.cloud.genomics.dataflow.readers;
 
-import com.google.api.client.googleapis.auth.oauth2.GoogleCredential;
-import com.google.api.client.googleapis.javanet.GoogleNetHttpTransport;
-import com.google.api.client.json.jackson2.JacksonFactory;
 import com.google.api.services.genomics.Genomics;
+import com.google.api.services.genomics.GenomicsRequest;
 import com.google.api.services.genomics.model.SearchVariantsRequest;
 import com.google.api.services.genomics.model.SearchVariantsResponse;
 import com.google.api.services.genomics.model.Variant;
 import com.google.cloud.dataflow.sdk.transforms.DoFn;
 import com.google.cloud.genomics.dataflow.OAuthHelper;
-import com.google.common.collect.Lists;
 
 import java.io.IOException;
 import java.io.Serializable;
-import java.security.GeneralSecurityException;
-import java.util.List;
+import java.rmi.UnexpectedException;
 import java.util.logging.Logger;
 
 // TODO: Turn this into a real dataflow reader
-public class VariantReader {
+public class VariantReader extends DoFn<VariantReader.Options, Variant> {
   private static final Logger LOG = Logger.getLogger(VariantReader.class.getName());
   private static final int API_RETRIES = 3;
 
@@ -62,43 +58,27 @@ public class VariantReader {
     }
   }
 
-  public static class GetVariants extends DoFn<Options, Variant> {
-    @Override
-    public void processElement(ProcessContext c) {
-      VariantReader reader = new VariantReader(c.element());
-      for (Variant variant : reader.getVariants()) {
+  @Override
+  public void processElement(ProcessContext c) {
+    Options options = c.element();
+    Genomics service = new OAuthHelper().getAuthorizedService(options.accessToken);
+
+    String nextPageToken = null;
+    do {
+      SearchVariantsResponse response = getVariantsResponse(service, options, nextPageToken);
+      if (response.getVariants() == null) {
+        break;
+      }
+      for (Variant variant : response.getVariants()) {
         c.output(variant);
       }
-    }
-  }
-
-  private final Genomics service;
-  private final Options options;
-
-  public VariantReader(Options options) {
-    this.options = options;
-    service = new OAuthHelper().getAuthorizedService(options.accessToken);
-  }
-
-  public List<Variant> getVariants() {
-    SearchVariantsResponse response = getVariantsResponse(options, null);
-    List<Variant> variants = response.getVariants();
-    if (variants == null) {
-      variants = Lists.newArrayList();
-    }
-
-    String nextPageToken = response.getNextPageToken();
-    while (nextPageToken != null) {
-      response = getVariantsResponse(options, nextPageToken);
-      variants.addAll(response.getVariants());
       nextPageToken = response.getNextPageToken();
-    }
+    } while (nextPageToken != null);
 
-    LOG.info("Got " + variants.size() + " variants at: " + options.contig + "-" + options.start);
-    return variants;
+    LOG.info("Finished variants at: " + options.contig + "-" + options.start);
   }
 
-  private SearchVariantsResponse getVariantsResponse(Options options, String nextPageToken) {
+  private SearchVariantsResponse getVariantsResponse(Genomics service, Options options, String nextPageToken) {
     SearchVariantsRequest request = new SearchVariantsRequest()
         .setDatasetId(options.datasetId)
         .setContig(options.contig)
@@ -109,11 +89,18 @@ public class VariantReader {
       request.setPageToken(nextPageToken);
     }
 
+    try {
+      GenomicsRequest<SearchVariantsResponse> search = service.variants().search(request);
+      return executeRequest(search, options.variantFields, options.apiKey);
+    } catch (IOException e) {
+      throw new RuntimeException("Failed to create genomics API request - this shouldn't happen.", e);
+    }
+  }
+
+  private <T> T executeRequest(GenomicsRequest<T> search, String fields, String apiKey) {
     for (int i = 0; i < API_RETRIES; i++) {
       try {
-        return service.variants().search(request)
-            .setFields(options.variantFields)
-            .setKey(options.apiKey).execute();
+        return search.setFields(fields).setKey(apiKey).execute();
       } catch (Exception e) {
         e.printStackTrace();
       }
