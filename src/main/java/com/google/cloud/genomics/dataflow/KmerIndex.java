@@ -16,7 +16,8 @@
 
 // project id 107046053965
 // test dataset 13770895782338053201
-// real dataset 13548522727457381097
+// listeria dataset 13548522727457381097
+// salmonella dataset 2831627299882627465
 
 package com.google.cloud.genomics.dataflow;
 
@@ -148,12 +149,24 @@ public class KmerIndex {
     public void processElement(ProcessContext c) {
       String name = c.element().getKey();
       String seq = c.element().getValue().getOriginalBases();
-      StringBuffer buf = new StringBuffer(K_VALUE + 1);
+      StringBuilder kmer = new StringBuilder(K_VALUE + 1);
+      int skip = 0;
       for (int i = 0; i < seq.length(); i++) {
-        buf.append(seq.charAt(i));
-        if (buf.length() == K_VALUE + 1) {
-          buf.deleteCharAt(0);
-          c.output(KV.of(name, buf.toString()));
+        kmer.append(seq.charAt(i));
+        // Skip all k-mers with unknown nucleotides
+        if (seq.charAt(i) == 'N') {
+          skip = K_VALUE;
+        }
+        
+        if (kmer.length() == K_VALUE + 1) {
+          kmer.deleteCharAt(0);
+          if (skip == 0) {
+            c.output(KV.of(name, kmer.toString()));
+          }
+        }
+        
+        if (skip > 0) {
+          skip--;
         }
       }
     }
@@ -248,14 +261,14 @@ public class KmerIndex {
     Pipeline p = Pipeline.create();
 
     DataflowWorkarounds.getPCollection(
-        readsets, GenericJsonCoder.of(Readset.class), p, options.numWorkers)
-        .apply(ParDo.named("Readsets To Reads")
-            .of(readsetToRead(options.accessToken, options.apiKey)))
-        .setCoder(KvCoder.of(StringUtf8Coder.of(), GenericJsonCoder.of(Read.class)))
-        .apply(ParDo.named("Generate Kmers").of(genKmers))
-        .apply(Count.<KV<String, String>>create())
-        .apply(ParDo.named("Format Output").of(formatOutput))
-        .apply(TextIO.Write.named("WriteCounts").to(options.output));
+        readsets, GenericJsonCoder.of(Readset.class), p, options.numWorkers);
+//        .apply(ParDo.named("Readsets To Reads")
+//            .of(readsetToRead(options.accessToken, options.apiKey)))
+//        .setCoder(KvCoder.of(StringUtf8Coder.of(), GenericJsonCoder.of(Read.class)))
+//        .apply(ParDo.named("Generate Kmers").of(genKmers))
+//        .apply(Count.<KV<String, String>>create())
+//        .apply(ParDo.named("Format Output").of(formatOutput))
+//        .apply(TextIO.Write.named("WriteCounts").to(options.output));
     
     p.run(PipelineRunner.fromOptions(options));
   }
