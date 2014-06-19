@@ -19,13 +19,12 @@ import com.google.api.services.genomics.model.Variant;
 import com.google.cloud.dataflow.sdk.Pipeline;
 import com.google.cloud.dataflow.sdk.coders.SerializableCoder;
 import com.google.cloud.dataflow.sdk.runners.Description;
-import com.google.cloud.dataflow.sdk.runners.PipelineOptions;
 import com.google.cloud.dataflow.sdk.runners.PipelineRunner;
 import com.google.cloud.dataflow.sdk.transforms.*;
 import com.google.cloud.dataflow.utils.OptionsParser;
 import com.google.cloud.dataflow.utils.RequiredOption;
 import com.google.cloud.genomics.dataflow.DataflowWorkarounds;
-import com.google.cloud.genomics.dataflow.OAuthHelper;
+import com.google.cloud.genomics.dataflow.GenomicsOptions;
 import com.google.cloud.genomics.dataflow.coders.GenericJsonCoder;
 import com.google.cloud.genomics.dataflow.functions.ExtractSimilarCallsets;
 import com.google.cloud.genomics.dataflow.functions.OutputPcaFile;
@@ -69,14 +68,8 @@ public class VariantSimilarity {
 
   private static List<VariantReader.Options> getReaderOptions(Options options)
       throws GeneralSecurityException, IOException {
+    String accessToken = options.getAccessToken();
     String variantFields = "nextPageToken,variants(id,calls(info,callsetName))";
-
-    // Get an access token only if an apiKey is not supplied
-    String accessToken = null;
-    if (options.apiKey == null) {
-      accessToken = new OAuthHelper().getAccessToken(options.clientSecretsFilename,
-          Lists.newArrayList(OAuthHelper.GENOMICS_SCOPE));
-    }
 
     // TODO: Get contig bounds here vs hardcoding. Eventually this will run over all available data within a dataset
     // NOTE: The default end parameter is set to run on tiny local machines
@@ -98,18 +91,7 @@ public class VariantSimilarity {
     return readers;
   }
 
-  private static class Options extends PipelineOptions {
-    @Description("The dataset to read variants from")
-    public String datasetId = "376902546192"; // 1000 genomes
-
-    @Description("If querying a public dataset, provide a Google API key that has access " +
-        "to variant data and no OAuth will be performed.")
-    public String apiKey = null;
-
-    @Description("If querying private datasets, or performing any write operations, " +
-        "you need to provide the path to client_secrets.json. Do not supply an api key.")
-    public String clientSecretsFilename = "client_secrets.json";
-
+  private static class Options extends GenomicsOptions {
     @Description("Path of the file to write to")
     @RequiredOption
     public String output;

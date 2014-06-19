@@ -19,12 +19,14 @@ import com.google.api.client.auth.oauth2.Credential;
 import com.google.api.client.extensions.java6.auth.oauth2.AuthorizationCodeInstalledApp;
 import com.google.api.client.googleapis.auth.oauth2.GoogleAuthorizationCodeFlow;
 import com.google.api.client.googleapis.auth.oauth2.GoogleClientSecrets;
+import com.google.api.client.googleapis.auth.oauth2.GoogleCredential;
 import com.google.api.client.googleapis.extensions.java6.auth.oauth2.GooglePromptReceiver;
 import com.google.api.client.googleapis.javanet.GoogleNetHttpTransport;
 import com.google.api.client.http.javanet.NetHttpTransport;
 import com.google.api.client.json.JsonFactory;
 import com.google.api.client.json.jackson2.JacksonFactory;
 import com.google.api.client.util.store.FileDataStoreFactory;
+import com.google.api.services.genomics.Genomics;
 
 import java.io.*;
 import java.security.GeneralSecurityException;
@@ -72,5 +74,16 @@ public class OAuthHelper {
         + " Visit https://developers.google.com/genomics to learn how to get an api key or"
         + " install a client_secrets.json file. If you have installed a client_secrets.json"
         + " in a specific location, use --clientSecretsFilename <path>/client_secrets.json.");
+  }
+
+  public Genomics getAuthorizedService(String accessToken) {
+    GoogleCredential credential = accessToken == null ? null :
+        new GoogleCredential().setAccessToken(accessToken);
+    try {
+      return new Genomics.Builder(GoogleNetHttpTransport.newTrustedTransport(), new JacksonFactory(), credential)
+          .setApplicationName("dataflow-reader").build();
+    } catch (GeneralSecurityException | IOException e) {
+      throw new RuntimeException("Unable to create the Genomics service", e);
+    }
   }
 }
