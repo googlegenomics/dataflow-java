@@ -109,7 +109,12 @@ public class GenomicsApi {
   public <T> T executeRequest(GenomicsRequest<T> search, String fields) {
     for (int i = 0; i < API_RETRIES; i++) {
       try {
-        return search.setFields(fields).setKey(apiKey).execute();
+        if (fields == null) {
+          return search.setKey(apiKey).execute();
+        }
+        else {
+          return search.setFields(fields).setKey(apiKey).execute();
+        }
       } catch (Exception e) {
         e.printStackTrace();
       }

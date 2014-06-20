@@ -43,12 +43,12 @@ import java.util.logging.Logger;
 /**
  * Dataflows pipeline for generating kmer indices of all genomes filed under a given dataset id
  */
-public class KmerIndex {
-  private static final Logger LOG = Logger.getLogger(KmerIndex.class.getName());
+public class FDAPipeline {
+  private static final Logger LOG = Logger.getLogger(FDAPipeline.class.getName());
   private static final String READSET_FIELDS = "nextPageToken,readsets(id,name)";
 
   // Do not instantiate
-  private KmerIndex() { }
+  private FDAPipeline() { }
 
   private static class Options extends GenomicsOptions {
     @Description("Path of the file to write to")
@@ -60,16 +60,17 @@ public class KmerIndex {
     public Integer kValue;
     
     public void checkArgs() {
-      if(kValue == null || kValue < 1 || kValue > 256) {
+      if (kValue < 1 || kValue > 256) {
         throw new IllegalArgumentException("K value is out of bounds (must be between 1 and 256");
       }
     }
   }
 
-  private static List<Readset> getReadsets(Options options) throws IOException {
-    GenomicsApi api = new GenomicsApi(options.getAccessToken(), options.apiKey);
+  private static List<Readset> getReadsets(
+      String accessToken, String apiKey, String datasetId) throws IOException {
+    GenomicsApi api = new GenomicsApi(accessToken, apiKey);
     SearchReadsetsRequest request = new SearchReadsetsRequest()
-        .setDatasetIds(Lists.newArrayList(options.datasetId));
+        .setDatasetIds(Lists.newArrayList(datasetId));
     List<Readset> readsets = Lists.newArrayList();
     boolean done = false;
     while (!done) {
@@ -86,18 +87,19 @@ public class KmerIndex {
   }
   
   public static void main(String[] args) throws IOException {
-    Options options = OptionsParser.parse(args, Options.class, KmerIndex.class.getSimpleName());
+    Options options = OptionsParser.parse(args, Options.class, FDAPipeline.class.getSimpleName());
     options.checkArgs();
-    
+    LOG.severe(options.apiKey);
     LOG.info("Starting pipeline...");
-    List<Readset> readsets = getReadsets(options);
+    String token = options.getAccessToken();
+    List<Readset> readsets = getReadsets(token, options.apiKey, options.datasetId);
     
     Pipeline p = Pipeline.create();
 
     DataflowWorkarounds.getPCollection(
         readsets, GenericJsonCoder.of(Readset.class), p, options.numWorkers)
         .apply(ParDo.named("Readsets To Reads")
-            .of(new ReadsetToRead(options)))
+            .of(new ReadsetToRead(token, options.apiKey)))
         .setCoder(KvCoder.of(StringUtf8Coder.of(), GenericJsonCoder.of(Read.class)))
         .apply(ParDo.named("Generate Kmers").of(new ReadsToKmers(options.kValue)))
         .apply(new OutputPcaFile(options.output));
