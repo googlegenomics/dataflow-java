@@ -17,7 +17,7 @@ Note: when running locally, you can only process about 1000 base positions befor
 ```
 java -cp target/googlegenomics-dataflow-java-v1beta.jar \
     com.google.cloud.genomics.dataflow.pipelines.VariantSimilarity \
-    --project=<PROJECT_ID> \
+    --project=google.com:genomics-api \
     --output=<gs://mybucket/VariantSimilarityLocal.txt>
 ``` 
     
@@ -27,11 +27,11 @@ Run deployed
   java -cp target/googlegenomics-dataflow-java-v1beta.jar \
     com.google.cloud.genomics.dataflow.pipelines.VariantSimilarity \
     --runner=BlockingDataflowPipelineRunner \
-    --project=<PROJECT_ID> \
-    --stagingLocation=gs://mybucket/staging \
-    --output=gs://mybucket/VariantSimilarity.txt \
-    --numWorkers=50 \
+    --project=google.com:genomics-api \
+    --stagingLocation=gs://cloud-genomics-dataflow-tests/staging \
+    --output=gs://cloud-genomics-dataflow-tests/output/test.txt \
+    --numWorkers=10 \
     --zone=us-central1-b
 ```    
 
-The max workers you can have without requesting more quota is 16. (That's the limit on GCE VMs)
+By default, the max workers you can have without requesting more quota is 16. (That's the limit on GCE VMs)
