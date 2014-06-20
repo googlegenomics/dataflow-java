@@ -19,12 +19,13 @@ package com.google.cloud.genomics.dataflow.functions;
 import com.google.api.services.genomics.model.Read;
 import com.google.cloud.dataflow.sdk.transforms.DoFn;
 import com.google.cloud.dataflow.sdk.values.KV;
+import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.Lists;
 
 import java.util.List;
 
 /**
- * Generates kmer indices from a set of reads
+ * Generates kmer from a set of reads
  */
 public class ReadsToKmers extends DoFn<KV<String, Read>, KV<String, String>> {
   private final int kValue;
@@ -43,7 +44,8 @@ public class ReadsToKmers extends DoFn<KV<String, Read>, KV<String, String>> {
     }
   }
   
-  public List<String> getKmers(String seq) {
+  @VisibleForTesting
+  List<String> getKmers(String seq) {
     List<String> result = Lists.newArrayList();
     
     StringBuilder kmer = new StringBuilder(kValue);
