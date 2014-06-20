@@ -28,8 +28,12 @@ import com.google.cloud.dataflow.sdk.values.PCollection;
 import com.google.cloud.dataflow.sdk.values.PDone;
 
 /**
- * Given a set of similar pairs, this function collapses them into counts, runs PCA,
- * and writes the result to a tab-delimited GCS file.
+ * Given a set of similar pairs, this function collapses them into counts,
+ * runs Principal Coordinate Analysis, and writes the result to a tab-delimited GCS file which
+ * can be imported into Google Spreadsheets and rendered with a bubble graph.
+ *
+ * The input data must be for a similarity matrix which will be symmetric. This is not
+ * the same as Principal Component Analysis.
 */
 public class OutputPcaFile extends PTransform<PCollection<KV<String, String>>, PDone> {
   private final String outputFile;
