@@ -22,9 +22,14 @@ import com.google.api.services.genomics.model.SearchReadsetsResponse;
 import com.google.cloud.dataflow.sdk.Pipeline;
 import com.google.cloud.dataflow.sdk.coders.KvCoder;
 import com.google.cloud.dataflow.sdk.coders.StringUtf8Coder;
+import com.google.cloud.dataflow.sdk.io.TextIO;
 import com.google.cloud.dataflow.sdk.runners.Description;
 import com.google.cloud.dataflow.sdk.runners.PipelineRunner;
+import com.google.cloud.dataflow.sdk.transforms.Count;
+import com.google.cloud.dataflow.sdk.transforms.DoFn;
 import com.google.cloud.dataflow.sdk.transforms.ParDo;
+import com.google.cloud.dataflow.sdk.values.KV;
+import com.google.cloud.dataflow.sdk.values.PCollection;
 import com.google.cloud.dataflow.utils.OptionsParser;
 import com.google.cloud.dataflow.utils.RequiredOption;
 import com.google.cloud.genomics.dataflow.DataflowWorkarounds;
@@ -41,7 +46,7 @@ import java.util.List;
 import java.util.logging.Logger;
 
 /**
- * Dataflows pipeline for generating kmer indices of all genomes filed under a given dataset id
+ * Dataflows pipeline for performing PCA on generated kmer indicies from the reads in a dataset
  */
 public class FDAPipeline {
   private static final Logger LOG = Logger.getLogger(FDAPipeline.class.getName());
@@ -51,9 +56,12 @@ public class FDAPipeline {
   private FDAPipeline() { }
 
   private static class Options extends GenomicsOptions {
-    @Description("Path of the file to write to")
+    @Description("Path of the file to write PCA results to")
     @RequiredOption
-    public String output;
+    public String pcaOutput;
+    
+    @Description("Path of file to write Kmer indices to")
+    public String kmerOutput;
     
     @Description("Numerical value of K for indexing. Should not be larger than ~100")
     @RequiredOption
@@ -96,13 +104,33 @@ public class FDAPipeline {
     
     Pipeline p = Pipeline.create();
 
-    DataflowWorkarounds.getPCollection(
+    PCollection<KV<String, String>> kmers = DataflowWorkarounds.getPCollection(
         readsets, GenericJsonCoder.of(Readset.class), p, options.numWorkers)
         .apply(ParDo.named("Readsets To Reads")
             .of(new ReadsetToRead(token, options.apiKey)))
         .setCoder(KvCoder.of(StringUtf8Coder.of(), GenericJsonCoder.of(Read.class)))
-        .apply(ParDo.named("Generate Kmers").of(new ReadsToKmers(options.kValue)))
-        .apply(new OutputPcaFile(options.output));
+        .apply(ParDo.named("Generate Kmers").of(new ReadsToKmers(options.kValue)));
+    
+    
+    // Print to file
+    if(options.kmerOutput != null) {
+    kmers.apply(Count.<KV<String, String>>create())
+        .apply(ParDo.named("Format Kmers").of(new DoFn<KV<KV<String, String>, Long>, String>() {
+
+          @Override
+          public void processElement(ProcessContext c) {
+            KV<KV<String, String>, Long> elem = c.element();
+            String name = elem.getKey().getKey();
+            String kmer = elem.getKey().getValue();
+            Long count = elem.getValue();
+            c.output(name + "-" + kmer + "-" + count + ":");
+          }
+        }))
+        .apply(TextIO.Write.named("Write Kmer Indices").to(options.kmerOutput));
+    }
+    
+    // Figure this out later
+    //kmers.apply(new OutputPcaFile(options.pcaOutput));
     
     p.run(PipelineRunner.fromOptions(options));
   }

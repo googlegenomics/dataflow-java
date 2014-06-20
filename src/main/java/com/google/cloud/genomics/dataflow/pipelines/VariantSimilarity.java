@@ -35,7 +35,6 @@ import com.google.cloud.genomics.dataflow.readers.VariantReader;
 import com.google.common.collect.Lists;
 
 import java.io.IOException;
-import java.security.GeneralSecurityException;
 import java.util.List;
 import java.util.logging.Logger;
 
@@ -71,7 +70,7 @@ public class VariantSimilarity {
   private static final Logger LOG = Logger.getLogger(VariantSimilarity.class.getName());
 
   private static List<VariantReader.Options> getReaderOptions(Options options)
-      throws GeneralSecurityException, IOException {
+      throws IOException {
     String accessToken = options.getAccessToken();
     String variantFields = "nextPageToken,variants(id,calls(info,callsetName))";
 
@@ -86,7 +85,7 @@ public class VariantSimilarity {
     // NOTE: The default end parameter is set to run on tiny local machines
     String contig = bound.getContig();
     long start = 25652000;
-    long end = start + 100000;
+    long end = start + 1000;
     long basesPerShard = 1000;
 
     double shards = Math.ceil((end - start) / (double) basesPerShard);
@@ -108,7 +107,7 @@ public class VariantSimilarity {
     public String output;
   }
 
-  public static void main(String[] args) throws GeneralSecurityException, IOException {
+  public static void main(String[] args) throws IOException {
     Options options = OptionsParser.parse(args, Options.class,
         VariantSimilarity.class.getSimpleName());
     List<VariantReader.Options> readerOptions = getReaderOptions(options);
