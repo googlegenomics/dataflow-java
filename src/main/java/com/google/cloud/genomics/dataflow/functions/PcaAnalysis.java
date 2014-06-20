@@ -30,8 +30,16 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * This function runs PCA inside of a SeqDo.
+ * This function runs a Principal Coordinate Analysis inside of a SeqDo.
  * It can not be parallelized.
+ *
+ * See http://en.wikipedia.org/wiki/PCoA for more information.
+ *
+ * Note that this is not the same as
+ * Principal Component Analysis (http://en.wikipedia.org/wiki/Principal_component_analysis)
+ *
+ * The input data to this algorithm must be for a similarity matrix - and the
+ * resulting matrix must be symmetric.
  */
 public class PcaAnalysis implements SerializableFunction<Iterable<KV<KV<String, String>, Long>>,
     Iterable<PcaAnalysis.GraphResult>> {
