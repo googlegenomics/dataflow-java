@@ -86,7 +86,7 @@ public class VariantSimilarity {
     // NOTE: The default end parameter is set to run on tiny local machines
     String contig = bound.getContig();
     long start = 25652000;
-    long end = start + 100000;
+    long end = start + 1000;
     long basesPerShard = 1000;
 
     double shards = Math.ceil((end - start) / (double) basesPerShard);
