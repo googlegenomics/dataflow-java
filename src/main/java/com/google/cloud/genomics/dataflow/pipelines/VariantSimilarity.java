@@ -30,7 +30,7 @@ import com.google.cloud.genomics.dataflow.GenomicsApi;
 import com.google.cloud.genomics.dataflow.GenomicsOptions;
 import com.google.cloud.genomics.dataflow.coders.GenericJsonCoder;
 import com.google.cloud.genomics.dataflow.functions.ExtractSimilarCallsets;
-import com.google.cloud.genomics.dataflow.functions.OutputPcaFile;
+import com.google.cloud.genomics.dataflow.functions.OutputPCoAFile;
 import com.google.cloud.genomics.dataflow.readers.VariantReader;
 import com.google.common.collect.Lists;
 
@@ -119,7 +119,7 @@ public class VariantSimilarity {
         .apply(ParDo.named("VariantReader").of(new VariantReader()))
             .setCoder(GenericJsonCoder.of(Variant.class))
         .apply(ParDo.named("ExtractSimilarCallsets").of(new ExtractSimilarCallsets()))
-        .apply(new OutputPcaFile(options.output));
+        .apply(new OutputPCoAFile(options.output));
 
     p.run(PipelineRunner.fromOptions(options));
   }

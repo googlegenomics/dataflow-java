@@ -36,7 +36,7 @@ import com.google.cloud.genomics.dataflow.DataflowWorkarounds;
 import com.google.cloud.genomics.dataflow.GenomicsApi;
 import com.google.cloud.genomics.dataflow.GenomicsOptions;
 import com.google.cloud.genomics.dataflow.coders.GenericJsonCoder;
-import com.google.cloud.genomics.dataflow.functions.OutputPcaFile;
+import com.google.cloud.genomics.dataflow.functions.OutputPCoAFile;
 import com.google.cloud.genomics.dataflow.functions.ReadsToKmers;
 import com.google.cloud.genomics.dataflow.functions.ReadsetToRead;
 import com.google.common.collect.Lists;

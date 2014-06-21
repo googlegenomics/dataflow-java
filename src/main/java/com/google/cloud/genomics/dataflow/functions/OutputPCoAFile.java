@@ -35,10 +35,10 @@ import com.google.cloud.dataflow.sdk.values.PDone;
  * The input data must be for a similarity matrix which will be symmetric. This is not
  * the same as Principal Component Analysis.
 */
-public class OutputPcaFile extends PTransform<PCollection<KV<String, String>>, PDone> {
+public class OutputPCoAFile extends PTransform<PCollection<KV<String, String>>, PDone> {
   private final String outputFile;
 
-  public OutputPcaFile(String outputFile) {
+  public OutputPCoAFile(String outputFile) {
     this.outputFile = outputFile;
   }
 
@@ -46,12 +46,12 @@ public class OutputPcaFile extends PTransform<PCollection<KV<String, String>>, P
   public PDone apply(PCollection<KV<String, String>> similarPairs) {
     return similarPairs.apply(Count.<KV<String, String>>create())
         .apply(AsIterable.<KV<KV<String, String>, Long>>create())
-        .apply(SeqDo.named("PCAAnalysis").of(new PcaAnalysis()))
-        .apply(FromIterable.<PcaAnalysis.GraphResult>create())
-        .apply(ParDo.named("FormatGraphData").of(new DoFn<PcaAnalysis.GraphResult, String>() {
+        .apply(SeqDo.named("PCAAnalysis").of(new PCoAnalysis()))
+        .apply(FromIterable.<PCoAnalysis.GraphResult>create())
+        .apply(ParDo.named("FormatGraphData").of(new DoFn<PCoAnalysis.GraphResult, String>() {
           @Override
           public void processElement(ProcessContext c) {
-            PcaAnalysis.GraphResult result = c.element();
+            PCoAnalysis.GraphResult result = c.element();
             // Note: the extra tab is so this format places nicely with
             // Google Sheet's bubble chart
             c.output(result.name + "\t\t" + result.graphX + "\t" + result.graphY);
