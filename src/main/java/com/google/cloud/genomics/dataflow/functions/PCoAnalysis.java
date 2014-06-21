@@ -41,8 +41,8 @@ import java.util.Map;
  * The input data to this algorithm must be for a similarity matrix - and the
  * resulting matrix must be symmetric.
  */
-public class PcaAnalysis implements SerializableFunction<Iterable<KV<KV<String, String>, Long>>,
-    Iterable<PcaAnalysis.GraphResult>> {
+public class PCoAnalysis implements SerializableFunction<Iterable<KV<KV<String, String>, Long>>,
+    Iterable<PCoAnalysis.GraphResult>> {
 
   public static class GraphResult implements Serializable {
     public String name;
