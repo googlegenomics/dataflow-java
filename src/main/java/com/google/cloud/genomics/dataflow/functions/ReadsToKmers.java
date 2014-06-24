@@ -16,7 +16,6 @@
 
 package com.google.cloud.genomics.dataflow.functions;
 
-import com.google.api.services.genomics.model.Read;
 import com.google.cloud.dataflow.sdk.transforms.DoFn;
 import com.google.cloud.dataflow.sdk.values.KV;
 import com.google.common.annotations.VisibleForTesting;
@@ -26,8 +25,10 @@ import java.util.List;
 
 /**
  * Generates kmer from a set of reads
+ * Input: KV(Name, Read Bases)
+ * Output: Set<KV(Name, kmer)>
  */
-public class ReadsToKmers extends DoFn<KV<String, Read>, KV<String, String>> {
+public class ReadsToKmers extends DoFn<KV<String, String>, KV<String, String>> {
   private final int kValue;
   
   public ReadsToKmers(int kValue) {
@@ -37,7 +38,7 @@ public class ReadsToKmers extends DoFn<KV<String, Read>, KV<String, String>> {
   @Override
   public void processElement(ProcessContext c) {
     String name = c.element().getKey();
-    String seq = c.element().getValue().getOriginalBases();
+    String seq = c.element().getValue();
     List<String> kmers = getKmers(seq);
     for (String kmer : kmers) {
       c.output(KV.of(name, kmer));

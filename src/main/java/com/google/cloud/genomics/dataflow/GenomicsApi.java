@@ -106,7 +106,7 @@ public class GenomicsApi {
     return service;
   }
 
-  public <T> T executeRequest(GenomicsRequest<T> search, String fields) {
+  public <T> T executeRequest(GenomicsRequest<T> search, final String fields) {
     for (int i = 0; i < API_RETRIES; i++) {
       try {
         if (fields == null) {

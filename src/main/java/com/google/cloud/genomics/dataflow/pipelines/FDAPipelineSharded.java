@@ -35,7 +35,8 @@ import com.google.cloud.genomics.dataflow.GenomicsOptions;
 import com.google.cloud.genomics.dataflow.coders.GenericJsonCoder;
 import com.google.cloud.genomics.dataflow.functions.OutputPCoAFile;
 import com.google.cloud.genomics.dataflow.functions.ReadsToKmers;
-import com.google.cloud.genomics.dataflow.functions.ReadsetToReads;
+import com.google.cloud.genomics.dataflow.functions.ReadsetToTokens;
+import com.google.cloud.genomics.dataflow.functions.TokensToReads;
 import com.google.common.collect.Lists;
 
 import java.io.IOException;
@@ -43,15 +44,18 @@ import java.util.List;
 import java.util.logging.Logger;
 
 /**
- * Dataflows pipeline for performing PCA on generated kmer indicies from the reads in a dataset
+ * Alternative version of the FDA dataflow pipeline
+ * This pipeline increases sharding by splitting readsets into page tokens before pulling reads
+ * By doubling the API calls, we increase parallelization and decrease memory strain on workers
  */
-public class FDAPipeline {
-  private static final Logger LOG = Logger.getLogger(FDAPipeline.class.getName());
+public class FDAPipelineSharded {
+  private static final Logger LOG = Logger.getLogger(FDAPipelineSharded.class.getName());
   private static final String READSET_FIELDS = "nextPageToken,readsets(id,name)";
-  private static final String READ_FIELDS = "nextPageToken,reads(originalBases)";
+  private static final String TOKEN_FIELDS = "nextPageToken";
+  private static final String READ_FIELDS = "reads(originalBases)";
 
   // Do not instantiate
-  private FDAPipeline() { }
+  private FDAPipelineSharded() { }
 
   private static class Options extends GenomicsOptions {
     @Description("Path of the file to write PCA results to")
@@ -93,41 +97,44 @@ public class FDAPipeline {
   }
   
   public static void main(String[] args) throws IOException {
-    Options options = OptionsParser.parse(args, Options.class, FDAPipeline.class.getSimpleName());
+    Options options = OptionsParser.parse(args, Options.class, FDAPipelineSharded.class.getSimpleName());
     options.checkArgs();
 
     LOG.info("Starting pipeline...");
     String token = options.getAccessToken();
     List<Readset> readsets = getReadsets(token, options.apiKey, options.datasetId);
-    
+    System.out.println(readsets.size());
     Pipeline p = Pipeline.create();
 
     PCollection<KV<String, String>> kmers = DataflowWorkarounds.getPCollection(
         readsets, GenericJsonCoder.of(Readset.class), p, options.numWorkers)
-        .apply(ParDo.named("Readsets To Reads")
-            .of(new ReadsetToReads(token, options.apiKey, READ_FIELDS)))
-        .apply(ParDo.named("Generate Kmers").of(new ReadsToKmers(options.kValue)));
+        .apply(ParDo.named("Readsets To Tokens")
+            .of(new ReadsetToTokens(token, options.apiKey, TOKEN_FIELDS)))
+        .apply(ParDo.named("Generate Reads").of(
+            new TokensToReads(token, options.apiKey, READ_FIELDS)))
+        .apply(ParDo.named("Generate Kmers").of(
+            new ReadsToKmers(options.kValue)));
     
     // Print to file
     if(options.kmerOutput != null) {
-      kmers.apply(Count.<KV<String, String>>create())
-          .apply(ParDo.named("Format Kmers").of(new DoFn<KV<KV<String, String>, Long>, String>() {
+    kmers.apply(Count.<KV<String, String>>create())
+        .apply(ParDo.named("Format Kmers").of(new DoFn<KV<KV<String, String>, Long>, String>() {
 
-            @Override
-            public void processElement(ProcessContext c) {
-              KV<KV<String, String>, Long> elem = c.element();
-              String name = elem.getKey().getKey();
-              String kmer = elem.getKey().getValue();
-              Long count = elem.getValue();
-              c.output(name + "-" + kmer + "-" + count + ":");
-            }
-          }))
-          .apply(TextIO.Write.named("Write Kmer Indices").to(options.kmerOutput));
+          @Override
+          public void processElement(ProcessContext c) {
+            KV<KV<String, String>, Long> elem = c.element();
+            String name = elem.getKey().getKey();
+            String kmer = elem.getKey().getValue();
+            Long count = elem.getValue();
+            c.output(name + "-" + kmer + "-" + count + ":");
+          }
+        }))
+        .apply(TextIO.Write.named("Write Kmer Indices").to(options.kmerOutput));
     }
     
     // Figure this out later
     //kmers.apply(new OutputPcaFile(options.pcaOutput));
-    
+
     p.run(PipelineRunner.fromOptions(options));
   }
 }
