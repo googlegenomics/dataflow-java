@@ -17,7 +17,6 @@
 package com.google.cloud.genomics.dataflow.functions;
 
 import com.google.api.services.genomics.model.Read;
-import com.google.api.services.genomics.model.Readset;
 import com.google.api.services.genomics.model.SearchReadsRequest;
 import com.google.api.services.genomics.model.SearchReadsResponse;
 import com.google.cloud.dataflow.sdk.transforms.DoFn;
@@ -32,18 +31,20 @@ import java.util.List;
 
 /**
  * Converts Readsets to Key values of Readset name and Read
+ * Input: KV(Readset, Page Token)
+ * Output: Set<KV(Name, Read Bases)>
  */
-public class ReadsetToRead extends DoFn<Readset, KV<String, Read>> {
+public class TokensToReads extends DoFn<KV<String, String>, KV<String, String>> {
   private static final String END_TOKEN = "KMER_INDEX_PIPELINE_END_READ_QUERY";
   private String accessToken;
   private String apiKey;
   private String readFields;
   
-  public ReadsetToRead(String accessToken, String apiKey) {
+  public TokensToReads(String accessToken, String apiKey) {
     this(accessToken, apiKey, null);
   }
   
-  public ReadsetToRead(String accessToken, String apiKey, String readFields) {
+  public TokensToReads(String accessToken, String apiKey, String readFields) {
     this.accessToken = accessToken;
     this.apiKey = apiKey;
     this.readFields = readFields;
@@ -53,16 +54,21 @@ public class ReadsetToRead extends DoFn<Readset, KV<String, Read>> {
   public void processElement(ProcessContext c) {
     GenomicsApi api = new GenomicsApi(accessToken, apiKey);
 
-    Readset set = c.element();
+    KV<String, String> elem = c.element();
+    String[] dat = elem.getKey().split("\t");
+    String name = dat[0];
+    String id = dat[1];
+    String token = elem.getValue();
+    if(token.equals(ReadsetToTokens.NULL_TOKEN)) {
+      token = null;
+    }
+    
     SearchReadsRequest request = new SearchReadsRequest()
-        .setReadsetIds(ImmutableList.of(set.getId()));
-    List<Read> reads;
-    int count = 0;
-    while ((reads = getReads(request, api)) != null && count < 1000) {
-      for (Read read : reads) {
-        c.output(KV.of(set.getName(), read));
-        count++;
-      }
+        .setReadsetIds(ImmutableList.of(id)).setPageToken(token);
+    
+    List<Read> reads = getReads(request, api);
+    for (Read read : reads) {
+      c.output(KV.of(name, read.getOriginalBases()));
     }
   }
   

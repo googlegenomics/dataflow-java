@@ -39,12 +39,19 @@ public class GenomicsOptions extends PipelineOptions {
       "you need to provide the path to client_secrets.json. Do not supply an api key.")
   public String clientSecretsFilename = "client_secrets.json";
 
-  // Gets the access token to use for this pipeline
-  // If there is an apiKey, this will always return null
-  // This should be called before the Pipeline is started
+  private String accessToken;
+  
+  /** Gets the access token to use for this pipeline
+   *  If there is an apiKey, this will always return null
+   *  This should be called before the Pipeline is started
+   */
   public String getAccessToken() {
     if (apiKey != null) {
       return null;
+    }
+    
+    if (accessToken != null) {
+      return accessToken;
     }
 
     try {
@@ -53,5 +60,15 @@ public class GenomicsOptions extends PipelineOptions {
     } catch (GeneralSecurityException | IOException e) {
       throw new RuntimeException("Could not fetch the OAuth access token - please try again", e);
     }
+  }
+  
+  /**
+   * If refresh is set to true, previous accessToken will be discarded (if exists)
+   */
+  public String getAccessToken(boolean refresh) {
+    if (refresh) {
+      accessToken = null;
+    }
+    return getAccessToken();
   }
 }
