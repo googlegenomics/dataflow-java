@@ -22,10 +22,12 @@ import com.google.api.services.genomics.model.SearchReadsResponse;
 import com.google.cloud.dataflow.sdk.transforms.DoFn;
 import com.google.cloud.dataflow.sdk.values.KV;
 import com.google.cloud.genomics.dataflow.GenomicsApi;
+import com.google.cloud.genomics.dataflow.readers.VariantReader;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableList;
 
 import java.io.IOException;
+import java.util.logging.Logger;
 
 /**
  * Converts Readsets to Key values of Readset name and Read

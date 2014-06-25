@@ -39,7 +39,6 @@ import java.util.logging.Logger;
  */
 public class ReadsetToReads extends DoFn<Readset, KV<String, String>> {
   private static final String END_TOKEN = "KMER_INDEX_PIPELINE_END_READ_QUERY";
-  private static final Logger LOG = Logger.getLogger(VariantReader.class.getName());
   private String accessToken;
   private String apiKey;
   private String readFields;
@@ -62,14 +61,10 @@ public class ReadsetToReads extends DoFn<Readset, KV<String, String>> {
     SearchReadsRequest request = new SearchReadsRequest()
         .setReadsetIds(ImmutableList.of(set.getId()));
     List<Read> reads;
-    int count = 0;
     while ((reads = getReads(request, api)) != null) {
       for (Read read : reads) {
         c.output(KV.of(set.getName(), read.getOriginalBases()));
       }
-      count += reads.size();
-      LOG.info("Reads processed in this call: " + reads.size()
-          + "\nTotal reads processed in this readset: " + count);
     }
   }
   

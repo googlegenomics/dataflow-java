@@ -47,6 +47,10 @@ import java.util.logging.Logger;
  * Alternative version of the FDA dataflow pipeline
  * This pipeline increases sharding by splitting readsets into page tokens before pulling reads
  * By doubling the API calls, we increase parallelization and decrease memory strain on workers
+ * 
+ * This is probably preferable to FDAPipeline if:
+ * - Number of workers exceeds number of readsets (input genomes)
+ * - Full genomes are too large to fully fit in worker memory
  */
 public class FDAPipelineSharded {
   private static final Logger LOG = Logger.getLogger(FDAPipelineSharded.class.getName());
@@ -117,19 +121,19 @@ public class FDAPipelineSharded {
     
     // Print to file
     if(options.kmerOutput != null) {
-    kmers.apply(Count.<KV<String, String>>create())
-        .apply(ParDo.named("Format Kmers").of(new DoFn<KV<KV<String, String>, Long>, String>() {
+      kmers.apply(Count.<KV<String, String>>create())
+          .apply(ParDo.named("Format Kmers").of(new DoFn<KV<KV<String, String>, Long>, String>() {
 
-          @Override
-          public void processElement(ProcessContext c) {
-            KV<KV<String, String>, Long> elem = c.element();
-            String name = elem.getKey().getKey();
-            String kmer = elem.getKey().getValue();
-            Long count = elem.getValue();
-            c.output(name + "-" + kmer + "-" + count + ":");
-          }
-        }))
-        .apply(TextIO.Write.named("Write Kmer Indices").to(options.kmerOutput));
+            @Override
+            public void processElement(ProcessContext c) {
+              KV<KV<String, String>, Long> elem = c.element();
+              String name = elem.getKey().getKey();
+              String kmer = elem.getKey().getValue();
+              Long count = elem.getValue();
+              c.output(name + "-" + kmer + "-" + count + ":");
+            }
+          }))
+          .apply(TextIO.Write.named("Write Kmer Indices").to(options.kmerOutput));
     }
     
     // Figure this out later
