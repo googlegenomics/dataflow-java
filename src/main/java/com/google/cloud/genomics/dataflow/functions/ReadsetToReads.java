@@ -31,7 +31,7 @@ import java.io.IOException;
 import java.util.List;
 
 /**
- * Converts Readsets to Key values of Readset name and Read
+ * Converts Readsets to Key values of Readset name and Read bases
  * Input: Readset
  * Output: KV(Name, Read Bases)
  */
@@ -40,10 +40,6 @@ public class ReadsetToReads extends DoFn<Readset, KV<String, String>> {
   private String accessToken;
   private String apiKey;
   private String readFields;
-  
-  public ReadsetToReads(String accessToken, String apiKey) {
-    this(accessToken, apiKey, null);
-  }
   
   public ReadsetToReads(String accessToken, String apiKey, String readFields) {
     this.accessToken = accessToken;
