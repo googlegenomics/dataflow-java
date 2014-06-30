@@ -33,7 +33,6 @@ import com.google.cloud.genomics.dataflow.DataflowWorkarounds;
 import com.google.cloud.genomics.dataflow.GenomicsApi;
 import com.google.cloud.genomics.dataflow.GenomicsOptions;
 import com.google.cloud.genomics.dataflow.coders.GenericJsonCoder;
-import com.google.cloud.genomics.dataflow.functions.OutputPCoAFile;
 import com.google.cloud.genomics.dataflow.functions.ReadsToKmers;
 import com.google.cloud.genomics.dataflow.functions.ReadsetToReads;
 import com.google.common.collect.Lists;
@@ -109,7 +108,7 @@ public class FDAPipeline {
         .apply(ParDo.named("Generate Kmers").of(new ReadsToKmers(options.kValue)));
     
     // Print to file
-    if(options.kmerOutput != null) {
+    if (options.kmerOutput != null) {
       kmers.apply(Count.<KV<String, String>>create())
           .apply(ParDo.named("Format Kmers").of(new DoFn<KV<KV<String, String>, Long>, String>() {
 

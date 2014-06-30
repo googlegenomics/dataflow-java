@@ -49,8 +49,9 @@ public class DataflowWorkarounds {
       int start = i * optionsPerWorker;
       int end = Math.min(shardOptions.size(), start + optionsPerWorker);
       
-      // Could be possible for start >= end in last worker, in which case don't use him
-      if(start >= end) {
+      // It's possible for start >= end in the last worker,
+      // in which case we'll just skip the collection.
+      if (start >= end) {
         break;
       }
       

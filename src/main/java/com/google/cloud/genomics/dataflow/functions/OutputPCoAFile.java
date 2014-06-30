@@ -46,13 +46,13 @@ public class OutputPCoAFile extends PTransform<PCollection<KV<String, String>>, 
   public PDone apply(PCollection<KV<String, String>> similarPairs) {
     return similarPairs.apply(Count.<KV<String, String>>create())
         .apply(AsIterable.<KV<KV<String, String>, Long>>create())
-        .apply(SeqDo.named("PCAAnalysis").of(new PCoAnalysis()))
+        .apply(SeqDo.named("PCoAAnalysis").of(new PCoAnalysis()))
         .apply(FromIterable.<PCoAnalysis.GraphResult>create())
         .apply(ParDo.named("FormatGraphData").of(new DoFn<PCoAnalysis.GraphResult, String>() {
           @Override
           public void processElement(ProcessContext c) {
             PCoAnalysis.GraphResult result = c.element();
-            // Note: the extra tab is so this format places nicely with
+            // Note: the extra tab is so this format plays nicely with
             // Google Sheet's bubble chart
             c.output(result.name + "\t\t" + result.graphX + "\t" + result.graphY);
           }
