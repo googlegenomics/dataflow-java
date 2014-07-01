@@ -15,7 +15,6 @@
  */
 package com.google.cloud.genomics.dataflow.readers;
 
-import com.google.api.services.genomics.GenomicsRequest;
 import com.google.api.services.genomics.model.SearchVariantsRequest;
 import com.google.api.services.genomics.model.SearchVariantsResponse;
 import com.google.api.services.genomics.model.Variant;
@@ -58,40 +57,32 @@ public class VariantReader extends DoFn<VariantReader.Options, Variant> {
   public void processElement(ProcessContext c) {
     Options options = c.element();
     GenomicsApi api = new GenomicsApi(options.accessToken, options.apiKey);
-
-    String nextPageToken = null;
-    do {
-      SearchVariantsResponse response = getVariantsResponse(api, options, nextPageToken);
-      if (response.getVariants() == null) {
-        break;
-      }
-      for (Variant variant : response.getVariants()) {
-        c.output(variant);
-      }
-      nextPageToken = response.getNextPageToken();
-    } while (nextPageToken != null);
-
-    LOG.info("Finished variants at: " + options.contig + "-" + options.start);
-  }
-
-  private SearchVariantsResponse getVariantsResponse(GenomicsApi api, Options options,
-      String nextPageToken) {
     SearchVariantsRequest request = new SearchVariantsRequest()
         .setDatasetId(options.datasetId)
         .setContig(options.contig)
         .setStartPosition(options.start)
         .setEndPosition(options.end);
 
-    if (nextPageToken != null) {
-      request.setPageToken(nextPageToken);
-    }
+    do {
+      SearchVariantsResponse response;
+      try {
+        response = api.executeRequest(api.getService().variants().search(request),
+            options.variantFields);
+      } catch (IOException e) {
+        throw new RuntimeException(
+            "Failed to create genomics API request - this shouldn't happen.", e);
+      }
 
-    try {
-      GenomicsRequest<SearchVariantsResponse> search = api.getService().variants().search(request);
-      return api.executeRequest(search, options.variantFields);
-    } catch (IOException e) {
-      throw new RuntimeException("Failed to create genomics API request - " +
-          "this shouldn't happen.", e);
-    }
+      if (response.getVariants() == null) {
+        break;
+      }
+      for (Variant variant : response.getVariants()) {
+        c.output(variant);
+      }
+      request.setPageToken(response.getNextPageToken());
+    } while (request.getPageToken() != null);
+
+    LOG.info("Finished variants at: " + options.contig + "-" + options.start);
   }
+
 }
