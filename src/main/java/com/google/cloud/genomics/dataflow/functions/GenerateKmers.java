@@ -24,14 +24,14 @@ import com.google.common.collect.Lists;
 import java.util.List;
 
 /**
- * Generates kmer from a set of reads
- * Input: KV(Name, Read Bases)
- * Output: Set<KV(Name, kmer)>
+ * Generates kmers for a given string.
+ * Input: KV(Name, any sequence)
+ * Output: Set<KV(Name, kmers from the sequence)>
  */
-public class ReadsToKmers extends DoFn<KV<String, String>, KV<String, String>> {
+public class GenerateKmers extends DoFn<KV<String, String>, KV<String, String>> {
   private final int kValue;
   
-  public ReadsToKmers(int kValue) {
+  public GenerateKmers(int kValue) {
     this.kValue = kValue;
   }
   

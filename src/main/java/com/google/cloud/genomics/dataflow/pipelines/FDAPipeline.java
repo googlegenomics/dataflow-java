@@ -33,7 +33,7 @@ import com.google.cloud.genomics.dataflow.DataflowWorkarounds;
 import com.google.cloud.genomics.dataflow.GenomicsApi;
 import com.google.cloud.genomics.dataflow.GenomicsOptions;
 import com.google.cloud.genomics.dataflow.coders.GenericJsonCoder;
-import com.google.cloud.genomics.dataflow.functions.ReadsToKmers;
+import com.google.cloud.genomics.dataflow.functions.GenerateKmers;
 import com.google.cloud.genomics.dataflow.functions.ReadsetToReads;
 import com.google.common.collect.Lists;
 
@@ -100,7 +100,7 @@ public class FDAPipeline {
         readsets, GenericJsonCoder.of(Readset.class), p, options.numWorkers)
         .apply(ParDo.named("Readsets To Reads")
             .of(new ReadsetToReads(token, options.apiKey, READ_FIELDS)))
-        .apply(ParDo.named("Generate Kmers").of(new ReadsToKmers(options.kValue)));
+        .apply(ParDo.named("Generate Kmers").of(new GenerateKmers(options.kValue)));
     
     // Print to file
     if (options.kmerOutput != null) {
