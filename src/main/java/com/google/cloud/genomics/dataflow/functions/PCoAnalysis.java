@@ -40,6 +40,16 @@ import java.util.Map;
  *
  * The input data to this algorithm must be for a similarity matrix - and the
  * resulting matrix must be symmetric.
+ *
+ * Input: KV(KV(dataName, dataName), count of how similar the data pair is)
+ * Output: GraphResults - an x/y pair and a label
+ *
+ * Example input for a tiny dataset of size 2:
+ *
+ * KV(KV(data1, data1), 5)
+ * KV(KV(data1, data2), 2)
+ * KV(KV(data2, data2), 5)
+ * KV(KV(data2, data1), 2)
  */
 public class PCoAnalysis implements SerializableFunction<Iterable<KV<KV<String, String>, Long>>,
     Iterable<PCoAnalysis.GraphResult>> {
@@ -63,15 +73,15 @@ public class PCoAnalysis implements SerializableFunction<Iterable<KV<KV<String, 
 
     // TODO: Clean up this code
     for (KV<KV<String, String>, Long> entry : similarityData) {
-      getCallsetIndex(dataIndicies, entry.getKey().getKey());
-      getCallsetIndex(dataIndicies, entry.getKey().getValue());
+      getDataIndex(dataIndicies, entry.getKey().getKey());
+      getDataIndex(dataIndicies, entry.getKey().getValue());
     }
 
-    int callsetCount = dataIndicies.size();
-    double[][] matrixData = new double[callsetCount][callsetCount];
+    int dataSize = dataIndicies.size();
+    double[][] matrixData = new double[dataSize][dataSize];
     for (KV<KV<String, String>, Long> entry : similarityData) {
-      int d1 = getCallsetIndex(dataIndicies, entry.getKey().getKey());
-      int d2 = getCallsetIndex(dataIndicies, entry.getKey().getValue());
+      int d1 = getDataIndex(dataIndicies, entry.getKey().getKey());
+      int d2 = getDataIndex(dataIndicies, entry.getKey().getValue());
 
       matrixData[d1][d2] = entry.getValue();
     }
@@ -80,15 +90,15 @@ public class PCoAnalysis implements SerializableFunction<Iterable<KV<KV<String, 
     return getPcaData(matrixData, dataIndicies.inverse());
   }
 
-  private int getCallsetIndex(Map<String, Integer> callsetIndicies, String callsetName) {
-    if (!callsetIndicies.containsKey(callsetName)) {
-      callsetIndicies.put(callsetName, callsetIndicies.size());
+  private int getDataIndex(Map<String, Integer> dataIndicies, String dataName) {
+    if (!dataIndicies.containsKey(dataName)) {
+      dataIndicies.put(dataName, dataIndicies.size());
     }
-    return callsetIndicies.get(callsetName);
+    return dataIndicies.get(dataName);
   }
 
   // Convert the similarity matrix to an Eigen matrix.
-  private List<GraphResult> getPcaData(double[][] data, BiMap<Integer, String> callsetNames) {
+  private List<GraphResult> getPcaData(double[][] data, BiMap<Integer, String> dataNames) {
     int rows = data.length;
     int cols = data.length;
 
@@ -152,7 +162,7 @@ public class PCoAnalysis implements SerializableFunction<Iterable<KV<KV<String, 
     // Return projected data
     List<GraphResult> results = Lists.newArrayList();
     for (int i = 0; i < rows; i++) {
-      results.add(new GraphResult(callsetNames.get(i),
+      results.add(new GraphResult(dataNames.get(i),
           eigenvectors.get(i, maxIndex), eigenvectors.get(i, secondIndex)));
     }
 
