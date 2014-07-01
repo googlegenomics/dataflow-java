@@ -22,52 +22,33 @@ import com.google.cloud.dataflow.sdk.transforms.DoFn;
 import com.google.cloud.genomics.dataflow.GenomicsApi;
 
 import java.io.IOException;
-import java.io.Serializable;
 import java.util.logging.Logger;
 
-public class VariantReader extends DoFn<VariantReader.Options, Variant> {
+public class VariantReader extends DoFn<SearchVariantsRequest, Variant> {
   private static final Logger LOG = Logger.getLogger(VariantReader.class.getName());
 
-  public static class Options implements Serializable {
-    // Used for access to the genomics API
-    // If the accessToken is null, then an apiKey is required
-    private final String apiKey;
-    private final String accessToken;
+  // Used for access to the genomics API
+  // If the accessToken is null, then an apiKey is required
+  private final String accessToken;
+  private final String apiKey;
+  private final String variantFields;
 
-    // Specific to the variants search request
-    private final String datasetId;
-    private final String variantFields;
-    private final String contig;
-    private final long start;
-    private final long end;
-
-    public Options(String apiKey, String accessToken, String datasetId, String variantFields,
-        String contig, long start, long end) {
-      this.apiKey = apiKey;
-      this.accessToken = accessToken;
-      this.datasetId = datasetId;
-      this.variantFields = variantFields;
-      this.contig = contig;
-      this.start = start;
-      this.end = end;
-    }
+  public VariantReader(String accessToken, String apiKey, String variantFields) {
+    this.accessToken = accessToken;
+    this.apiKey = apiKey;
+    this.variantFields = variantFields;
   }
 
   @Override
   public void processElement(ProcessContext c) {
-    Options options = c.element();
-    GenomicsApi api = new GenomicsApi(options.accessToken, options.apiKey);
-    SearchVariantsRequest request = new SearchVariantsRequest()
-        .setDatasetId(options.datasetId)
-        .setContig(options.contig)
-        .setStartPosition(options.start)
-        .setEndPosition(options.end);
+    GenomicsApi api = new GenomicsApi(accessToken, apiKey);
+    SearchVariantsRequest request = c.element();
 
     do {
       SearchVariantsResponse response;
       try {
         response = api.executeRequest(api.getService().variants().search(request),
-            options.variantFields);
+            variantFields);
       } catch (IOException e) {
         throw new RuntimeException(
             "Failed to create genomics API request - this shouldn't happen.", e);
@@ -82,7 +63,7 @@ public class VariantReader extends DoFn<VariantReader.Options, Variant> {
       request.setPageToken(response.getNextPageToken());
     } while (request.getPageToken() != null);
 
-    LOG.info("Finished variants at: " + options.contig + "-" + options.start);
+    LOG.info("Finished variants at: " + request.getContig() + "-" + request.getStartPosition());
   }
 
 }
