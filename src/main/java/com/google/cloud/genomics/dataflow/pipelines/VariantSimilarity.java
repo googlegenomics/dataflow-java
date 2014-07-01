@@ -17,9 +17,9 @@ package com.google.cloud.genomics.dataflow.pipelines;
 
 import com.google.api.services.genomics.model.ContigBound;
 import com.google.api.services.genomics.model.GetVariantsSummaryResponse;
+import com.google.api.services.genomics.model.SearchVariantsRequest;
 import com.google.api.services.genomics.model.Variant;
 import com.google.cloud.dataflow.sdk.Pipeline;
-import com.google.cloud.dataflow.sdk.coders.SerializableCoder;
 import com.google.cloud.dataflow.sdk.runners.Description;
 import com.google.cloud.dataflow.sdk.runners.PipelineRunner;
 import com.google.cloud.dataflow.sdk.transforms.ParDo;
@@ -69,14 +69,8 @@ import java.util.logging.Logger;
 public class VariantSimilarity {
   private static final Logger LOG = Logger.getLogger(VariantSimilarity.class.getName());
 
-  private static List<VariantReader.Options> getReaderOptions(Options options)
-      throws IOException {
-    String accessToken = options.getAccessToken();
-    String variantFields = "nextPageToken,variants(id,calls(info,callsetName))";
-
-    GenomicsApi api = new GenomicsApi(accessToken, options.apiKey);
-    GetVariantsSummaryResponse summary = api.executeRequest(
-        api.getService().variants().getSummary().setDatasetId(options.datasetId), "contigBounds");
+  private static List<SearchVariantsRequest> getVariantRequests(GetVariantsSummaryResponse summary,
+      Options options) throws IOException {
 
     ContigBound bound = summary.getContigBounds().get(0);
 
@@ -85,20 +79,24 @@ public class VariantSimilarity {
     // NOTE: The default end parameter is set to run on tiny local machines
     String contig = bound.getContig();
     long start = 25652000;
-    long end = start + 1000;
+    long end = start + 500;
     long basesPerShard = 1000;
 
     double shards = Math.ceil((end - start) / (double) basesPerShard);
-    List<VariantReader.Options> readers = Lists.newArrayList();
+    List<SearchVariantsRequest> requests = Lists.newArrayList();
     for (int i = 0; i < shards; i++) {
       long shardStart = start + (i * basesPerShard);
       long shardEnd = Math.min(end, shardStart + basesPerShard);
 
-      LOG.info("Adding reader with " + shardStart + " to " + shardEnd);
-      readers.add(new VariantReader.Options(options.apiKey, accessToken, options.datasetId,
-          variantFields, contig, shardStart, shardEnd));
+      LOG.info("Adding request with " + shardStart + " to " + shardEnd);
+      requests.add(new SearchVariantsRequest()
+          .setDatasetId(options.datasetId)
+          .setContig(contig)
+          .setStartPosition(shardStart)
+          .setEndPosition(shardEnd));
+
     }
-    return readers;
+    return requests;
   }
 
   private static class Options extends GenomicsOptions {
@@ -110,13 +108,22 @@ public class VariantSimilarity {
   public static void main(String[] args) throws IOException {
     Options options = OptionsParser.parse(args, Options.class,
         VariantSimilarity.class.getSimpleName());
-    List<VariantReader.Options> readerOptions = getReaderOptions(options);
+
+    String accessToken = options.getAccessToken();
+    String variantFields = "nextPageToken,variants(id,calls(info,callsetName))";
+
+    GenomicsApi api = new GenomicsApi(accessToken, options.apiKey);
+    GetVariantsSummaryResponse summary = api.executeRequest(
+        api.getService().variants().getSummary().setDatasetId(options.datasetId), "contigBounds");
+
+    List<SearchVariantsRequest> requests = getVariantRequests(summary, options);
 
     Pipeline p = Pipeline.create();
 
-    DataflowWorkarounds.getPCollection(readerOptions,
-        SerializableCoder.of(VariantReader.Options.class), p, options.numWorkers)
-        .apply(ParDo.named("VariantReader").of(new VariantReader()))
+    DataflowWorkarounds.getPCollection(requests,
+        GenericJsonCoder.of(SearchVariantsRequest.class), p, options.numWorkers)
+        .apply(ParDo.named("VariantReader")
+            .of(new VariantReader(accessToken, options.apiKey, variantFields)))
             .setCoder(GenericJsonCoder.of(Variant.class))
         .apply(ParDo.named("ExtractSimilarCallsets").of(new ExtractSimilarCallsets()))
         .apply(new OutputPCoAFile(options.output));
