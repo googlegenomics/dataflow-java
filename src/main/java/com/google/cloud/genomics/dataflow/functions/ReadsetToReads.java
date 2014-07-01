@@ -23,7 +23,6 @@ import com.google.api.services.genomics.model.SearchReadsResponse;
 import com.google.cloud.dataflow.sdk.transforms.DoFn;
 import com.google.cloud.dataflow.sdk.values.KV;
 import com.google.cloud.genomics.dataflow.GenomicsApi;
-import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Lists;
 
@@ -61,8 +60,7 @@ public class ReadsetToReads extends DoFn<Readset, KV<String, String>> {
       }
     }
   }
-  
-  @VisibleForTesting
+
   List<Read> getReads(SearchReadsRequest request, GenomicsApi api) {
     // Use page token to see when requests should end
     if (request.getPageToken() != null && request.getPageToken().equals(END_TOKEN)) {
