@@ -77,17 +77,12 @@ public class FDAPipeline {
     SearchReadsetsRequest request = new SearchReadsetsRequest()
         .setDatasetIds(Lists.newArrayList(datasetId));
     List<Readset> readsets = Lists.newArrayList();
-    boolean done = false;
-    while (!done) {
+    do {
       SearchReadsetsResponse response = api.executeRequest(
           api.getService().readsets().search(request), READSET_FIELDS);
       readsets.addAll(response.getReadsets());
-      if (response.getNextPageToken() != null) {
-        request.setPageToken(response.getNextPageToken());
-      } else {
-        done = true;
-      }
-    }
+      request.setPageToken(response.getNextPageToken());
+    } while (request.getPageToken() != null);
     return readsets;
   }
   
