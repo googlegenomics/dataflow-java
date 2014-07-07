@@ -18,41 +18,28 @@ package com.google.cloud.genomics.dataflow.readers;
 import com.google.api.services.genomics.model.SearchVariantsRequest;
 import com.google.api.services.genomics.model.SearchVariantsResponse;
 import com.google.api.services.genomics.model.Variant;
-import com.google.cloud.dataflow.sdk.transforms.DoFn;
 import com.google.cloud.genomics.dataflow.GenomicsApi;
 
 import java.io.IOException;
 import java.util.logging.Logger;
 
-public class VariantReader extends DoFn<SearchVariantsRequest, Variant> {
+public class VariantReader extends GenomicsApiReader<SearchVariantsRequest, Variant> {
   private static final Logger LOG = Logger.getLogger(VariantReader.class.getName());
 
-  // Used for access to the genomics API
-  // If the accessToken is null, then an apiKey is required
-  private final String accessToken;
-  private final String apiKey;
   private final String variantFields;
 
   public VariantReader(String accessToken, String apiKey, String variantFields) {
-    this.accessToken = accessToken;
-    this.apiKey = apiKey;
+    super(accessToken, apiKey);
     this.variantFields = variantFields;
   }
 
   @Override
-  public void processElement(ProcessContext c) {
-    GenomicsApi api = new GenomicsApi(accessToken, apiKey);
-    SearchVariantsRequest request = c.element();
+  protected void processApiCall(GenomicsApi api, ProcessContext c, SearchVariantsRequest request)
+      throws IOException {
 
     do {
-      SearchVariantsResponse response;
-      try {
-        response = api.executeRequest(api.getService().variants().search(request),
-            variantFields);
-      } catch (IOException e) {
-        throw new RuntimeException(
-            "Failed to create genomics API request - this shouldn't happen.", e);
-      }
+      SearchVariantsResponse response = api.executeRequest(
+          api.getService().variants().search(request), variantFields);
 
       if (response.getVariants() == null) {
         break;
@@ -65,5 +52,4 @@ public class VariantReader extends DoFn<SearchVariantsRequest, Variant> {
 
     LOG.info("Finished variants at: " + request.getContig() + "-" + request.getStartPosition());
   }
-
 }
