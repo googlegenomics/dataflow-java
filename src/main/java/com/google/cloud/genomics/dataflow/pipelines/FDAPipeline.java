@@ -37,7 +37,9 @@ import com.google.cloud.genomics.dataflow.functions.GenerateKmers;
 import com.google.cloud.genomics.dataflow.functions.ReadsetToReads;
 import com.google.common.collect.Lists;
 
+import java.io.File;
 import java.io.IOException;
+import java.math.BigInteger;
 import java.util.List;
 import java.util.logging.Logger;
 
@@ -53,21 +55,40 @@ public class FDAPipeline {
   private FDAPipeline() { }
 
   private static class Options extends GenomicsOptions {
-    @Description("Path of the file to write PCA results to")
+    @Description("Path of directory to write results to")
     @RequiredOption
-    public String pcaOutput;
+    public String outDir;
     
-    @Description("Path of file to write Kmer indices to")
-    public String kmerOutput;
+    @Description("Whether or not kmer indices should be printed")
+    public boolean writeKmer;
     
-    @Description("Numerical value of K for indexing. Should not be larger than ~100")
+    @Description("K values to be used for indexing. Separate multiple values using commas\n"
+        + "IE: --kValues=1,2,3")
     @RequiredOption
-    public Integer kValue;
+    public String kValues;
     
     public void checkArgs() {
-      if (kValue < 1 || kValue > 256) {
-        throw new IllegalArgumentException("K value is out of bounds (must be between 1 and 256");
+      try {
+        String[] values = kValues.split(",");
+        for (String val : values) {
+          int res = Integer.parseInt(val);
+          if (res < 1 || res > 256) {
+            LOG.severe("K values must be between 1 and 256");
+            throw new Exception();
+          }
+        }
+      } catch (Exception e) {
+        throw new IllegalArgumentException("K values invalid or out of bounds");
       }
+    }
+    
+    public int[] getKValues() {
+      String[] values = kValues.split(",");
+      int[] result = new int[values.length];
+      for (int i = 0; i < values.length; i++) {
+        result[i] = Integer.parseInt(values[i]);
+      }
+      return result;
     }
   }
 
@@ -90,38 +111,47 @@ public class FDAPipeline {
   public static void main(String[] args) throws IOException {
     Options options = OptionsParser.parse(args, Options.class, FDAPipeline.class.getSimpleName());
     options.checkArgs();
+    
+    int[] kValues = options.getKValues();
 
     LOG.info("Starting pipeline...");
     String token = options.getAccessToken();
     List<Readset> readsets = getReadsets(token, options.apiKey, options.datasetId);
     
     Pipeline p = Pipeline.create();
-
-    PCollection<KV<String, String>> kmers = DataflowWorkarounds.getPCollection(
+    
+    PCollection<KV<String, String>> reads = DataflowWorkarounds.getPCollection(
         readsets, GenericJsonCoder.of(Readset.class), p, options.numWorkers)
         .apply(ParDo.named("Readsets To Reads")
-            .of(new ReadsetToReads(token, options.apiKey, READ_FIELDS)))
-        .apply(ParDo.named("Generate Kmers").of(new GenerateKmers(options.kValue)));
-    
-    // Print to file
-    if (options.kmerOutput != null) {
-      kmers.apply(Count.<KV<String, String>>create())
-          .apply(ParDo.named("Format Kmers").of(new DoFn<KV<KV<String, String>, Long>, String>() {
+            .of(new ReadsetToReads(token, options.apiKey, READ_FIELDS)));
 
-            @Override
-            public void processElement(ProcessContext c) {
-              KV<KV<String, String>, Long> elem = c.element();
-              String name = elem.getKey().getKey();
-              String kmer = elem.getKey().getValue();
-              Long count = elem.getValue();
-              c.output(name + "-" + kmer + "-" + count + ":");
-            }
-          }))
-          .apply(TextIO.Write.named("Write Kmer Indices").to(options.kmerOutput));
-    }
+    PCollection<KV<String, String>>[] kmers = new PCollection[kValues.length];
     
-    // Figure this out later
-    //kmers.apply(new OutputPcaFile(options.pcaOutput));
+    for (int i = 0; i < kValues.length; i++) {
+      kmers[i] = reads.apply(ParDo.named("Generate Kmers").of(new GenerateKmers(kValues[i])));
+      
+      // Print to file
+      if (options.writeKmer) {
+        String outfile = options.outDir + File.separator + "KmerIndexK" + kValues[i] + ".txt";
+        kmers[i].apply(Count.<KV<String, String>>create())
+            .apply(ParDo.named("Format Kmers").of(new DoFn<KV<KV<String, String>, Long>, String>() {
+
+              @Override
+              public void processElement(ProcessContext c) {
+                KV<KV<String, String>, Long> elem = c.element();
+                String name = elem.getKey().getKey();
+                String kmer = elem.getKey().getValue();
+                Long count = elem.getValue();
+                c.output(name + "-" + kmer + "-" + count + ":");
+              }
+            }))
+            .apply(TextIO.Write.named("Write Kmer Indices").to(outfile));
+      }
+      
+      // Figure this out later
+//      kmers.apply(new OutputPcaFile(
+//          options.outDir + File.separator + "PCAResultK" + kValues[i] + ".txt"));
+    }
     
     p.run(PipelineRunner.fromOptions(options));
   }
