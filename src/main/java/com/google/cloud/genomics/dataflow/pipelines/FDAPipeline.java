@@ -34,7 +34,7 @@ import com.google.cloud.genomics.dataflow.GenomicsApi;
 import com.google.cloud.genomics.dataflow.GenomicsOptions;
 import com.google.cloud.genomics.dataflow.coders.GenericJsonCoder;
 import com.google.cloud.genomics.dataflow.functions.GenerateKmers;
-import com.google.cloud.genomics.dataflow.functions.ReadsetToReads;
+import com.google.cloud.genomics.dataflow.readers.ReadsetToReads;
 import com.google.common.collect.Lists;
 
 import java.io.IOException;
