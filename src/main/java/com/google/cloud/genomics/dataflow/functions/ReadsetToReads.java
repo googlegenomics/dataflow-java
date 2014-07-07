@@ -26,6 +26,7 @@ import com.google.cloud.genomics.dataflow.GenomicsApi;
 import com.google.common.collect.ImmutableList;
 
 import java.io.IOException;
+import java.math.BigInteger;
 
 /**
  * Converts Readsets to Key values of Readset name and Read bases
@@ -49,7 +50,8 @@ public class ReadsetToReads extends DoFn<Readset, KV<String, String>> {
 
     Readset set = c.element();
     SearchReadsRequest request = new SearchReadsRequest()
-        .setReadsetIds(ImmutableList.of(set.getId()));
+        .setReadsetIds(ImmutableList.of(set.getId()))
+        .setMaxResults(new BigInteger("1024"));
 
     do {
       SearchReadsResponse response;

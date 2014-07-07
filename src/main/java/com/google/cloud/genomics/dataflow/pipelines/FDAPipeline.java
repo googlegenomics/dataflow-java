@@ -75,7 +75,8 @@ public class FDAPipeline {
       String accessToken, String apiKey, String datasetId) throws IOException {
     GenomicsApi api = new GenomicsApi(accessToken, apiKey);
     SearchReadsetsRequest request = new SearchReadsetsRequest()
-        .setDatasetIds(Lists.newArrayList(datasetId));
+        .setDatasetIds(Lists.newArrayList(datasetId))
+        .setMaxResults(new BigInteger("256"));
     List<Readset> readsets = Lists.newArrayList();
     do {
       SearchReadsetsResponse response = api.executeRequest(

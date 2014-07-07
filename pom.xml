@@ -69,7 +69,7 @@
     <dependency>
       <groupId>com.google.apis</groupId>
       <artifactId>google-api-services-genomics</artifactId>
-      <version>v1beta-rev5-1.18.0-rc</version>
+      <version>v1beta-rev12-1.18.0-rc</version>
     </dependency>
     <dependency>
       <groupId>com.google.cloud.dataflow</groupId>
