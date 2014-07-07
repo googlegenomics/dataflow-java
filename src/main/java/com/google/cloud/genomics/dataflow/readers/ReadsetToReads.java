@@ -14,7 +14,7 @@
  * the License.
  */
 
-package com.google.cloud.genomics.dataflow.functions;
+package com.google.cloud.genomics.dataflow.readers;
 
 import com.google.api.services.genomics.model.Read;
 import com.google.api.services.genomics.model.Readset;
@@ -22,7 +22,6 @@ import com.google.api.services.genomics.model.SearchReadsRequest;
 import com.google.api.services.genomics.model.SearchReadsResponse;
 import com.google.cloud.dataflow.sdk.values.KV;
 import com.google.cloud.genomics.dataflow.GenomicsApi;
-import com.google.cloud.genomics.dataflow.readers.GenomicsApiReader;
 import com.google.common.collect.ImmutableList;
 
 import java.io.IOException;
