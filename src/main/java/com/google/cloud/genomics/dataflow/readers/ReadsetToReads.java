@@ -14,13 +14,12 @@
  * the License.
  */
 
-package com.google.cloud.genomics.dataflow.functions;
+package com.google.cloud.genomics.dataflow.readers;
 
 import com.google.api.services.genomics.model.Read;
 import com.google.api.services.genomics.model.Readset;
 import com.google.api.services.genomics.model.SearchReadsRequest;
 import com.google.api.services.genomics.model.SearchReadsResponse;
-import com.google.cloud.dataflow.sdk.transforms.DoFn;
 import com.google.cloud.dataflow.sdk.values.KV;
 import com.google.cloud.genomics.dataflow.GenomicsApi;
 import com.google.common.collect.ImmutableList;
@@ -33,34 +32,23 @@ import java.math.BigInteger;
  * Input: Readset
  * Output: KV(Name, Read Bases)
  */
-public class ReadsetToReads extends DoFn<Readset, KV<String, String>> {
-  private String accessToken;
-  private String apiKey;
+public class ReadsetToReads extends GenomicsApiReader<Readset, KV<String, String>> {
   private String readFields;
   
   public ReadsetToReads(String accessToken, String apiKey, String readFields) {
-    this.accessToken = accessToken;
-    this.apiKey = apiKey;
+    super(accessToken, apiKey);
     this.readFields = readFields;
   }
-  
-  @Override
-  public void processElement(ProcessContext c) {
-    GenomicsApi api = new GenomicsApi(accessToken, apiKey);
 
-    Readset set = c.element();
+  @Override
+  protected void processApiCall(GenomicsApi api, ProcessContext c, Readset set) throws IOException {
     SearchReadsRequest request = new SearchReadsRequest()
         .setReadsetIds(ImmutableList.of(set.getId()))
         .setMaxResults(new BigInteger("1024"));
 
     do {
-      SearchReadsResponse response;
-      try {
-        response = api.executeRequest(api.getService().reads().search(request), readFields);
-      } catch (IOException e) {
-        throw new RuntimeException(
-            "Failed to create genomics API request - this shouldn't happen.", e);
-      }
+      SearchReadsResponse response = api.executeRequest(
+          api.getService().reads().search(request), readFields);
 
       for (Read read : response.getReads()) {
         c.output(KV.of(set.getName(), read.getOriginalBases()));
