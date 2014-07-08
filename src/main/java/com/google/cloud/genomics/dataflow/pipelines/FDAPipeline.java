@@ -71,12 +71,12 @@ public class FDAPipeline {
     @RequiredOption
     public String kValues;
     
+    private int[] parsedValues;
+    
     public void checkArgs() {
       try {
-        String[] values = kValues.split(",");
-        for (String val : values) {
-          int res = Integer.parseInt(val);
-          if (res < 1 || res > 256) {
+        for (int val : parseValues()) {
+          if (val < 1 || val > 256) {
             LOG.severe("K values must be between 1 and 256");
             throw new IllegalArgumentException("K value out of bounds");
           }
@@ -86,12 +86,18 @@ public class FDAPipeline {
       }
     }
     
-    public int[] getKValues() {
+    public int[] parseValues() throws NumberFormatException {
+      if (parsedValues != null) {
+        return parsedValues;
+      }
+      
       String[] values = kValues.split(",");
       int[] result = new int[values.length];
       for (int i = 0; i < values.length; i++) {
         result[i] = Integer.parseInt(values[i]);
       }
+      
+      parsedValues = result;
       return result;
     }
   }
@@ -116,7 +122,7 @@ public class FDAPipeline {
     Options options = OptionsParser.parse(args, Options.class, FDAPipeline.class.getSimpleName());
     options.checkArgs();
     
-    int[] kValues = options.getKValues();
+    int[] kValues = options.parseValues();
 
     LOG.info("Starting pipeline...");
     String token = options.getAccessToken();
