@@ -22,9 +22,12 @@ import com.google.cloud.dataflow.sdk.Pipeline;
 import com.google.cloud.dataflow.sdk.io.TextIO;
 import com.google.cloud.dataflow.sdk.runners.Description;
 import com.google.cloud.dataflow.sdk.runners.PipelineRunner;
+import com.google.cloud.dataflow.sdk.transforms.AsIterable;
 import com.google.cloud.dataflow.sdk.transforms.Count;
 import com.google.cloud.dataflow.sdk.transforms.DoFn;
+import com.google.cloud.dataflow.sdk.transforms.FromIterable;
 import com.google.cloud.dataflow.sdk.transforms.ParDo;
+import com.google.cloud.dataflow.sdk.transforms.SeqDo;
 import com.google.cloud.dataflow.sdk.values.KV;
 import com.google.cloud.dataflow.sdk.values.PCollection;
 import com.google.cloud.dataflow.utils.OptionsParser;
@@ -33,6 +36,7 @@ import com.google.cloud.genomics.dataflow.DataflowWorkarounds;
 import com.google.cloud.genomics.dataflow.GenomicsApi;
 import com.google.cloud.genomics.dataflow.GenomicsOptions;
 import com.google.cloud.genomics.dataflow.coders.GenericJsonCoder;
+import com.google.cloud.genomics.dataflow.functions.CreateKmerTable;
 import com.google.cloud.genomics.dataflow.functions.GenerateKmers;
 import com.google.cloud.genomics.dataflow.readers.ReadsetToReads;
 import com.google.common.collect.Lists;
@@ -63,7 +67,7 @@ public class FDAPipeline {
     public boolean writeKmer;
     
     @Description("K values to be used for indexing. Separate multiple values using commas\n"
-        + "IE: --kValues=1,2,3")
+        + "EG: --kValues=1,2,3")
     @RequiredOption
     public String kValues;
     
@@ -74,11 +78,11 @@ public class FDAPipeline {
           int res = Integer.parseInt(val);
           if (res < 1 || res > 256) {
             LOG.severe("K values must be between 1 and 256");
-            throw new Exception();
+            throw new IllegalArgumentException("K value out of bounds");
           }
         }
-      } catch (Exception e) {
-        throw new IllegalArgumentException("K values invalid or out of bounds");
+      } catch (NumberFormatException e) {
+        throw new IllegalArgumentException("Invalid K values");
       }
     }
     
@@ -132,19 +136,11 @@ public class FDAPipeline {
       
       // Print to file
       if (options.writeKmer) {
-        String outfile = options.outDir + File.separator + "KmerIndexK" + kValues[i] + ".txt";
+        String outfile = options.outDir + File.separator + "KmerIndexK" + kValues[i] + ".csv";
         kmers[i].apply(Count.<KV<String, String>>create())
-            .apply(ParDo.named("Format Kmers").of(new DoFn<KV<KV<String, String>, Long>, String>() {
-
-              @Override
-              public void processElement(ProcessContext c) {
-                KV<KV<String, String>, Long> elem = c.element();
-                String name = elem.getKey().getKey();
-                String kmer = elem.getKey().getValue();
-                Long count = elem.getValue();
-                c.output(name + "-" + kmer + "-" + count + ":");
-              }
-            }))
+            .apply(AsIterable.<KV<KV<String, String>, Long>>create())
+            .apply(SeqDo.named("Create table").of(new CreateKmerTable()))
+            .apply(FromIterable.<String>create()).setOrdered(true)
             .apply(TextIO.Write.named("Write Kmer Indices").to(outfile));
       }
       
