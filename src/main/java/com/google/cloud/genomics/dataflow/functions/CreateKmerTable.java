@@ -25,7 +25,6 @@ import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
 
- 
 public class CreateKmerTable implements SerializableFunction<Iterable<KV<KV<String, String>, Long>>,
     Iterable<String>> {
 
@@ -65,5 +64,4 @@ public class CreateKmerTable implements SerializableFunction<Iterable<KV<KV<Stri
 
     return table;
   }
-  
 }
