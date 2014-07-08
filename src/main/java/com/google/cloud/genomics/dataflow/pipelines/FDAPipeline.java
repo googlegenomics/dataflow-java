@@ -92,13 +92,12 @@ public class FDAPipeline {
       }
       
       String[] values = kValues.split(",");
-      int[] result = new int[values.length];
+      parsedValues = new int[values.length];
       for (int i = 0; i < values.length; i++) {
-        result[i] = Integer.parseInt(values[i]);
+        parsedValues[i] = Integer.parseInt(values[i]);
       }
       
-      parsedValues = result;
-      return result;
+      return parsedValues;
     }
   }
 
