@@ -32,10 +32,10 @@ import java.math.BigInteger;
  * Input: Readset
  * Output: KV(Name, Read Bases)
  */
-public class ReadsetToReads extends GenomicsApiReader<Readset, KV<String, String>> {
+public class ReadReader extends GenomicsApiReader<Readset, KV<String, String>> {
   private String readFields;
   
-  public ReadsetToReads(String accessToken, String apiKey, String readFields) {
+  public ReadReader(String accessToken, String apiKey, String readFields) {
     super(accessToken, apiKey);
     this.readFields = readFields;
   }
