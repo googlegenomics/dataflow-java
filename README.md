@@ -35,3 +35,5 @@ Run deployed
 ```    
 
 By default, the max workers you can have without requesting more quota is 16. (That's the limit on GCE VMs)
+
+##Check GATK, Picard, and BWA licenses before releasing
