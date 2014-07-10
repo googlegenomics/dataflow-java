@@ -17,34 +17,41 @@
 package com.google.cloud.genomics.dataflow.readers;
 
 import com.google.api.services.genomics.model.Read;
+import com.google.api.services.genomics.model.Readset;
 import com.google.api.services.genomics.model.SearchReadsRequest;
 import com.google.api.services.genomics.model.SearchReadsResponse;
+import com.google.cloud.dataflow.sdk.values.KV;
 import com.google.cloud.genomics.dataflow.GenomicsApi;
+import com.google.common.collect.ImmutableList;
 
 import java.io.IOException;
+import java.math.BigInteger;
 
-public class ReadReader extends GenomicsApiReader<SearchReadsRequest, Read> {
-private String readFields;
-  
-  public ReadReader(String accessToken, String apiKey, String readFields) {
+/**
+ * Converts Readsets to Key values of Readset name and Read bases
+ * Input: Readset
+ * Output: KV(Name, Read Bases)
+ */
+public class ReadsetToReads extends GenomicsApiReader<Readset, KV<String, String>> {
+  private String readFields;
+
+  public ReadsetToReads(String accessToken, String apiKey, String readFields) {
     super(accessToken, apiKey);
     this.readFields = readFields;
   }
 
   @Override
-  protected void processApiCall(GenomicsApi api, ProcessContext c, SearchReadsRequest request)
-      throws IOException {
+  protected void processApiCall(GenomicsApi api, ProcessContext c, Readset set) throws IOException {
+    SearchReadsRequest request = new SearchReadsRequest()
+        .setReadsetIds(ImmutableList.of(set.getId()))
+        .setMaxResults(new BigInteger("1024"));
 
     do {
       SearchReadsResponse response = api.executeRequest(
           api.getService().reads().search(request), readFields);
 
-      if (response.getReads() == null) {
-        break;
-      }
-
       for (Read read : response.getReads()) {
-        c.output(read);
+        c.output(KV.of(set.getName(), read.getOriginalBases()));
       }
       request.setPageToken(response.getNextPageToken());
     } while (request.getPageToken() != null);
