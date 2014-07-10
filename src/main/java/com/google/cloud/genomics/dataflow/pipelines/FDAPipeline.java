@@ -24,7 +24,6 @@ import com.google.cloud.dataflow.sdk.runners.Description;
 import com.google.cloud.dataflow.sdk.runners.PipelineRunner;
 import com.google.cloud.dataflow.sdk.transforms.AsIterable;
 import com.google.cloud.dataflow.sdk.transforms.Count;
-import com.google.cloud.dataflow.sdk.transforms.DoFn;
 import com.google.cloud.dataflow.sdk.transforms.FromIterable;
 import com.google.cloud.dataflow.sdk.transforms.ParDo;
 import com.google.cloud.dataflow.sdk.transforms.SeqDo;
@@ -38,7 +37,7 @@ import com.google.cloud.genomics.dataflow.GenomicsOptions;
 import com.google.cloud.genomics.dataflow.coders.GenericJsonCoder;
 import com.google.cloud.genomics.dataflow.functions.CreateKmerTable;
 import com.google.cloud.genomics.dataflow.functions.GenerateKmers;
-import com.google.cloud.genomics.dataflow.readers.ReadsetToReads;
+import com.google.cloud.genomics.dataflow.readers.ReadReader;
 import com.google.common.collect.Lists;
 
 import java.io.File;
@@ -132,7 +131,7 @@ public class FDAPipeline {
     PCollection<KV<String, String>> reads = DataflowWorkarounds.getPCollection(
         readsets, GenericJsonCoder.of(Readset.class), p, options.numWorkers)
         .apply(ParDo.named("Readsets To Reads")
-            .of(new ReadsetToReads(token, options.apiKey, READ_FIELDS)));
+            .of(new ReadReader(token, options.apiKey, READ_FIELDS)));
 
     PCollection<KV<String, String>>[] kmers = new PCollection[kValues.length];
     
