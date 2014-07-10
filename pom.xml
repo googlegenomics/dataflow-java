@@ -41,11 +41,11 @@
 
   <contributors/>
 
-  <!-- Contains dataflow, GATK, and Picard libraries -->
+  <!-- Contains dataflow, GATK, BWA, and Picard libraries -->
   <repositories>
     <repository>
       <id>in-project-repo</id>
-      <url>file://${project.basedir}/jars</url>
+      <url>file://${project.basedir}/lib</url>
       <releases>
         <enabled>true</enabled>
       </releases>
