@@ -30,22 +30,15 @@
       <organizationUrl>http://www.google.com</organizationUrl>
       <timezone>-7</timezone>
     </developer>
-    <developer>
-      <id>xzhangpeijin</id>
-      <name>Peijin Zhang</name>
-      <organization>Google</organization>
-      <organizationUrl>http://www.google.com</organizationUrl>
-      <timezone>-7</timezone>
-    </developer>
   </developers>
 
   <contributors/>
 
-  <!-- Contains dataflow, GATK, BWA, and Picard libraries -->
+  <!-- Delete this and the /jars folder once the dataflow-sdk is in non-local maven -->
   <repositories>
     <repository>
-      <id>in-project-repo</id>
-      <url>file://${project.basedir}/lib</url>
+      <id>dataflow-snapshot</id>
+      <url>file://${project.basedir}/jars</url>
       <releases>
         <enabled>true</enabled>
       </releases>
@@ -93,16 +86,6 @@
       <groupId>gov.nist.math.jama</groupId>
       <artifactId>gov.nist.math.jama</artifactId>
       <version>1.1.1</version>
-    </dependency>
-    <dependency>
-      <groupId>org.sf.picard</groupId>
-      <artifactId>picard</artifactId>
-      <version>1.115</version>
-    </dependency>
-    <dependency>
-      <groupId>org.broadinstitute.sting.gatk</groupId>
-      <artifactId>gatk</artifactId>
-      <version>3.1-1</version>
     </dependency>
   </dependencies>
 
