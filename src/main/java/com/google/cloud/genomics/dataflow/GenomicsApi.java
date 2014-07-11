@@ -39,7 +39,7 @@ import java.util.List;
 
 public class GenomicsApi {
   public static final String GENOMICS_SCOPE = "https://www.googleapis.com/auth/genomics";
-  private static final int API_RETRIES = 3;
+  private static final int API_RETRIES = 10;
 
   private static final JsonFactory JSON_FACTORY = JacksonFactory.getDefaultInstance();
   private static final java.io.File DATA_STORE_DIR =
