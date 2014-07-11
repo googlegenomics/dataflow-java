@@ -7,3 +7,4 @@ target
 bin
 *~
 lib/bwa-0.7.9a
+.metadata
