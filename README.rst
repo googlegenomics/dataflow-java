@@ -76,3 +76,16 @@ GenomicsApi.java:
 GenomicsOptions.java:
   extend this class for your command line options to make handling authorization 
   for the Genomics APIs a bit easier.
+
+
+Project status
+--------------
+
+Goals
+~~~~~
+* Provide a Maven artifact which makes it easier to use Google Genomics within Google Cloud Dataflow.
+* Provide some example pipelines which demonstrate how Dataflow can be used to analyze Genomics data.
+
+Current status
+~~~~~~~~~~~~~~
+This code is in active development, it will be deployed to Maven once Dataflow is.
