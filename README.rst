@@ -55,14 +55,15 @@ TODO: Explain each command line arg so this section makes more sense
       --numWorkers=50
 
 datasetId:
-| Dataset to query over. Currently available:
-| 13770895782338053201: Test Dataset (contains one copy of SRR1188432)
-| 13548522727457381097: Listeria Dataset
-| 2831627299882627465: Salmonella Dataset
+  Dataset to query over. Currently available:
+  
+  - 13770895782338053201: Test Dataset (contains one copy of SRR1188432)
+  - 13548522727457381097: Listeria Dataset
+  - 2831627299882627465: Salmonella Dataset
 
 kValues:
-| Values of k to use for indexing. Multiple values supported.
-| Note: dataflow currently has issues going over k >= 8
+  Values of k to use for indexing. Multiple values supported.
+  Note: dataflow currently has issues going over k >= 8
 
 writeKmer:
   Option for writing kmer table out to file
