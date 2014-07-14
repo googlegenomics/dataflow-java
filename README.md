@@ -1,29 +1,32 @@
 dataflow-java
 =============
 
-##This project is private. These docs are bad on purpose. 
+##Note: this project is confidential. Do not share with anyone not in the Dataflow TT program
 
-[Main directory](/src/main/java/com/google/cloud/genomics/dataflow)
 
-```
-cd dataflow-java
-mvn compile
-mvn bundle:bundle
-```
+Getting started
+---------------
 
-Run locally
-Note: when running locally, you can only process about 1000 base positions before exceeding memory.
+* To use, first build the client using `Apache Maven`_::
 
-```
-java -cp target/googlegenomics-dataflow-java-v1beta.jar \
+  cd dataflow-java
+  mvn compile
+  mvn bundle:bundle
+
+.. _Apache Maven: http://maven.apache.org/download.cgi
+
+* Then you can run a pipeline locally with the command line::
+
+  java -cp target/googlegenomics-dataflow-java-v1beta.jar \
     com.google.cloud.genomics.dataflow.pipelines.VariantSimilarity \
     --project=google.com:genomics-api \
     --output=gs://cloud-genomics-dataflow-tests/output/localtest.txt
-``` 
     
-Run deployed
+  Note: when running locally, you may run into memory issues depending on the capacity of your local machine.
+  
+* To deploy your pipeline (which runs on Google Compute Engine), some additional 
+  command line arguments are required::
 
-```
   java -cp target/googlegenomics-dataflow-java-v1beta.jar \
     com.google.cloud.genomics.dataflow.pipelines.VariantSimilarity \
     --runner=BlockingDataflowPipelineRunner \
@@ -32,8 +35,15 @@ Run deployed
     --output=gs://cloud-genomics-dataflow-tests/output/test.txt \
     --numWorkers=10 \
     --zone=us-central1-b
-```    
 
-By default, the max workers you can have without requesting more quota is 16. (That's the limit on GCE VMs)
+  Note: By default, the max workers you can have without requesting more GCE quota 
+  is 16. (That's the default limit on VMs)
 
-##Check GATK, Picard, and BWA licenses before releasing
+TODO: Explain each command line arg so this section makes more sense
+
+
+Code layout
+-----------
+
+The [Main directory](/src/main/java/com/google/cloud/genomics/dataflow) contains several useful utilities:
+
