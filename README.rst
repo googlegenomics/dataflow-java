@@ -39,7 +39,36 @@ Getting started
 
 TODO: Explain each command line arg so this section makes more sense
 
+* Deploying FDA Kmer indexing pipeline::
+  
+     java -Xmx8g -cp "target/googlegenomics-dataflow-java-v1beta.jar" \
+      com.google.cloud.genomics.dataflow.pipelines.FDAPipeline \
+      --runner=BlockingDataflowPipelineRunner \
+      --project=google.com:genomics-api \
+      --stagingLocation=gs://cloud-genomics-user-peijinz/staging \
+      --outDir=gs://cloud-genomics-user-peijinz/output/test \
+      --datasetId=13770895782338053201 \
+      --kValues=4,5,6 \
+      --writeKmer \
+      --apiKey="AIzaSyB6DSNuXBIzt4PaB9GNchRy6nZo5PdGhPI" \
+      --zone=us-central1-b \
+      --numWorkers=50
 
+datasetId:
+  Dataset to query over. Currently available:
+  13770895782338053201: Test Dataset (contains one copy of SRR1188432)
+  13548522727457381097: Listeria Dataset
+  2831627299882627465: Salmonella Dataset
+
+kValues:
+  Values of k to use for indexing. Multiple values supported.
+  Note: dataflow currently has issues going over k >= 8
+
+writeKmer:
+  Option for writing kmer table out to file
+
+numWorkers:
+  Number of workers to run workflow over. Max value is 100.
 .. _Apache Maven: http://maven.apache.org/download.cgi
 
 
