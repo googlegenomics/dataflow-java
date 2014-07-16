@@ -18,15 +18,11 @@ package com.google.cloud.genomics.dataflow.functions;
 import com.google.cloud.dataflow.sdk.transforms.DoFn;
 import com.google.cloud.dataflow.sdk.util.GcsUtil;
 import com.google.cloud.dataflow.sdk.values.KV;
-import com.google.cloud.genomics.dataflow.GenomicsException;
-import com.google.common.collect.Lists;
+import com.google.cloud.genomics.dataflow.utils.GcsFileUtil;
+import com.google.cloud.genomics.dataflow.utils.GenomicsException;
 
 import java.io.File;
 import java.io.IOException;
-import java.io.RandomAccessFile;
-import java.nio.channels.FileChannel;
-import java.nio.channels.WritableByteChannel;
-import java.util.List;
 import java.util.logging.Logger;
 
 /**
@@ -50,17 +46,19 @@ public class AssembleSra extends DoFn<String, KV<String,String>> {
   
   public void setupUtils(String home) throws IOException, GenomicsException, InterruptedException {
     Process getSPAdes = null, getSraToolkit = null;
-    List<String> copyArgs = Lists.newArrayList("gsutil", "-m", "cp", "-R", home);
+    String utilityDir = "gs://genomics-utilities";
 
     File SPAdes = new File(home, "SPAdes");
     if (!SPAdes.exists()) {
       LOG.info("Downloading SPAdes to " + home);
-      getSPAdes = new ProcessBuilder(copyArgs).start();
+      getSPAdes = new ProcessBuilder(
+          "gsutil", "-m", "cp", "-R", utilityDir + "/SPAdes", home).start();
     }
     File SraToolkit = new File(home, "SraToolkit");
     if (!SraToolkit.exists()) {
       LOG.info("Downloading SraToolkit to " + home);
-      getSraToolkit = new ProcessBuilder(copyArgs).start();
+      getSraToolkit = new ProcessBuilder(
+          "gsutil", "-m", "cp", "-R", utilityDir + "/SraToolkit", home).start();
     }
 
     if (getSPAdes != null && (getSPAdes.waitFor() != 0 || getSPAdes.exitValue() != 0)) {
@@ -133,19 +131,8 @@ public class AssembleSra extends DoFn<String, KV<String,String>> {
       
       LOG.info("Successfully completed assembly of " + accession);
       
-      RandomAccessFile contigFile = new RandomAccessFile(
-          home + "/" + accession + "/contigs.fasta", "r");
-      FileChannel contigChannel = contigFile.getChannel();
-      WritableByteChannel outputChannel = gcsUtil.create(
-          GcsUtil.asGcsFilename(contigPath), "text/plain");
-      
-      int pos = 0;
-      while (contigChannel.transferTo(pos, BUFFER_SIZE, outputChannel) == BUFFER_SIZE) {
-        pos += BUFFER_SIZE;
-      }
-      outputChannel.close();
-      contigChannel.close();
-      contigFile.close();
+      GcsFileUtil.localToGcs(home + "/" + accession + "/contigs.fasta", 
+          contigPath, gcsUtil, "text/plain", BUFFER_SIZE);
       
       LOG.info("Successfully uploaded contig to GCS");
       

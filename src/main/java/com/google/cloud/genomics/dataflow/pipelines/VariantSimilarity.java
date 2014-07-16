@@ -25,13 +25,13 @@ import com.google.cloud.dataflow.sdk.runners.PipelineRunner;
 import com.google.cloud.dataflow.sdk.transforms.ParDo;
 import com.google.cloud.dataflow.utils.OptionsParser;
 import com.google.cloud.dataflow.utils.RequiredOption;
-import com.google.cloud.genomics.dataflow.DataflowWorkarounds;
-import com.google.cloud.genomics.dataflow.GenomicsApi;
-import com.google.cloud.genomics.dataflow.GenomicsOptions;
 import com.google.cloud.genomics.dataflow.coders.GenericJsonCoder;
 import com.google.cloud.genomics.dataflow.functions.ExtractSimilarCallsets;
 import com.google.cloud.genomics.dataflow.functions.OutputPCoAFile;
 import com.google.cloud.genomics.dataflow.readers.VariantReader;
+import com.google.cloud.genomics.dataflow.utils.DataflowWorkarounds;
+import com.google.cloud.genomics.dataflow.utils.GenomicsApi;
+import com.google.cloud.genomics.dataflow.utils.GenomicsOptions;
 import com.google.common.collect.Lists;
 
 import java.io.IOException;

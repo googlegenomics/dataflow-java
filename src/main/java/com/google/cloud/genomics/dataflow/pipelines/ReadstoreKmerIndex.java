@@ -26,13 +26,13 @@ import com.google.cloud.dataflow.sdk.values.KV;
 import com.google.cloud.dataflow.sdk.values.PCollection;
 import com.google.cloud.dataflow.utils.OptionsParser;
 import com.google.cloud.dataflow.utils.RequiredOption;
-import com.google.cloud.genomics.dataflow.DataflowWorkarounds;
-import com.google.cloud.genomics.dataflow.GenomicsApi;
-import com.google.cloud.genomics.dataflow.GenomicsOptions;
 import com.google.cloud.genomics.dataflow.coders.GenericJsonCoder;
 import com.google.cloud.genomics.dataflow.functions.GenerateKmers;
 import com.google.cloud.genomics.dataflow.functions.WriteKmers;
 import com.google.cloud.genomics.dataflow.readers.ReadsetToReads;
+import com.google.cloud.genomics.dataflow.utils.DataflowWorkarounds;
+import com.google.cloud.genomics.dataflow.utils.GenomicsApi;
+import com.google.cloud.genomics.dataflow.utils.GenomicsOptions;
 import com.google.common.collect.Lists;
 
 import java.io.IOException;
