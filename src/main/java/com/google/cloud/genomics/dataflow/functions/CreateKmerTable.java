@@ -17,51 +17,76 @@
 package com.google.cloud.genomics.dataflow.functions;
 
 import com.google.api.client.util.Lists;
+import com.google.cloud.dataflow.sdk.transforms.AsIterable;
+import com.google.cloud.dataflow.sdk.transforms.FromIterable;
+import com.google.cloud.dataflow.sdk.transforms.PTransform;
+import com.google.cloud.dataflow.sdk.transforms.SeqDo;
 import com.google.cloud.dataflow.sdk.transforms.SerializableFunction;
 import com.google.cloud.dataflow.sdk.values.KV;
+import com.google.cloud.dataflow.sdk.values.PCollection;
 
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
 
-public class CreateKmerTable implements SerializableFunction<Iterable<KV<KV<String, String>, Long>>,
-    Iterable<String>> {
+/**
+ * Given a series of kmer count entries, collects them all and outputs the results to a csv table
+ * 
+ * Input: KV<KV<Name, Kmer>, Count>
+ * Output: Each row of the table. First element a title row
+ */
+public class CreateKmerTable extends 
+    PTransform<PCollection<KV<KV<String, String>, Long>>, PCollection<String>> {
+
+  /**
+   * From a series of kmer counts generates a table
+   */
+  private class GenTable implements 
+      SerializableFunction<Iterable<KV<KV<String, String>, Long>>, Iterable<String>> {
+    
+    @Override
+    public Iterable<String> apply(Iterable<KV<KV<String, String>, Long>> similarityData) {
+      // Transform the data into a matrix
+      LinkedHashSet<String> accessions = new LinkedHashSet<String>();
+      HashSet<String> kmers = new HashSet<String>();
+      HashMap<String, Long> counts = new HashMap<String, Long>();
+
+      for (KV<KV<String, String>, Long> entry : similarityData) {
+        String accession = entry.getKey().getKey();
+        String kmer = entry.getKey().getValue();
+        accessions.add(accession);
+        kmers.add(kmer);
+        counts.put(accession + " " + kmer, entry.getValue());
+      }
+
+      List<String> table = Lists.newArrayList();
+
+      StringBuilder title = new StringBuilder();
+      title.append("Accessions");
+      for (String kmer : kmers) {
+        title.append(",").append(kmer);
+      }
+      table.add(title.toString());
+
+      for (String accession : accessions) {
+        StringBuilder line = new StringBuilder();
+        line.append(accession);
+        for (String kmer : kmers) {
+          Long count = counts.get(accession + " " + kmer);
+          line.append(",").append((count == null) ? 0 : count);
+        }
+        table.add(line.toString());
+      }
+
+      return table;
+    }
+  }
 
   @Override
-  public Iterable<String> apply(Iterable<KV<KV<String, String>, Long>> similarityData) {
-    // Transform the data into a matrix
-    LinkedHashSet<String> accessions = new LinkedHashSet<String>();
-    HashSet<String> kmers = new HashSet<String>();
-    HashMap<String, Long> counts = new HashMap<String, Long>();
-
-    for (KV<KV<String, String>, Long> entry : similarityData) {
-      String accession = entry.getKey().getKey();
-      String kmer = entry.getKey().getValue();
-      accessions.add(accession);
-      kmers.add(kmer);
-      counts.put(accession + " " + kmer, entry.getValue());
-    }
-    
-    List<String> table = Lists.newArrayList();
-    
-    StringBuilder title = new StringBuilder();
-    title.append("Accessions");
-    for (String kmer : kmers) {
-      title.append(",").append(kmer);
-    }
-    table.add(title.toString());
-    
-    for (String accession : accessions) {
-      StringBuilder line = new StringBuilder();
-      line.append(accession);
-      for (String kmer : kmers) {
-        Long count = counts.get(accession + " " + kmer);
-        line.append(",").append((count == null) ? 0 : count);
-      }
-      table.add(line.toString());
-    }
-
-    return table;
+  public PCollection<String> apply(PCollection<KV<KV<String, String>, Long>> kmers) {
+    return kmers.apply(AsIterable.<KV<KV<String, String>, Long>>create())
+    .apply(SeqDo.named("Create table").of(new GenTable()))
+    .apply(FromIterable.<String>create()).setOrdered(true);
   }
 }

@@ -24,8 +24,8 @@ import com.google.common.collect.Lists;
 import java.util.List;
 
 /**
- * Generates kmers for a given string.
- * Input: KV(Name, any sequence)
+ * Generates kmers from a given nucleotide sequence
+ * Input: KV(Name, sequence)
  * Output: Set<KV(Name, kmers from the sequence)>
  */
 public class GenerateKmers extends DoFn<KV<String, String>, KV<String, String>> {
