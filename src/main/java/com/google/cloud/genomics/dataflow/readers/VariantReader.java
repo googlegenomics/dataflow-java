@@ -18,7 +18,7 @@ package com.google.cloud.genomics.dataflow.readers;
 import com.google.api.services.genomics.model.SearchVariantsRequest;
 import com.google.api.services.genomics.model.SearchVariantsResponse;
 import com.google.api.services.genomics.model.Variant;
-import com.google.cloud.genomics.dataflow.GenomicsApi;
+import com.google.cloud.genomics.dataflow.utils.GenomicsApi;
 
 import java.io.IOException;
 import java.util.logging.Logger;

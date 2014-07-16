@@ -16,7 +16,7 @@
 package com.google.cloud.genomics.dataflow.readers;
 
 import com.google.cloud.dataflow.sdk.transforms.DoFn;
-import com.google.cloud.genomics.dataflow.GenomicsApi;
+import com.google.cloud.genomics.dataflow.utils.GenomicsApi;
 
 import java.io.IOException;
 

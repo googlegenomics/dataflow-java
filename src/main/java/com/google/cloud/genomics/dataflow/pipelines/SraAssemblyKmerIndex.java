@@ -25,11 +25,11 @@ import com.google.cloud.dataflow.sdk.values.KV;
 import com.google.cloud.dataflow.sdk.values.PCollection;
 import com.google.cloud.dataflow.utils.OptionsParser;
 import com.google.cloud.dataflow.utils.RequiredOption;
-import com.google.cloud.genomics.dataflow.GenomicsOptions;
 import com.google.cloud.genomics.dataflow.functions.ExtractContigs;
 import com.google.cloud.genomics.dataflow.functions.AssembleSra;
 import com.google.cloud.genomics.dataflow.functions.GenerateKmers;
 import com.google.cloud.genomics.dataflow.functions.WriteKmers;
+import com.google.cloud.genomics.dataflow.utils.GenomicsOptions;
 
 import java.util.logging.Logger;
 
