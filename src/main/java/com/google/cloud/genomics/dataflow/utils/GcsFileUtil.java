@@ -9,10 +9,13 @@ import java.nio.channels.SeekableByteChannel;
 import java.nio.channels.WritableByteChannel;
 
 /**
- * Utilities for managing GCS files
+ * Utilities for working with GCS files
  */
 public class GcsFileUtil {
   
+  /**
+   * Given a path to a local file and desired gcs path, copies the local file to GCS
+   */
   public static void localToGcs(String localFilePath, String gcsFilePath,
       GcsUtil gcsUtil, String fileType, int bufferSize) throws IOException {
     RandomAccessFile localFile = new RandomAccessFile(localFilePath, "r");
@@ -29,6 +32,9 @@ public class GcsFileUtil {
     localFile.close();
   }
   
+  /**
+   * Given a path to a gcs file and a local path, copies the gcs file to local path
+   */
   public static void gcsToLocal(String gcsFilePath, String localFilePath,
       GcsUtil gcsUtil, int bufferSize) throws IOException {
     RandomAccessFile localFile = new RandomAccessFile(localFilePath, "w");
