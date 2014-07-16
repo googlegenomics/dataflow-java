@@ -118,7 +118,8 @@ public class SraAssemblyKmerIndex {
   }
   
   public static void main(String[] args) {
-    Options options = OptionsParser.parse(args, Options.class, SraAssemblyKmerIndex.class.getSimpleName());
+    Options options = OptionsParser.parse(
+        args, Options.class, SraAssemblyKmerIndex.class.getSimpleName());
     options.checkArgs();
     
     if (options.gcsUtil == null) {
