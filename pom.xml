@@ -30,6 +30,13 @@
       <organizationUrl>http://www.google.com</organizationUrl>
       <timezone>-7</timezone>
     </developer>
+    <developer>
+      <id>xzhangpeijin</id>
+      <name>Peijin Zhang</name>
+      <organization>Google</organization>
+      <organizationUrl>http://www.google.com</organizationUrl>
+      <timezone>-7</timezone>
+    </developer>
   </developers>
 
   <contributors/>
@@ -74,7 +81,7 @@
     <dependency>
       <groupId>com.google.cloud.dataflow</groupId>
       <artifactId>dataflow-sdk</artifactId>
-      <version>1.0.140617</version>
+      <version>1.0.140709</version>
     </dependency>
     <dependency>
       <!-- Command line parsing library. -->
