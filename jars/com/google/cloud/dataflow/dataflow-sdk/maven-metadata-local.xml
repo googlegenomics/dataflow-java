@@ -3,10 +3,10 @@
   <groupId>com.google.cloud.dataflow</groupId>
   <artifactId>dataflow-sdk</artifactId>
   <versioning>
-    <release>1.0.140617</release>
+    <release>1.0.140709</release>
     <versions>
-      <version>1.0.140617</version>
+      <version>1.0.140709</version>
     </versions>
-    <lastUpdated>20140617230506</lastUpdated>
+    <lastUpdated>20140710032417</lastUpdated>
   </versioning>
 </metadata>
