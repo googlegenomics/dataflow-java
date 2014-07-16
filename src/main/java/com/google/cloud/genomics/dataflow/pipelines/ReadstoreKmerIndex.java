@@ -41,7 +41,7 @@ import java.util.List;
 import java.util.logging.Logger;
 
 /**
- * Dataflows pipeline for performing PCA on generated kmer indicies from the reads in a dataset
+ * Dataflow pipeline for generating a kmer index using reads for all readsets in a given dataset
  */
 public class ReadstoreKmerIndex {
   private static final Logger LOG = Logger.getLogger(ReadstoreKmerIndex.class.getName());
