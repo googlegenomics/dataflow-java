@@ -69,8 +69,8 @@ import java.util.logging.Logger;
 public class VariantSimilarity {
   private static final Logger LOG = Logger.getLogger(VariantSimilarity.class.getName());
 
-  private static List<SearchVariantsRequest> getVariantRequests(GetVariantsSummaryResponse summary,
-      Options options) throws IOException {
+  private static List<SearchVariantsRequest> getVariantRequests(
+      GetVariantsSummaryResponse summary, Options options) {
 
     ContigBound bound = summary.getContigBounds().get(0);
 

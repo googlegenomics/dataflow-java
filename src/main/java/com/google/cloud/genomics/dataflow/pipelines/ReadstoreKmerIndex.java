@@ -19,7 +19,6 @@ import com.google.api.services.genomics.model.Readset;
 import com.google.api.services.genomics.model.SearchReadsetsRequest;
 import com.google.api.services.genomics.model.SearchReadsetsResponse;
 import com.google.cloud.dataflow.sdk.Pipeline;
-import com.google.cloud.dataflow.sdk.io.TextIO;
 import com.google.cloud.dataflow.sdk.runners.Description;
 import com.google.cloud.dataflow.sdk.runners.PipelineRunner;
 import com.google.cloud.dataflow.sdk.transforms.*;
@@ -31,12 +30,11 @@ import com.google.cloud.genomics.dataflow.DataflowWorkarounds;
 import com.google.cloud.genomics.dataflow.GenomicsApi;
 import com.google.cloud.genomics.dataflow.GenomicsOptions;
 import com.google.cloud.genomics.dataflow.coders.GenericJsonCoder;
-import com.google.cloud.genomics.dataflow.functions.CreateKmerTable;
 import com.google.cloud.genomics.dataflow.functions.GenerateKmers;
+import com.google.cloud.genomics.dataflow.functions.WriteKmers;
 import com.google.cloud.genomics.dataflow.readers.ReadsetToReads;
 import com.google.common.collect.Lists;
 
-import java.io.File;
 import java.io.IOException;
 import java.math.BigInteger;
 import java.util.List;
@@ -45,21 +43,26 @@ import java.util.logging.Logger;
 /**
  * Dataflows pipeline for performing PCA on generated kmer indicies from the reads in a dataset
  */
-public class FDAPipeline {
-  private static final Logger LOG = Logger.getLogger(FDAPipeline.class.getName());
+public class ReadstoreKmerIndex {
+  private static final Logger LOG = Logger.getLogger(ReadstoreKmerIndex.class.getName());
   private static final String READSET_FIELDS = "nextPageToken,readsets(id,name)";
   private static final String READ_FIELDS = "nextPageToken,reads(originalBases)";
 
   // Do not instantiate
-  private FDAPipeline() { }
+  private ReadstoreKmerIndex() { }
 
   private static class Options extends GenomicsOptions {
-    @Description("Path of directory to write results to")
+    @Description("Path of GCS directory to write results to")
     @RequiredOption
-    public String outDir;
+    public String outputLocation;
     
-    @Description("Whether or not kmer indices should be printed")
-    public boolean writeKmer;
+    @Description("Whether or not kmer indices should be printed as table instead or entries\n"
+        + "Note: table does not work for k > 8 due to Dataflow limitations")
+    public boolean writeTable;
+    
+    @Description("Prefix to be used for output file. Files written will be in the form"
+        + "<outputPrefix>K<KValue>.csv/txt. Default value is KmerIndex")
+    public String outputPrefix = "KmerIndex";
     
     @Description("K values to be used for indexing. Separate multiple values using commas\n"
         + "EG: --kValues=1,2,3")
@@ -113,7 +116,8 @@ public class FDAPipeline {
   }
   
   public static void main(String[] args) throws IOException {
-    Options options = OptionsParser.parse(args, Options.class, FDAPipeline.class.getSimpleName());
+    Options options = OptionsParser.parse(
+        args, Options.class, ReadstoreKmerIndex.class.getSimpleName());
     options.checkArgs();
     
     int[] kValues = options.parseValues();
@@ -128,25 +132,13 @@ public class FDAPipeline {
         readsets, GenericJsonCoder.of(Readset.class), p, options.numWorkers)
         .apply(ParDo.named("Readsets To Reads")
             .of(new ReadsetToReads(token, options.apiKey, READ_FIELDS)));
-
-    PCollection<KV<String, String>>[] kmers = new PCollection[kValues.length];
     
-    for (int i = 0; i < kValues.length; i++) {
-      kmers[i] = reads.apply(ParDo.named("Generate Kmers").of(new GenerateKmers(kValues[i])));
-      
-      // Print to file
-      if (options.writeKmer) {
-        String outfile = options.outDir + File.separator + "KmerIndexK" + kValues[i] + ".csv";
-        kmers[i].apply(Count.<KV<String, String>>create())
-            .apply(AsIterable.<KV<KV<String, String>, Long>>create())
-            .apply(SeqDo.named("Create table").of(new CreateKmerTable()))
-            .apply(FromIterable.<String>create()).setOrdered(true)
-            .apply(TextIO.Write.named("Write Kmer Indices").to(outfile));
-      }
-      
-      // Figure this out later
-//      kmers.apply(new OutputPcaFile(
-//          options.outDir + File.separator + "PCAResultK" + kValues[i] + ".txt"));
+    for (int kValue : kValues) {
+      String outFile = options.outputLocation + "/" + options.outputPrefix + "K" + kValue;
+      outFile += (options.writeTable) ? ".csv" : ".txt";
+      reads.apply(ParDo.named("Generate Kmers")
+          .of(new GenerateKmers(kValue)))
+          .apply(new WriteKmers(outFile, options.writeTable));
     }
     
     p.run(PipelineRunner.fromOptions(options));
