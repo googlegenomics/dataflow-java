@@ -29,12 +29,15 @@ import com.google.cloud.genomics.dataflow.functions.ExtractContigs;
 import com.google.cloud.genomics.dataflow.functions.AssembleSra;
 import com.google.cloud.genomics.dataflow.functions.GenerateKmers;
 import com.google.cloud.genomics.dataflow.functions.WriteKmers;
+import com.google.cloud.genomics.dataflow.utils.GcsFileUtil;
 import com.google.cloud.genomics.dataflow.utils.GenomicsOptions;
 
+import java.io.IOException;
 import java.util.logging.Logger;
 
 /**
- * Dataflows pipeline for performing PCA on generated kmer indicies from the reads in a dataset
+ * Dataflow piepline for constructing kmer indicies from assembled genomes using a list of SRA 
+ * accessions. SRA accessions can be given either as a local or GCS based txt file.
  * 
  * If the writeContigs option is set, assembled contigs will be uploaded to GCS under the directory
  * outDir/contigs/<Accession>.fasta. In any subsequent runs of the pipeline, before committing to
@@ -100,6 +103,17 @@ public class SraAssemblyKmerIndex {
       } catch (NumberFormatException e) {
         throw new IllegalArgumentException("Invalid K values");
       }
+      
+      // Local file is also supported
+      if (!sraFile.startsWith("gs://")) {
+        try {
+          String newFile = stagingLocation + "/TempSraFile.txt";
+          GcsFileUtil.localToGcs(sraFile, newFile, GcsUtil.create(this), "text/plain", 4096);
+        } catch (IOException e) {
+          LOG.severe("Could not stage list of SRA accessions to GCS");
+          throw new IllegalArgumentException("Error loading SRA file");
+        }
+      }
     }
     
     public int[] parseValues() throws NumberFormatException {
@@ -121,10 +135,6 @@ public class SraAssemblyKmerIndex {
     Options options = OptionsParser.parse(
         args, Options.class, SraAssemblyKmerIndex.class.getSimpleName());
     options.checkArgs();
-    
-    if (options.gcsUtil == null) {
-      options.gcsUtil = GcsUtil.create(options);
-    }
     
     int[] kValues = options.parseValues();
     
