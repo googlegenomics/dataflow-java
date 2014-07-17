@@ -39,20 +39,20 @@ Getting started
 
 TODO: Explain each command line arg so this section makes more sense
 
-* Deploying FDA Kmer indexing pipeline::
+* Deploying Readstore Kmer indexing pipeline::
   
      java -Xmx8g -cp "target/googlegenomics-dataflow-java-v1beta.jar" \
-      com.google.cloud.genomics.dataflow.pipelines.FDAPipeline \
+      com.google.cloud.genomics.dataflow.pipelines.ReadstoreKmerIndex \
       --runner=BlockingDataflowPipelineRunner \
       --project=google.com:genomics-api \
       --stagingLocation=gs://cloud-genomics-user-peijinz/staging \
       --outDir=gs://cloud-genomics-user-peijinz/output/test \
       --datasetId=13770895782338053201 \
       --kValues=4,5,6 \
-      --writeKmer \
+      --writeTable \
       --apiKey="AIzaSyB6DSNuXBIzt4PaB9GNchRy6nZo5PdGhPI" \
       --zone=us-central1-b \
-      --numWorkers=50
+      --numWorkers=4
 
 datasetId:
   Dataset to query over. Currently available:
@@ -94,9 +94,12 @@ pipelines:
   * ``VariantSimilarity`` runs a Principal coordinates analysis over a dataset containing variants, and 
     writes a file of graph results that can be easily displayed by Google Sheets.
 
-  * ``FDAPipeline`` generates kmers for a dataset of reads, and runs Principal coordinates 
-    analysis over the resulting data to find readset outliers that may indicate new species. 
+  * ``ReadstoreKmerIndex`` queries against Cloud Genomics Readstore to generate a kmer index for each readset
+    under a given dataset. Kmers will be counted over each read in a readset and printed to csv or txt format.
 
+utils: 
+  contains utilities for running dataflow workflows against the genomics API
+  
 DataflowWorkarounds.java:
   contains workarounds needed to use the Google Cloud Dataflow APIs. 
   This class should dissapear before Dataflow goes public.
