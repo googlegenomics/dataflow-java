@@ -17,7 +17,7 @@ public class GcsFileUtil {
    * Given a path to a local file and desired gcs path, copies the local file to GCS
    */
   public static void localToGcs(String localFilePath, String gcsFilePath,
-      GcsUtil gcsUtil, String fileType, int bufferSize) throws IOException {
+      GcsUtil gcsUtil, String fileType, long bufferSize) throws IOException {
     RandomAccessFile localFile = new RandomAccessFile(localFilePath, "r");
     FileChannel localChannel = localFile.getChannel();
     WritableByteChannel gcsChannel = gcsUtil.create(
@@ -36,7 +36,7 @@ public class GcsFileUtil {
    * Given a path to a gcs file and a local path, copies the gcs file to local path
    */
   public static void gcsToLocal(String gcsFilePath, String localFilePath,
-      GcsUtil gcsUtil, int bufferSize) throws IOException {
+      GcsUtil gcsUtil, long bufferSize) throws IOException {
     RandomAccessFile localFile = new RandomAccessFile(localFilePath, "w");
     FileChannel localChannel = localFile.getChannel();
     SeekableByteChannel gcsChannel = gcsUtil.open(GcsUtil.asGcsFilename(gcsFilePath));
