@@ -26,6 +26,7 @@ import com.google.common.collect.ImmutableList;
 
 import java.io.IOException;
 import java.math.BigInteger;
+import java.util.logging.Logger;
 
 /**
  * Converts Readsets to Key values of Readset name and Read bases
@@ -33,6 +34,7 @@ import java.math.BigInteger;
  * Output: KV(Name, Read Bases)
  */
 public class ReadsetToReads extends GenomicsApiReader<Readset, KV<String, String>> {
+  private static final Logger LOG = Logger.getLogger(ReadsetToReads.class.getName());
   private String readFields;
 
   public ReadsetToReads(String accessToken, String apiKey, String readFields) {
@@ -46,14 +48,18 @@ public class ReadsetToReads extends GenomicsApiReader<Readset, KV<String, String
         .setReadsetIds(ImmutableList.of(set.getId()))
         .setMaxResults(new BigInteger("1024"));
 
+    long total = 0;
     do {
       SearchReadsResponse response = api.executeRequest(
           api.getService().reads().search(request), readFields);
-
+      total += response.getReads().size();
+      
       for (Read read : response.getReads()) {
         c.output(KV.of(set.getName(), read.getOriginalBases()));
       }
       request.setPageToken(response.getNextPageToken());
+      
+      LOG.info("Loaded " + total + " reads for readset " + set.getId());
     } while (request.getPageToken() != null);
   }
 }
