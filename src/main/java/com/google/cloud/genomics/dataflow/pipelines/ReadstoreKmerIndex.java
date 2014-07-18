@@ -106,11 +106,15 @@ public class ReadstoreKmerIndex {
         .setDatasetIds(Lists.newArrayList(datasetId))
         .setMaxResults(new BigInteger("256"));
     List<Readset> readsets = Lists.newArrayList();
+    long total = 0;
     do {
       SearchReadsetsResponse response = api.executeRequest(
           api.getService().readsets().search(request), READSET_FIELDS);
       readsets.addAll(response.getReadsets());
       request.setPageToken(response.getNextPageToken());
+      
+      total += response.getReadsets().size();
+      LOG.info("Loaded " + total + " readsets");
     } while (request.getPageToken() != null);
     return readsets;
   }
@@ -133,6 +137,7 @@ public class ReadstoreKmerIndex {
         .apply(ParDo.named("Readsets To Reads")
             .of(new ReadsetToReads(token, options.apiKey, READ_FIELDS)));
     
+    LOG.info("Successfully acquired reads, generating kmers...");
     for (int kValue : kValues) {
       String outFile = options.outputLocation + "/" + options.outputPrefix + "K" + kValue;
       outFile += (options.writeTable) ? ".csv" : ".txt";

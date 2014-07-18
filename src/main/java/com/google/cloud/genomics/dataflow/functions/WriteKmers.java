@@ -66,14 +66,17 @@ public class WriteKmers extends PTransform<PCollection<KV<String, String>>, PDon
 
   @Override
   public PDone apply(PCollection<KV<String, String>> kmers) {
+    LOG.info("Counting kmers...");
     PCollection<KV<KV<String, String>, Long>> counts = 
         kmers.apply(Count.<KV<String, String>>create());
     
     PCollection<String> output;
     
     if(writeTable) {
+      LOG.info("Writing kmers to " + outputFile + " in table format");
       output = counts.apply(new CreateKmerTable());
     } else {
+      LOG.info("Writing kmers to " + outputFile + " in list format");
       output = counts.apply(ParDo.named("Format output").of(new FormatKmer()));
     }
     

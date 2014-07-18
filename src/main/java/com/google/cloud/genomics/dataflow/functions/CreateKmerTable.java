@@ -29,6 +29,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.logging.Logger;
 
 /**
  * Given a series of kmer count entries, collects them all and outputs the results to a csv table
@@ -38,7 +39,8 @@ import java.util.List;
  */
 public class CreateKmerTable extends 
     PTransform<PCollection<KV<KV<String, String>, Long>>, PCollection<String>> {
-
+  private static final Logger LOG = Logger.getLogger(CreateKmerTable.class.getName());
+  
   /**
    * From a series of kmer counts generates a table
    */
@@ -52,6 +54,7 @@ public class CreateKmerTable extends
       HashSet<String> kmers = new HashSet<String>();
       HashMap<String, Long> counts = new HashMap<String, Long>();
 
+      LOG.info("Loading data into hash tables");
       for (KV<KV<String, String>, Long> entry : similarityData) {
         String accession = entry.getKey().getKey();
         String kmer = entry.getKey().getValue();
@@ -59,9 +62,11 @@ public class CreateKmerTable extends
         kmers.add(kmer);
         counts.put(accession + " " + kmer, entry.getValue());
       }
-
+      LOG.info("Loaded " + accessions.size() + " rows and " + kmers.size() + " columns");
+      
       List<String> table = Lists.newArrayList();
 
+      LOG.info("Generating rows");
       StringBuilder title = new StringBuilder();
       title.append("Accessions");
       for (String kmer : kmers) {
@@ -79,6 +84,7 @@ public class CreateKmerTable extends
         table.add(line.toString());
       }
 
+      LOG.info("Completed table generation");
       return table;
     }
   }
