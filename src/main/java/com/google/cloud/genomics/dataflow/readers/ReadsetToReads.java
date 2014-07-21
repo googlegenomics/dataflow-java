@@ -20,7 +20,6 @@ import com.google.api.services.genomics.model.Read;
 import com.google.api.services.genomics.model.Readset;
 import com.google.api.services.genomics.model.SearchReadsRequest;
 import com.google.api.services.genomics.model.SearchReadsResponse;
-import com.google.cloud.dataflow.sdk.values.KV;
 import com.google.cloud.genomics.dataflow.utils.GenomicsApi;
 import com.google.common.collect.ImmutableList;
 
@@ -29,11 +28,9 @@ import java.math.BigInteger;
 import java.util.logging.Logger;
 
 /**
- * Converts Readsets to Key values of Readset name and Read bases
- * Input: Readset
- * Output: KV(Name, Read Bases)
+ * Takes in a readset and returns all the reads under that readset
  */
-public class ReadsetToReads extends GenomicsApiReader<Readset, KV<String, String>> {
+public class ReadsetToReads extends GenomicsApiReader<Readset, Read> {
   private static final Logger LOG = Logger.getLogger(ReadsetToReads.class.getName());
   private String readFields;
 
@@ -55,7 +52,7 @@ public class ReadsetToReads extends GenomicsApiReader<Readset, KV<String, String
       total += response.getReads().size();
       
       for (Read read : response.getReads()) {
-        c.output(KV.of(set.getName(), read.getOriginalBases()));
+        c.output(read);
       }
       request.setPageToken(response.getNextPageToken());
       
