@@ -15,13 +15,15 @@
  */
 package com.google.cloud.genomics.dataflow.pipelines;
 
+import com.google.api.services.genomics.model.Read;
 import com.google.api.services.genomics.model.Readset;
 import com.google.api.services.genomics.model.SearchReadsetsRequest;
 import com.google.api.services.genomics.model.SearchReadsetsResponse;
 import com.google.cloud.dataflow.sdk.Pipeline;
 import com.google.cloud.dataflow.sdk.runners.Description;
 import com.google.cloud.dataflow.sdk.runners.PipelineRunner;
-import com.google.cloud.dataflow.sdk.transforms.*;
+import com.google.cloud.dataflow.sdk.transforms.DoFn;
+import com.google.cloud.dataflow.sdk.transforms.ParDo;
 import com.google.cloud.dataflow.sdk.values.KV;
 import com.google.cloud.dataflow.sdk.values.PCollection;
 import com.google.cloud.dataflow.utils.OptionsParser;
@@ -46,7 +48,7 @@ import java.util.logging.Logger;
 public class ReadstoreKmerIndex {
   private static final Logger LOG = Logger.getLogger(ReadstoreKmerIndex.class.getName());
   private static final String READSET_FIELDS = "nextPageToken,readsets(id,name)";
-  private static final String READ_FIELDS = "nextPageToken,reads(originalBases)";
+  private static final String READ_FIELDS = "nextPageToken,reads(readsetId,originalBases)";
 
   // Do not instantiate
   private ReadstoreKmerIndex() { }
@@ -135,7 +137,16 @@ public class ReadstoreKmerIndex {
     PCollection<KV<String, String>> reads = DataflowWorkarounds.getPCollection(
         readsets, GenericJsonCoder.of(Readset.class), p, options.numWorkers)
         .apply(ParDo.named("Readsets To Reads")
-            .of(new ReadsetToReads(token, options.apiKey, READ_FIELDS)));
+            .of(new ReadsetToReads(token, options.apiKey, READ_FIELDS)))
+            .setCoder(GenericJsonCoder.of(Read.class))
+        .apply(ParDo.named("Format Reads").of(new DoFn<Read, KV<String, String>>() {
+
+          @Override
+          public void processElement(ProcessContext c) {
+            Read read = c.element();
+            c.output(KV.of(read.getReadsetId(), read.getOriginalBases()));
+          }
+        }));
     
     LOG.info("Successfully acquired reads, generating kmers...");
     for (int kValue : kValues) {
