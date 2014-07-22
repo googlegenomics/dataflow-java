@@ -17,6 +17,7 @@ package com.google.cloud.genomics.dataflow.pipelines;
 
 import com.google.api.services.genomics.model.Read;
 import com.google.api.services.genomics.model.Readset;
+import com.google.api.services.genomics.model.SearchReadsRequest;
 import com.google.api.services.genomics.model.SearchReadsetsRequest;
 import com.google.api.services.genomics.model.SearchReadsetsResponse;
 import com.google.cloud.dataflow.sdk.Pipeline;
@@ -31,10 +32,11 @@ import com.google.cloud.dataflow.utils.RequiredOption;
 import com.google.cloud.genomics.dataflow.coders.GenericJsonCoder;
 import com.google.cloud.genomics.dataflow.functions.GenerateKmers;
 import com.google.cloud.genomics.dataflow.functions.WriteKmers;
-import com.google.cloud.genomics.dataflow.readers.ReadsetToReads;
+import com.google.cloud.genomics.dataflow.readers.ReadReader;
 import com.google.cloud.genomics.dataflow.utils.DataflowWorkarounds;
 import com.google.cloud.genomics.dataflow.utils.GenomicsApi;
 import com.google.cloud.genomics.dataflow.utils.GenomicsOptions;
+import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Lists;
 
 import java.io.IOException;
@@ -101,24 +103,28 @@ public class ReadstoreKmerIndex {
     }
   }
 
-  private static List<Readset> getReadsets(
+  private static List<SearchReadsRequest> getRequests(
       String accessToken, String apiKey, String datasetId) throws IOException {
     GenomicsApi api = new GenomicsApi(accessToken, apiKey);
     SearchReadsetsRequest request = new SearchReadsetsRequest()
         .setDatasetIds(Lists.newArrayList(datasetId))
         .setMaxResults(new BigInteger("256"));
-    List<Readset> readsets = Lists.newArrayList();
+    List<SearchReadsRequest> requests = Lists.newArrayList();
     long total = 0;
     do {
       SearchReadsetsResponse response = api.executeRequest(
           api.getService().readsets().search(request), READSET_FIELDS);
-      readsets.addAll(response.getReadsets());
+      
+      for (Readset readset : response.getReadsets()) {
+        requests.add(new SearchReadsRequest().setReadsetIds(
+            ImmutableList.of(readset.getId())).setMaxResults(new BigInteger("1024")));
+      }
       request.setPageToken(response.getNextPageToken());
       
       total += response.getReadsets().size();
       LOG.info("Loaded " + total + " readsets");
     } while (request.getPageToken() != null);
-    return readsets;
+    return requests;
   }
   
   public static void main(String[] args) throws IOException {
@@ -130,14 +136,14 @@ public class ReadstoreKmerIndex {
 
     LOG.info("Starting pipeline...");
     String token = options.getAccessToken();
-    List<Readset> readsets = getReadsets(token, options.apiKey, options.datasetId);
+    List<SearchReadsRequest> requests = getRequests(token, options.apiKey, options.datasetId);
     
     Pipeline p = Pipeline.create();
     
     PCollection<KV<String, String>> reads = DataflowWorkarounds.getPCollection(
-        readsets, GenericJsonCoder.of(Readset.class), p, options.numWorkers)
-        .apply(ParDo.named("Readsets To Reads")
-            .of(new ReadsetToReads(token, options.apiKey, READ_FIELDS)))
+        requests, GenericJsonCoder.of(SearchReadsRequest.class), p, options.numWorkers)
+        .apply(ParDo.named("Get Reads")
+            .of(new ReadReader(token, options.apiKey, READ_FIELDS)))
             .setCoder(GenericJsonCoder.of(Read.class))
         .apply(ParDo.named("Format Reads").of(new DoFn<Read, KV<String, String>>() {
 
