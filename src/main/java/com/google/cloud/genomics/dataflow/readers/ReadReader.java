@@ -22,9 +22,11 @@ import com.google.api.services.genomics.model.SearchReadsResponse;
 import com.google.cloud.genomics.dataflow.utils.GenomicsApi;
 
 import java.io.IOException;
+import java.util.logging.Logger;
 
 public class ReadReader extends GenomicsApiReader<SearchReadsRequest, Read> {
-private String readFields;
+  private static final Logger LOG = Logger.getLogger(ReadReader.class.getName());
+  private String readFields;
   
   public ReadReader(String accessToken, String apiKey, String readFields) {
     super(accessToken, apiKey);
@@ -34,7 +36,7 @@ private String readFields;
   @Override
   protected void processApiCall(GenomicsApi api, ProcessContext c, SearchReadsRequest request)
       throws IOException {
-
+    long total = 0;
     do {
       SearchReadsResponse response = api.executeRequest(
           api.getService().reads().search(request), readFields);
@@ -42,10 +44,13 @@ private String readFields;
       if (response.getReads() == null) {
         break;
       }
-
+      
       for (Read read : response.getReads()) {
         c.output(read);
       }
+      
+      total += response.getReads().size();
+      LOG.info("Read " + total + " reads");
       request.setPageToken(response.getNextPageToken());
     } while (request.getPageToken() != null);
   }
