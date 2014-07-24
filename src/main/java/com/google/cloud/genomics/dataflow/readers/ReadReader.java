@@ -37,6 +37,7 @@ public class ReadReader extends GenomicsApiReader<SearchReadsRequest, Read> {
   protected void processApiCall(GenomicsApi api, ProcessContext c, SearchReadsRequest request)
       throws IOException {
     long total = 0;
+    LOG.info("Starting read loop");
     do {
       SearchReadsResponse response = api.executeRequest(
           api.getService().reads().search(request), readFields);

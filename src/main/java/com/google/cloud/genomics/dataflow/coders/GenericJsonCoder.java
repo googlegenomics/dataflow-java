@@ -26,8 +26,11 @@ import com.google.cloud.dataflow.sdk.coders.CoderException;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
+import java.io.BufferedReader;
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.nio.charset.Charset;
 import java.util.Map;
@@ -37,6 +40,7 @@ import java.util.Map;
  * This includes all objects in the Google Genomics Java client library.
 */
 public class GenericJsonCoder<T extends GenericJson> extends AtomicCoder<T> {
+  private static final int READ_LIMIT = 1 << 22; // 4MB buffer for read limit
   private static JacksonFactory jacksonFactory = new JacksonFactory();
 
   public static <T extends GenericJson> GenericJsonCoder<T> of(Class<T> type) {
@@ -68,10 +72,35 @@ public class GenericJsonCoder<T extends GenericJson> extends AtomicCoder<T> {
 
   @Override
   public T decode(InputStream in, Context context) throws IOException {
-    JsonParser jsonParser = jacksonFactory.createJsonParser(in);
-    T obj = jsonParser.parse(type);
-    jsonParser.close();
-    return obj;
+    if (context.isWholeStream) {
+      JsonParser jsonParser = jacksonFactory.createJsonParser(in);
+      T obj = jsonParser.parse(type);
+      jsonParser.close();
+      return obj;
+    } else {
+      /* 
+       * JsonParser reads past the end of the object in the InputStream by a large number of bytes.
+       * When coded in an Iterable, the stream contains concatenated json objects, so this will 
+       * cause errors. To fix this, we allow the inputstream to backtrack READ_LIMIT bytes and 
+       * move it to the end of the read object before closing.
+       * 
+       * NOTE:
+       * If encoded Json object is more than READ_LIMIT bytes and is in iterable, this will fail.
+      */
+      
+      in.mark(READ_LIMIT);
+      JsonParser jsonParser = jacksonFactory.createJsonParser(in);
+      T obj = jsonParser.parse(type);
+
+      ByteArrayOutputStream buf = new ByteArrayOutputStream();
+      encode(obj, buf, context);
+      int skip = buf.size();
+      in.reset();
+      in.skip(skip);
+      
+      jsonParser.close();
+      return obj;
+    }
   }
 
   @Override
