@@ -74,6 +74,7 @@ public class GenomicsApi {
         httpTransport, JSON_FACTORY, clientSecrets, scopes).setAccessType("offline")
         .setDataStoreFactory(dataStoreFactory).build();
     Credential credential = new AuthorizationCodeInstalledApp(flow, new GooglePromptReceiver()).authorize("dataflow");
+    credential.refreshToken();
     return credential.getAccessToken();
   }
 
