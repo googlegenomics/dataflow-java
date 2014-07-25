@@ -44,7 +44,7 @@ public class CreateKmerTable extends
   /**
    * From a series of kmer counts generates a table
    */
-  private class GenTable implements 
+  static class GenTable implements 
       SerializableFunction<Iterable<KV<KV<String, String>, Long>>, Iterable<String>> {
     
     @Override
