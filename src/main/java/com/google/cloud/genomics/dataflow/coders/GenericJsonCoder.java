@@ -26,11 +26,9 @@ import com.google.cloud.dataflow.sdk.coders.CoderException;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
-import java.io.BufferedReader;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.nio.charset.Charset;
 import java.util.Map;
@@ -86,7 +84,7 @@ public class GenericJsonCoder<T extends GenericJson> extends AtomicCoder<T> {
        * 
        * NOTE:
        * If encoded Json object is more than READ_LIMIT bytes and is in iterable, this will fail.
-      */
+       */
       
       in.mark(READ_LIMIT);
       JsonParser jsonParser = jacksonFactory.createJsonParser(in);
