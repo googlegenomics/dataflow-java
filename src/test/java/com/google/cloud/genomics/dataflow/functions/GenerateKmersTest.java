@@ -27,7 +27,7 @@ import static org.junit.Assert.assertTrue;
 public class GenerateKmersTest {
 
   @Test
-  public void testGetKmers() throws Exception {
+  public void testGetKmers() {
     String seq = "ABCNCBA";
     int k = 3;
     GenerateKmers fn = new GenerateKmers(k);
