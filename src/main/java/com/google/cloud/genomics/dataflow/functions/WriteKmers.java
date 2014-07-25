@@ -23,6 +23,7 @@ import com.google.cloud.dataflow.sdk.transforms.ParDo;
 import com.google.cloud.dataflow.sdk.values.KV;
 import com.google.cloud.dataflow.sdk.values.PCollection;
 import com.google.cloud.dataflow.sdk.values.PDone;
+import com.google.common.annotations.VisibleForTesting;
 
 import java.util.logging.Logger;
 
@@ -52,7 +53,8 @@ public class WriteKmers extends PTransform<PCollection<KV<String, String>>, PDon
   /**
    * Converts kmer count format to a string
    */
-  private class FormatKmer extends DoFn<KV<KV<String, String>, Long>, String> {
+  @VisibleForTesting
+  static class FormatKmer extends DoFn<KV<KV<String, String>, Long>, String> {
 
     @Override
     public void processElement(ProcessContext c) {
