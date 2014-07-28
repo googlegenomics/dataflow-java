@@ -39,6 +39,7 @@ public class CreateKmerTableTest {
     KV<KV<String, String>, Long> record3 = KV.of(KV.of("Row2", "AA"), 7L);
     KV<KV<String, String>, Long> record4 = KV.of(KV.of("Row2", "AT"), 8L);
     
+    @SuppressWarnings("unchecked")
     Iterable<String> result = new GenTable().apply(
         Lists.newArrayList(record1, record2, record3, record4));
     

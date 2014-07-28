@@ -33,6 +33,7 @@ public class WriteKmersTest {
   @Test
   public void testFormatKmers() {
     DoFnTester<KV<KV<String, String>, Long>, String> tester = DoFnTester.of(new FormatKmer());
+    @SuppressWarnings("unchecked")
     List<String> output = tester.processBatch(KV.of(KV.of("TEST", "STRING"), 1234L));
     assertTrue(output.size() == 1);
     assertTrue(output.contains("TEST-STRING-1234:"));

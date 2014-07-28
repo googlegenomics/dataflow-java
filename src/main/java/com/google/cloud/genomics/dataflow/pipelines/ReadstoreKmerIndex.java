@@ -127,6 +127,7 @@ public class ReadstoreKmerIndex {
     return requests;
   }
   
+  @SuppressWarnings("unchecked")
   public static void main(String[] args) throws IOException {
     Options options = OptionsParser.parse(
         args, Options.class, ReadstoreKmerIndex.class.getSimpleName());

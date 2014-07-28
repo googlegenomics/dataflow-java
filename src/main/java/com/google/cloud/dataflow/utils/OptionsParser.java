@@ -195,6 +195,7 @@ public class OptionsParser {
     return this;
   }
 
+  @SuppressWarnings("deprecation")
   private ObjectNode parseArgs(String[] args, Map<String, Class<?>> types)
       throws ParseException {
     CommandLineParser parser = new GnuParser();
