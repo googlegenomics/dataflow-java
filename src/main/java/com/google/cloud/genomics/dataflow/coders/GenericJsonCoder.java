@@ -45,6 +45,7 @@ public class GenericJsonCoder<T extends GenericJson> extends AtomicCoder<T> {
     return new GenericJsonCoder<>(type);
   }
 
+  @SuppressWarnings("unchecked")
   @JsonCreator
   public static GenericJsonCoder<? > of(@JsonProperty("type") String classType)
       throws ClassNotFoundException {
