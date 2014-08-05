@@ -21,6 +21,7 @@ import com.google.api.services.genomics.model.SearchReadsRequest;
 import com.google.api.services.genomics.model.SearchReadsetsRequest;
 import com.google.api.services.genomics.model.SearchReadsetsResponse;
 import com.google.cloud.dataflow.sdk.Pipeline;
+import com.google.cloud.dataflow.sdk.runners.DataflowPipelineRunner;
 import com.google.cloud.dataflow.sdk.runners.Description;
 import com.google.cloud.dataflow.sdk.runners.PipelineRunner;
 import com.google.cloud.dataflow.sdk.transforms.DoFn;
@@ -164,6 +165,9 @@ public class ReadstoreKmerIndex {
           .apply(new WriteKmers(outFile, options.writeTable));
     }
     
-    p.run(PipelineRunner.fromOptions(options));
+    DataflowPipelineRunner runner = DataflowPipelineRunner.fromOptions(options);
+    runner.setHooks(DataflowWorkarounds.MAINTENANCE_HOOK);
+    
+    p.run(runner);
   }
 }
