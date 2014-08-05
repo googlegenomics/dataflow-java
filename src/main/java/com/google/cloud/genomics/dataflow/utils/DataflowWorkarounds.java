@@ -15,8 +15,10 @@
  */
 package com.google.cloud.genomics.dataflow.utils;
 
+import com.google.api.services.dataflow.model.CloudWorkflowEnvironment;
 import com.google.cloud.dataflow.sdk.Pipeline;
 import com.google.cloud.dataflow.sdk.coders.Coder;
+import com.google.cloud.dataflow.sdk.runners.DataflowPipelineRunnerHooks;
 import com.google.cloud.dataflow.sdk.transforms.Create;
 import com.google.cloud.dataflow.sdk.transforms.Flatten;
 import com.google.cloud.dataflow.sdk.values.PCollection;
@@ -31,7 +33,19 @@ import java.util.logging.Logger;
  */
 public class DataflowWorkarounds {
   private static final Logger LOG = Logger.getLogger(DataflowWorkarounds.class.getName());
-
+  
+  /**
+   * Hook for setting onHostMaintenance to terminate so workers can be launched on projects
+   * that use service bridges
+   */
+  public static final DataflowPipelineRunnerHooks MAINTENANCE_HOOK = 
+      new DataflowPipelineRunnerHooks() {
+    @Override
+    public void modifyEnvironmentBeforeSubmission(CloudWorkflowEnvironment environment) {
+      environment.set("onHostMaintenance", "TERMINATE");
+    }
+  };
+  
   /**
    * Change a flat list of sharding options into a flattened PCollection to force dataflow to use
    * multiple workers. In the future, this shouldn't be necessary.
