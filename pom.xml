@@ -94,6 +94,11 @@
       <artifactId>gov.nist.math.jama</artifactId>
       <version>1.1.1</version>
     </dependency>
+    <dependency>
+      <groupId>com.google.oauth-client</groupId>
+      <artifactId>google-oauth-client</artifactId>
+      <version>1.18.0-rc</version>
+    </dependency>
   </dependencies>
 
   <build>
