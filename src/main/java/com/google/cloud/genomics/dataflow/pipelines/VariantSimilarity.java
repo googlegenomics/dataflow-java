@@ -20,9 +20,7 @@ import com.google.api.services.genomics.model.GetVariantsSummaryResponse;
 import com.google.api.services.genomics.model.SearchVariantsRequest;
 import com.google.api.services.genomics.model.Variant;
 import com.google.cloud.dataflow.sdk.Pipeline;
-import com.google.cloud.dataflow.sdk.runners.DataflowPipelineRunner;
 import com.google.cloud.dataflow.sdk.runners.Description;
-import com.google.cloud.dataflow.sdk.runners.PipelineRunner;
 import com.google.cloud.dataflow.sdk.transforms.ParDo;
 import com.google.cloud.dataflow.utils.OptionsParser;
 import com.google.cloud.dataflow.utils.RequiredOption;
@@ -129,11 +127,8 @@ public class VariantSimilarity {
             .setCoder(GenericJsonCoder.of(Variant.class))
         .apply(ParDo.named("ExtractSimilarCallsets").of(new ExtractSimilarCallsets()))
         .apply(new OutputPCoAFile(options.output));
-
-    DataflowPipelineRunner runner = DataflowPipelineRunner.fromOptions(options);
-    runner.setHooks(DataflowWorkarounds.MAINTENANCE_HOOK);
     
-    p.run(runner);
+    p.run(DataflowWorkarounds.getRunner(options));
   }
 }
  

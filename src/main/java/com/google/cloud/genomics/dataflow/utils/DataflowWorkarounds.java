@@ -18,6 +18,7 @@ package com.google.cloud.genomics.dataflow.utils;
 import com.google.api.services.dataflow.model.CloudWorkflowEnvironment;
 import com.google.cloud.dataflow.sdk.Pipeline;
 import com.google.cloud.dataflow.sdk.coders.Coder;
+import com.google.cloud.dataflow.sdk.runners.DataflowPipelineRunner;
 import com.google.cloud.dataflow.sdk.runners.DataflowPipelineRunnerHooks;
 import com.google.cloud.dataflow.sdk.transforms.Create;
 import com.google.cloud.dataflow.sdk.transforms.Flatten;
@@ -45,6 +46,12 @@ public class DataflowWorkarounds {
       environment.set("onHostMaintenance", "TERMINATE");
     }
   };
+  
+  public static final DataflowPipelineRunner getRunner(GenomicsOptions options) {
+    DataflowPipelineRunner runner = DataflowPipelineRunner.fromOptions(options);
+    runner.setHooks(DataflowWorkarounds.MAINTENANCE_HOOK);
+    return runner;
+  }
   
   /**
    * Change a flat list of sharding options into a flattened PCollection to force dataflow to use
