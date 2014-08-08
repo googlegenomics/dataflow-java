@@ -20,6 +20,7 @@ import com.google.cloud.dataflow.sdk.Pipeline;
 import com.google.cloud.dataflow.sdk.coders.Coder;
 import com.google.cloud.dataflow.sdk.runners.DataflowPipelineRunner;
 import com.google.cloud.dataflow.sdk.runners.DataflowPipelineRunnerHooks;
+import com.google.cloud.dataflow.sdk.runners.PipelineOptions;
 import com.google.cloud.dataflow.sdk.transforms.Create;
 import com.google.cloud.dataflow.sdk.transforms.Flatten;
 import com.google.cloud.dataflow.sdk.values.PCollection;
@@ -47,7 +48,7 @@ public class DataflowWorkarounds {
     }
   };
   
-  public static final DataflowPipelineRunner getRunner(GenomicsOptions options) {
+  public static final DataflowPipelineRunner getRunner(PipelineOptions options) {
     DataflowPipelineRunner runner = DataflowPipelineRunner.fromOptions(options);
     runner.setHooks(DataflowWorkarounds.MAINTENANCE_HOOK);
     return runner;
