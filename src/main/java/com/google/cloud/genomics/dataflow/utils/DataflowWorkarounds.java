@@ -18,9 +18,11 @@ package com.google.cloud.genomics.dataflow.utils;
 import com.google.api.services.dataflow.model.CloudWorkflowEnvironment;
 import com.google.cloud.dataflow.sdk.Pipeline;
 import com.google.cloud.dataflow.sdk.coders.Coder;
+import com.google.cloud.dataflow.sdk.runners.BlockingDataflowPipelineRunner;
 import com.google.cloud.dataflow.sdk.runners.DataflowPipelineRunner;
 import com.google.cloud.dataflow.sdk.runners.DataflowPipelineRunnerHooks;
 import com.google.cloud.dataflow.sdk.runners.PipelineOptions;
+import com.google.cloud.dataflow.sdk.runners.PipelineRunner;
 import com.google.cloud.dataflow.sdk.transforms.Create;
 import com.google.cloud.dataflow.sdk.transforms.Flatten;
 import com.google.cloud.dataflow.sdk.values.PCollection;
@@ -44,13 +46,18 @@ public class DataflowWorkarounds {
       new DataflowPipelineRunnerHooks() {
     @Override
     public void modifyEnvironmentBeforeSubmission(CloudWorkflowEnvironment environment) {
-      environment.set("onHostMaintenance", "TERMINATE");
+      environment.setOnHostMaintenance("TERMINATE");
     }
   };
   
-  public static final DataflowPipelineRunner getRunner(PipelineOptions options) {
-    DataflowPipelineRunner runner = DataflowPipelineRunner.fromOptions(options);
-    runner.setHooks(DataflowWorkarounds.MAINTENANCE_HOOK);
+  @SuppressWarnings("rawtypes")
+  public static final PipelineRunner getRunner(PipelineOptions options) {
+    PipelineRunner runner = PipelineRunner.fromOptions(options);
+    if (runner instanceof DataflowPipelineRunner) {
+      ((DataflowPipelineRunner) runner).setHooks(DataflowWorkarounds.MAINTENANCE_HOOK);
+    } else if (runner instanceof BlockingDataflowPipelineRunner) {
+      ((BlockingDataflowPipelineRunner) runner).setHooks(DataflowWorkarounds.MAINTENANCE_HOOK);
+    }
     return runner;
   }
   
