@@ -30,6 +30,7 @@ import com.google.cloud.dataflow.sdk.values.PCollectionList;
 import com.google.common.collect.Lists;
 
 import java.util.List;
+import java.util.Map;
 import java.util.logging.Logger;
 
 /**
@@ -42,24 +43,44 @@ public class DataflowWorkarounds {
    * Hook for setting onHostMaintenance to terminate so workers can be launched on projects
    * that use service bridges
    */
-  public static final DataflowPipelineRunnerHooks MAINTENANCE_HOOK = 
-      new DataflowPipelineRunnerHooks() {
-    @Override
-    public void modifyEnvironmentBeforeSubmission(CloudWorkflowEnvironment environment) {
-      environment.setOnHostMaintenance("TERMINATE");
-      environment.setMachineType("n1-standard-16");
+  public static final DataflowPipelineRunnerHooks makeMaintenanceHook(
+      final Map<String, Object> fields) {
+    return new DataflowPipelineRunnerHooks() {
+      @Override
+      public void modifyEnvironmentBeforeSubmission(CloudWorkflowEnvironment environment) {
+        environment.setOnHostMaintenance("TERMINATE");
+        if (fields != null) {
+          for (Map.Entry<String, Object> entry : fields.entrySet()) {
+            environment.set(entry.getKey(), entry.getValue());
+          }
+        }
+      }
+    };
+  }
+  
+  public static final DataflowPipelineRunnerHooks makeMaintenanceHook() {
+    return makeMaintenanceHook(null);
+  }
+  
+  /**
+   * Creates a runner from the given options and applies a hook to set migration policy to 
+   * TERMINATE. Additional desired modifications can be passed in as a map.
+   */
+  @SuppressWarnings("rawtypes")
+  public static final PipelineRunner getRunner(
+      PipelineOptions options, Map<String, Object> fields) {
+    PipelineRunner runner = PipelineRunner.fromOptions(options);
+    if (runner instanceof DataflowPipelineRunner) {
+      ((DataflowPipelineRunner) runner).setHooks(makeMaintenanceHook(fields));
+    } else if (runner instanceof BlockingDataflowPipelineRunner) {
+      ((BlockingDataflowPipelineRunner) runner).setHooks(makeMaintenanceHook(fields));
     }
-  };
+    return runner;
+  }
   
   @SuppressWarnings("rawtypes")
   public static final PipelineRunner getRunner(PipelineOptions options) {
-    PipelineRunner runner = PipelineRunner.fromOptions(options);
-    if (runner instanceof DataflowPipelineRunner) {
-      ((DataflowPipelineRunner) runner).setHooks(DataflowWorkarounds.MAINTENANCE_HOOK);
-    } else if (runner instanceof BlockingDataflowPipelineRunner) {
-      ((BlockingDataflowPipelineRunner) runner).setHooks(DataflowWorkarounds.MAINTENANCE_HOOK);
-    }
-    return runner;
+    return getRunner(options, null);
   }
   
   /**
