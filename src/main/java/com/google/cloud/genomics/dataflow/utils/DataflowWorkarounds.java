@@ -47,6 +47,7 @@ public class DataflowWorkarounds {
     @Override
     public void modifyEnvironmentBeforeSubmission(CloudWorkflowEnvironment environment) {
       environment.setOnHostMaintenance("TERMINATE");
+      environment.setMachineType("n1-standard-16");
     }
   };
   
