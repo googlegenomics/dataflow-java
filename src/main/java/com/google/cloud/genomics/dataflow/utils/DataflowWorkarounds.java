@@ -15,9 +15,11 @@
  */
 package com.google.cloud.genomics.dataflow.utils;
 
+import com.google.api.client.json.GenericJson;
 import com.google.api.services.dataflow.model.CloudWorkflowEnvironment;
 import com.google.cloud.dataflow.sdk.Pipeline;
 import com.google.cloud.dataflow.sdk.coders.Coder;
+import com.google.cloud.dataflow.sdk.coders.CoderRegistry;
 import com.google.cloud.dataflow.sdk.runners.BlockingDataflowPipelineRunner;
 import com.google.cloud.dataflow.sdk.runners.DataflowPipelineRunner;
 import com.google.cloud.dataflow.sdk.runners.DataflowPipelineRunnerHooks;
@@ -27,8 +29,17 @@ import com.google.cloud.dataflow.sdk.transforms.Create;
 import com.google.cloud.dataflow.sdk.transforms.Flatten;
 import com.google.cloud.dataflow.sdk.values.PCollection;
 import com.google.cloud.dataflow.sdk.values.PCollectionList;
+import com.google.cloud.genomics.dataflow.coders.GenericJsonCoder;
 import com.google.common.collect.Lists;
 
+import org.reflections.Reflections;
+import org.reflections.scanners.ResourcesScanner;
+import org.reflections.scanners.SubTypesScanner;
+import org.reflections.util.ClasspathHelper;
+import org.reflections.util.ConfigurationBuilder;
+import org.reflections.util.FilterBuilder;
+
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.logging.Logger;
@@ -84,6 +95,42 @@ public class DataflowWorkarounds {
   }
   
   /**
+   * Registers a coder for a given class so that we don't have to constantly call .setCoder
+   */
+  public static <T> void registerCoder(Pipeline p, Class<T> clazz, final Coder<T> coder) {
+    CoderRegistry registry = p.getCoderRegistry();
+    registry.registerCoder(clazz, new CoderRegistry.CoderFactory() {
+      @SuppressWarnings("rawtypes")
+      @Override
+      public Coder create(List<? extends Coder> typeArgumentCoders) {
+        return coder;
+      }
+    });
+    p.setCoderRegistry(registry);
+  }
+  
+  /**
+   * Shortcut for registering all genomics related classes in dataflow
+   */
+  @SuppressWarnings({"unchecked", "rawtypes"})
+  public static void registerGenomicsCoders(Pipeline p) {
+    List<ClassLoader> classLoadersList = new LinkedList<ClassLoader>();
+    classLoadersList.add(ClasspathHelper.contextClassLoader());
+    classLoadersList.add(ClasspathHelper.staticClassLoader());
+
+    Reflections reflections = new Reflections(new ConfigurationBuilder()
+        .setScanners(new SubTypesScanner(), new ResourcesScanner())
+        .setUrls(ClasspathHelper.forClassLoader(
+            classLoadersList.toArray(new ClassLoader[0])))
+        .filterInputsBy(new FilterBuilder().include(
+            FilterBuilder.prefix("com.google.api.services.genomics.model"))));
+    
+    for (Class clazz : reflections.getSubTypesOf(GenericJson.class)) {
+      DataflowWorkarounds.registerCoder(p, clazz, GenericJsonCoder.of(clazz));
+    }
+  }
+  
+  /**
    * Change a flat list of sharding options into a flattened PCollection to force dataflow to use
    * multiple workers. In the future, this shouldn't be necessary.
    */
@@ -107,10 +154,18 @@ public class DataflowWorkarounds {
       }
       
       LOG.info("Adding collection with " + start + " to " + end);
-      pCollections.add(p.begin().apply(Create.of(shardOptions.subList(start, end)))
-          .setCoder(coder));
+      PCollection<T> collection = p.begin().apply(Create.of(shardOptions.subList(start, end)));
+      if (coder != null) {
+        collection.setCoder(coder);
+      }
+      pCollections.add(collection);
     }
 
     return PCollectionList.of(pCollections).apply(Flatten.<T>create());
+  }
+  
+  public static <T> PCollection<T> getPCollection(
+      List<T> shardOptions, Pipeline p, double numWorkers) {
+    return getPCollection(shardOptions, null, p, numWorkers);
   }
 }

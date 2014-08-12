@@ -18,13 +18,11 @@ package com.google.cloud.genomics.dataflow.pipelines;
 import com.google.api.services.genomics.model.ContigBound;
 import com.google.api.services.genomics.model.GetVariantsSummaryResponse;
 import com.google.api.services.genomics.model.SearchVariantsRequest;
-import com.google.api.services.genomics.model.Variant;
 import com.google.cloud.dataflow.sdk.Pipeline;
 import com.google.cloud.dataflow.sdk.runners.Description;
 import com.google.cloud.dataflow.sdk.transforms.ParDo;
 import com.google.cloud.dataflow.utils.OptionsParser;
 import com.google.cloud.dataflow.utils.RequiredOption;
-import com.google.cloud.genomics.dataflow.coders.GenericJsonCoder;
 import com.google.cloud.genomics.dataflow.functions.ExtractSimilarCallsets;
 import com.google.cloud.genomics.dataflow.functions.OutputPCoAFile;
 import com.google.cloud.genomics.dataflow.readers.VariantReader;
@@ -119,12 +117,11 @@ public class VariantSimilarity {
     List<SearchVariantsRequest> requests = getVariantRequests(summary, options);
 
     Pipeline p = Pipeline.create();
+    DataflowWorkarounds.registerGenomicsCoders(p);
 
-    DataflowWorkarounds.getPCollection(requests,
-        GenericJsonCoder.of(SearchVariantsRequest.class), p, options.numWorkers)
+    DataflowWorkarounds.getPCollection(requests, p, options.numWorkers)
         .apply(ParDo.named("VariantReader")
             .of(new VariantReader(accessToken, options.apiKey, variantFields)))
-            .setCoder(GenericJsonCoder.of(Variant.class))
         .apply(ParDo.named("ExtractSimilarCallsets").of(new ExtractSimilarCallsets()))
         .apply(new OutputPCoAFile(options.output));
     
