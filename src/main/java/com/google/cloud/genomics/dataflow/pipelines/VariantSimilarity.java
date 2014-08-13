@@ -15,6 +15,7 @@
  */
 package com.google.cloud.genomics.dataflow.pipelines;
 
+import com.google.api.services.genomics.Genomics;
 import com.google.api.services.genomics.model.ContigBound;
 import com.google.api.services.genomics.model.GetVariantsSummaryResponse;
 import com.google.api.services.genomics.model.SearchVariantsRequest;
@@ -27,11 +28,12 @@ import com.google.cloud.genomics.dataflow.functions.ExtractSimilarCallsets;
 import com.google.cloud.genomics.dataflow.functions.OutputPCoAFile;
 import com.google.cloud.genomics.dataflow.readers.VariantReader;
 import com.google.cloud.genomics.dataflow.utils.DataflowWorkarounds;
-import com.google.cloud.genomics.dataflow.utils.GenomicsApi;
 import com.google.cloud.genomics.dataflow.utils.GenomicsOptions;
+import com.google.cloud.genomics.utils.GenomicsFactory;
 import com.google.common.collect.Lists;
 
 import java.io.IOException;
+import java.security.GeneralSecurityException;
 import java.util.List;
 import java.util.logging.Logger;
 
@@ -65,6 +67,7 @@ import java.util.logging.Logger;
  */
 public class VariantSimilarity {
   private static final Logger LOG = Logger.getLogger(VariantSimilarity.class.getName());
+  private static final String VARIANT_FIELDS = "nextPageToken,variants(id,calls(info,callsetName))";
 
   private static List<SearchVariantsRequest> getVariantRequests(
       GetVariantsSummaryResponse summary, Options options) {
@@ -103,16 +106,20 @@ public class VariantSimilarity {
   }
 
   @SuppressWarnings("unchecked")
-  public static void main(String[] args) throws IOException {
+  public static void main(String[] args) throws IOException, GeneralSecurityException {
     Options options = OptionsParser.parse(args, Options.class,
         VariantSimilarity.class.getSimpleName());
 
-    String accessToken = options.getAccessToken();
-    String variantFields = "nextPageToken,variants(id,calls(info,callsetName))";
-
-    GenomicsApi api = new GenomicsApi(accessToken, options.apiKey);
-    GetVariantsSummaryResponse summary = api.executeRequest(
-        api.getService().variants().getSummary().setDatasetId(options.datasetId), "contigBounds");
+    GenomicsFactory factory = GenomicsFactory.builder("VariantSimilarity").build();
+    Genomics genomics;
+    if (options.apiKey != null) {
+      genomics = factory.fromApiKey(options.apiKey);
+    } else {
+      genomics = factory.fromClientSecretsFile(options.getClientSecretsFile());
+    }
+    
+    GetVariantsSummaryResponse summary = genomics.variants().getSummary()
+        .setDatasetId(options.datasetId).setFields("contigBounds").execute();
 
     List<SearchVariantsRequest> requests = getVariantRequests(summary, options);
 
@@ -121,7 +128,8 @@ public class VariantSimilarity {
 
     DataflowWorkarounds.getPCollection(requests, p, options.numWorkers)
         .apply(ParDo.named("VariantReader")
-            .of(new VariantReader(accessToken, options.apiKey, variantFields)))
+            .of(new VariantReader("VariantSimilarity", options.apiKey, 
+                options.getClientSecretsFile(), VARIANT_FIELDS)))
         .apply(ParDo.named("ExtractSimilarCallsets").of(new ExtractSimilarCallsets()))
         .apply(new OutputPCoAFile(options.output));
     
