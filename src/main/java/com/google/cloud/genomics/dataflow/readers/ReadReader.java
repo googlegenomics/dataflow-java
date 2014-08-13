@@ -17,68 +17,30 @@
 package com.google.cloud.genomics.dataflow.readers;
 
 import com.google.api.services.genomics.Genomics;
-import com.google.api.services.genomics.Genomics.Reads.Search;
 import com.google.api.services.genomics.model.Read;
 import com.google.api.services.genomics.model.SearchReadsRequest;
 import com.google.cloud.genomics.utils.Paginator;
 
-import java.io.File;
 import java.io.IOException;
 import java.util.logging.Logger;
 
 public class ReadReader extends GenomicsApiReader<SearchReadsRequest, Read> {
   private static final Logger LOG = Logger.getLogger(ReadReader.class.getName());
-  private int numRetries = 10;
-  private String readFields;
   
   public ReadReader(String applicationName, String apiKey, 
-      File clientSecretsFile, String readFields) {
-    super(applicationName, apiKey, clientSecretsFile);
-    this.readFields = readFields;
+      String accessToken, String readFields) {
+    super(applicationName, apiKey, accessToken, readFields);
   }
   
-  public ReadReader(String applicationName, File clientSecretsFile, String readFields) {
-    this(applicationName, null, clientSecretsFile, readFields);
-  }
-  
-  public ReadReader(String applicationName, String apiKey, String readFields) {
-    this(applicationName, apiKey, null, readFields);
-  }
-  
-  /**
-   * Sets the number of times to retry requests. If 0, will never retry. If -1, will always retry.
-   * @param numRetries Number of times to retry requests. Set to 0 for never or -1 for always.
-   */
-  public void setRetries(int numRetries) {
-    this.numRetries = numRetries;
-  }
-
   @Override
   protected void processApiCall(Genomics genomics, ProcessContext c, SearchReadsRequest request)
       throws IOException {
     LOG.info("Starting Reads read loop");
     
-    Paginator.Reads searchReads;
+    Paginator.Reads searchReads = Paginator.Reads.create(genomics, getRetryPolicy());
     
-    switch (numRetries) {
-      case -1:  searchReads = Paginator.Reads.create(genomics, Paginator.alwaysRetry()); break;
-      case 0:   searchReads = Paginator.Reads.create(genomics, Paginator.neverRetry()); break;
-      default:  searchReads = Paginator.Reads.create(genomics, Paginator.retryNTimes(numRetries));
-    }
-    
-    long total = 0;
-    for (Read read : searchReads.search(request, 
-        new Paginator.GenomicsRequestInitializer<Genomics.Reads.Search>() {
-      @Override
-      public void initialize(Search search) {
-        if (readFields != null) {
-          search.setFields(readFields);
-        }
-      }})) {
+    for (Read read : searchReads.search(request, fields)) {
       c.output(read);
-      total++;
     }
-    
-    LOG.info("Read " + total + " reads");
   }
 }

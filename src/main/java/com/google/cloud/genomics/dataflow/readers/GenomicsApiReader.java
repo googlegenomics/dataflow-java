@@ -15,40 +15,61 @@
  */
 package com.google.cloud.genomics.dataflow.readers;
 
+import com.google.api.client.googleapis.auth.oauth2.GoogleCredential;
+import com.google.api.client.json.GenericJson;
 import com.google.api.services.genomics.Genomics;
 import com.google.cloud.dataflow.sdk.transforms.DoFn;
 import com.google.cloud.genomics.utils.GenomicsFactory;
+import com.google.cloud.genomics.utils.Paginator;
+import com.google.common.base.Supplier;
 
-import java.io.File;
 import java.io.IOException;
 import java.security.GeneralSecurityException;
 
-public abstract class GenomicsApiReader<I, O> extends DoFn<I, O> {
+public abstract class GenomicsApiReader<I extends GenericJson, O extends GenericJson> 
+    extends DoFn<I, O> {
   // Used for access to the genomics API
   // If the clientSecretsFile is null, then an apiKey is required
   protected final String applicationName;
-  protected final File clientSecretsFile;
+  protected final String accessToken;
   protected final String apiKey;
+  protected final String fields;
+  protected int numRetries = 10;
 
-  public GenomicsApiReader(String applicationName, String apiKey, File clientSecretsFile) {
+  public GenomicsApiReader(String applicationName, String apiKey,
+      String accessToken, String fields) {
     this.applicationName = applicationName;
     this.apiKey = apiKey;
-    this.clientSecretsFile = clientSecretsFile;
+    this.accessToken = accessToken;
+    this.fields = fields;
   }
   
-  public GenomicsApiReader(String applicationName, File clientSecretsFile) {
-    this(applicationName, null, clientSecretsFile);
+  /**
+   * Sets the number of times to retry requests. If 0, will never retry. If -1, will always retry.
+   * @param numRetries Number of times to retry requests. Set to 0 for never or -1 for always.
+   */
+  public void setRetries(int numRetries) {
+    this.numRetries = numRetries;
   }
   
-  public GenomicsApiReader(String applicationName, String apiKey) {
-    this(applicationName, apiKey, null);
+  /**
+   * Returns the retry policy for this reader based on its numRetries field
+   * @return the retry policy for this reader
+   */
+  public Supplier<Paginator.RetryPolicy<I>> getRetryPolicy() {
+    switch (numRetries) {
+      case -1:  return Paginator.alwaysRetry();
+      case 0:   return Paginator.neverRetry();
+      default:  return Paginator.retryNTimes(numRetries);
+    }
   }
 
   @Override
   public void processElement(ProcessContext c) {
     try {
       GenomicsFactory factory = GenomicsFactory.builder(applicationName).build();
-      processApiCall((apiKey == null) ? factory.fromClientSecretsFile(clientSecretsFile) 
+      processApiCall((apiKey == null) ? 
+          factory.fromCredential(new GoogleCredential().setAccessToken(accessToken)) 
           : factory.fromApiKey(apiKey), c, c.element());
     } catch (IOException | GeneralSecurityException e) {
       throw new RuntimeException(

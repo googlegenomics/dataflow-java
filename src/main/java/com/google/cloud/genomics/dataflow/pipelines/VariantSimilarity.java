@@ -15,6 +15,7 @@
  */
 package com.google.cloud.genomics.dataflow.pipelines;
 
+import com.google.api.client.googleapis.auth.oauth2.GoogleCredential;
 import com.google.api.services.genomics.Genomics;
 import com.google.api.services.genomics.model.ContigBound;
 import com.google.api.services.genomics.model.GetVariantsSummaryResponse;
@@ -115,7 +116,8 @@ public class VariantSimilarity {
     if (options.apiKey != null) {
       genomics = factory.fromApiKey(options.apiKey);
     } else {
-      genomics = factory.fromClientSecretsFile(options.getClientSecretsFile());
+      genomics = factory.fromCredential(new GoogleCredential()
+          .setAccessToken(options.getAccessToken()));
     }
     
     GetVariantsSummaryResponse summary = genomics.variants().getSummary()
@@ -129,7 +131,7 @@ public class VariantSimilarity {
     DataflowWorkarounds.getPCollection(requests, p, options.numWorkers)
         .apply(ParDo.named("VariantReader")
             .of(new VariantReader("VariantSimilarity", options.apiKey, 
-                options.getClientSecretsFile(), VARIANT_FIELDS)))
+                options.getAccessToken(), VARIANT_FIELDS)))
         .apply(ParDo.named("ExtractSimilarCallsets").of(new ExtractSimilarCallsets()))
         .apply(new OutputPCoAFile(options.output));
     

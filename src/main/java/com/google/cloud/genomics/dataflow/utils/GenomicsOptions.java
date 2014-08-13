@@ -17,8 +17,11 @@ package com.google.cloud.genomics.dataflow.utils;
 
 import com.google.cloud.dataflow.sdk.runners.Description;
 import com.google.cloud.dataflow.sdk.runners.PipelineOptions;
+import com.google.cloud.genomics.utils.GenomicsFactory;
 
 import java.io.File;
+import java.io.IOException;
+import java.security.GeneralSecurityException;
 
 /**
  * Contains common genomics pipeline options.
@@ -35,23 +38,25 @@ public class GenomicsOptions extends PipelineOptions {
 
   @Description("If querying a private dataset, or performing any write operations, " +
       "you need to provide the path to client_secrets.json. Do not supply an api key.")
-  public String clientSecretsFilename = "client_secrets.json"; 
+  public String clientSecretsFilename = "client_secrets.json";
+  
+  @Description("Name of the application for oauth purposes. Defaults to GoogleGenomicsApp")
+  public String applicationName = "GoogleGenomicsApp";
   
   /**
-   * Gets client secrets file for this pipeline.
+   * Gets access token for this pipeline.
    * If there is an apiKey, this will always return null.
    * This should be called before the pipeline is started.
+   * 
+   * @throws GeneralSecurityException 
+   * @throws IOException 
    */
-  public File getClientSecretsFile() {
+  public String getAccessToken() throws IOException, GeneralSecurityException {
     if (apiKey != null) {
       return null;
     } else {
-      File file = new File(clientSecretsFilename);
-      if (!file.exists()) {
-        throw new IllegalArgumentException("Client secrets file does not exist");
-      } else {
-        return file;
-      }
+      return GenomicsFactory.builder(applicationName).build()
+            .makeCredential(new File(clientSecretsFilename)).getAccessToken();
     }
   }
 }
