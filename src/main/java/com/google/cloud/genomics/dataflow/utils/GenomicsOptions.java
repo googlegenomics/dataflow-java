@@ -17,10 +17,8 @@ package com.google.cloud.genomics.dataflow.utils;
 
 import com.google.cloud.dataflow.sdk.runners.Description;
 import com.google.cloud.dataflow.sdk.runners.PipelineOptions;
-import com.google.common.collect.Lists;
 
-import java.io.IOException;
-import java.security.GeneralSecurityException;
+import java.io.File;
 
 /**
  * Contains common genomics pipeline options.
@@ -37,23 +35,23 @@ public class GenomicsOptions extends PipelineOptions {
 
   @Description("If querying a private dataset, or performing any write operations, " +
       "you need to provide the path to client_secrets.json. Do not supply an api key.")
-  public String clientSecretsFilename = "client_secrets.json";
-
+  public String clientSecretsFilename = "client_secrets.json"; 
+  
   /**
-   * Gets the access token to use for this pipeline.
+   * Gets client secrets file for this pipeline.
    * If there is an apiKey, this will always return null.
    * This should be called before the pipeline is started.
    */
-  public String getAccessToken() {
+  public File getClientSecretsFile() {
     if (apiKey != null) {
       return null;
-    }
-
-    try {
-      return GenomicsApi.getAccessToken(clientSecretsFilename,
-          Lists.newArrayList(GenomicsApi.GENOMICS_SCOPE));
-    } catch (GeneralSecurityException | IOException e) {
-      throw new RuntimeException("Could not fetch the OAuth access token - please try again", e);
+    } else {
+      File file = new File(clientSecretsFilename);
+      if (!file.exists()) {
+        throw new IllegalArgumentException("Client secrets file does not exist");
+      } else {
+        return file;
+      }
     }
   }
 }

@@ -109,6 +109,11 @@
       <artifactId>google-oauth-client</artifactId>
       <version>1.18.0-rc</version>
     </dependency>
+    <dependency>
+      <groupId>com.google.cloud.genomics</groupId>
+      <artifactId>google-genomics-utils</artifactId>
+      <version>0.6</version>
+    </dependency>
   </dependencies>
 
   <build>
