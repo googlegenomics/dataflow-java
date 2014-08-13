@@ -111,7 +111,7 @@ public class VariantSimilarity {
     Options options = OptionsParser.parse(args, Options.class,
         VariantSimilarity.class.getSimpleName());
 
-    GenomicsFactory factory = GenomicsFactory.builder("VariantSimilarity").build();
+    GenomicsFactory factory = GenomicsFactory.builder(options.applicationName).build();
     Genomics genomics;
     if (options.apiKey != null) {
       genomics = factory.fromApiKey(options.apiKey);
@@ -130,7 +130,7 @@ public class VariantSimilarity {
 
     DataflowWorkarounds.getPCollection(requests, p, options.numWorkers)
         .apply(ParDo.named("VariantReader")
-            .of(new VariantReader("VariantSimilarity", options.apiKey, 
+            .of(new VariantReader(options.applicationName, options.apiKey, 
                 options.getAccessToken(), VARIANT_FIELDS)))
         .apply(ParDo.named("ExtractSimilarCallsets").of(new ExtractSimilarCallsets()))
         .apply(new OutputPCoAFile(options.output));
