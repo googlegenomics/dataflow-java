@@ -18,6 +18,7 @@ package com.google.cloud.genomics.dataflow.readers;
 import com.google.api.services.genomics.Genomics;
 import com.google.api.services.genomics.model.SearchVariantsRequest;
 import com.google.api.services.genomics.model.Variant;
+import com.google.cloud.genomics.dataflow.utils.GenomicsAuth;
 import com.google.cloud.genomics.utils.Paginator;
 
 import java.io.IOException;
@@ -26,9 +27,23 @@ import java.util.logging.Logger;
 public class VariantReader extends GenomicsApiReader<SearchVariantsRequest, Variant> {
   private static final Logger LOG = Logger.getLogger(VariantReader.class.getName());
 
-  public VariantReader(String applicationName, String apiKey, 
-      String accessToken, String variantFields) {
-    super(applicationName, apiKey, accessToken, variantFields);
+  /**
+   * Create a VariantReader using a auth and fields parameter. All fields not specified under 
+   * readFields will not be returned in the API response.
+   * 
+   * @param auth Auth class containing credentials.
+   * @param variantFields Fields to return in responses.
+   */
+  public VariantReader(GenomicsAuth auth, String variantFields) {
+    super(auth, variantFields);
+  }
+  
+  /**
+   * Create a VariantReader with no fields parameter, all information will be returned.
+   * @param auth Auth class containing credentials.
+   */
+  public VariantReader(GenomicsAuth auth) {
+    this(auth, null);
   }
 
   @Override

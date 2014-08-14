@@ -15,11 +15,10 @@
  */
 package com.google.cloud.genomics.dataflow.readers;
 
-import com.google.api.client.googleapis.auth.oauth2.GoogleCredential;
 import com.google.api.client.json.GenericJson;
 import com.google.api.services.genomics.Genomics;
 import com.google.cloud.dataflow.sdk.transforms.DoFn;
-import com.google.cloud.genomics.utils.GenomicsFactory;
+import com.google.cloud.genomics.dataflow.utils.GenomicsAuth;
 import com.google.cloud.genomics.utils.Paginator;
 import com.google.common.base.Supplier;
 
@@ -30,17 +29,12 @@ public abstract class GenomicsApiReader<I extends GenericJson, O extends Generic
     extends DoFn<I, O> {
   // Used for access to the genomics API
   // If the clientSecretsFile is null, then an apiKey is required
-  protected final String applicationName;
-  protected final String accessToken;
-  protected final String apiKey;
+  protected final GenomicsAuth auth;
   protected final String fields;
   protected int numRetries = 10;
-
-  public GenomicsApiReader(String applicationName, String apiKey,
-      String accessToken, String fields) {
-    this.applicationName = applicationName;
-    this.apiKey = apiKey;
-    this.accessToken = accessToken;
+  
+  public GenomicsApiReader(GenomicsAuth auth, String fields) {
+    this.auth = auth;
     this.fields = fields;
   }
   
@@ -67,10 +61,7 @@ public abstract class GenomicsApiReader<I extends GenericJson, O extends Generic
   @Override
   public void processElement(ProcessContext c) {
     try {
-      GenomicsFactory factory = GenomicsFactory.builder(applicationName).build();
-      processApiCall((apiKey == null) ? 
-          factory.fromCredential(new GoogleCredential().setAccessToken(accessToken)) 
-          : factory.fromApiKey(apiKey), c, c.element());
+      processApiCall(auth.getService(), c, c.element());
     } catch (IOException | GeneralSecurityException e) {
       throw new RuntimeException(
           "Failed to create genomics API request - this shouldn't happen.", e);

@@ -15,8 +15,6 @@
  */
 package com.google.cloud.genomics.dataflow.pipelines;
 
-import com.google.api.client.googleapis.auth.oauth2.GoogleCredential;
-import com.google.api.services.genomics.Genomics;
 import com.google.api.services.genomics.model.ContigBound;
 import com.google.api.services.genomics.model.GetVariantsSummaryResponse;
 import com.google.api.services.genomics.model.SearchVariantsRequest;
@@ -29,8 +27,8 @@ import com.google.cloud.genomics.dataflow.functions.ExtractSimilarCallsets;
 import com.google.cloud.genomics.dataflow.functions.OutputPCoAFile;
 import com.google.cloud.genomics.dataflow.readers.VariantReader;
 import com.google.cloud.genomics.dataflow.utils.DataflowWorkarounds;
+import com.google.cloud.genomics.dataflow.utils.GenomicsAuth;
 import com.google.cloud.genomics.dataflow.utils.GenomicsOptions;
-import com.google.cloud.genomics.utils.GenomicsFactory;
 import com.google.common.collect.Lists;
 
 import java.io.IOException;
@@ -111,16 +109,11 @@ public class VariantSimilarity {
     Options options = OptionsParser.parse(args, Options.class,
         VariantSimilarity.class.getSimpleName());
 
-    GenomicsFactory factory = GenomicsFactory.builder(options.applicationName).build();
-    Genomics genomics;
-    if (options.apiKey != null) {
-      genomics = factory.fromApiKey(options.apiKey);
-    } else {
-      genomics = factory.fromCredential(new GoogleCredential()
-          .setAccessToken(options.getAccessToken()));
-    }
+    GenomicsAuth auth = (options.apiKey != null) ? 
+        GenomicsAuth.fromApiKey(options.applicationName, options.apiKey) :
+        GenomicsAuth.fromAccessToken(options.applicationName, options.getAccessToken());
     
-    GetVariantsSummaryResponse summary = genomics.variants().getSummary()
+    GetVariantsSummaryResponse summary = auth.getService().variants().getSummary()
         .setDatasetId(options.datasetId).setFields("contigBounds").execute();
 
     List<SearchVariantsRequest> requests = getVariantRequests(summary, options);
@@ -130,8 +123,7 @@ public class VariantSimilarity {
 
     DataflowWorkarounds.getPCollection(requests, p, options.numWorkers)
         .apply(ParDo.named("VariantReader")
-            .of(new VariantReader(options.applicationName, options.apiKey, 
-                options.getAccessToken(), VARIANT_FIELDS)))
+            .of(new VariantReader(auth, VARIANT_FIELDS)))
         .apply(ParDo.named("ExtractSimilarCallsets").of(new ExtractSimilarCallsets()))
         .apply(new OutputPCoAFile(options.output));
     
