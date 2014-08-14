@@ -39,38 +39,6 @@ Getting started
 
 TODO: Explain each command line arg so this section makes more sense
 
-* Deploying Readstore Kmer indexing pipeline::
-  
-     java -Xmx8g -cp "target/googlegenomics-dataflow-java-v1beta.jar" \
-      com.google.cloud.genomics.dataflow.pipelines.ReadstoreKmerIndex \
-      --runner=BlockingDataflowPipelineRunner \
-      --project=google.com:genomics-api \
-      --stagingLocation=gs://cloud-genomics-user-peijinz/staging \
-      --outDir=gs://cloud-genomics-user-peijinz/output/test \
-      --datasetId=13770895782338053201 \
-      --kValues=4,5,6 \
-      --writeTable \
-      --apiKey="AIzaSyB6DSNuXBIzt4PaB9GNchRy6nZo5PdGhPI" \
-      --zone=us-central1-b \
-      --numWorkers=4
-
-datasetId:
-  Dataset to query over. Currently available:
-  
-  - 13770895782338053201: Test Dataset (contains one copy of SRR1188432)
-  - 13548522727457381097: Listeria Dataset
-  - 2831627299882627465: Salmonella Dataset
-
-kValues:
-  Values of k to use for indexing. Multiple values supported.
-  Note: dataflow currently has issues going over k >= 8
-
-writeKmer:
-  Option for writing kmer table out to file
-
-numWorkers:
-  Number of workers to run workflow over. Max value is 100.
-
 .. _Apache Maven: http://maven.apache.org/download.cgi
 
 
@@ -88,28 +56,28 @@ functions:
   ``OutputPCoAFile`` is an example of a complex `PTransform` that provides a useful common analysis.
   
 pipelines:
-  There are currently 2 example pipelines that are used to demonstrate how Google Cloud Dataflow 
-  can work with Google Genomics. 
+  contains example pipelines which demonstrate how Cloud Dataflow can work with Google Genomics
   
   * ``VariantSimilarity`` runs a Principal coordinates analysis over a dataset containing variants, and 
     writes a file of graph results that can be easily displayed by Google Sheets.
-
-  * ``ReadstoreKmerIndex`` queries against Cloud Genomics Readstore to generate a kmer index for each readset
-    under a given dataset. Kmers will be counted over each read in a readset and printed to csv or txt format.
+    
+readers:
+  contains functions that perform API calls to read data from the genomics API
 
 utils: 
   contains utilities for running dataflow workflows against the genomics API
   
-DataflowWorkarounds.java:
-  contains workarounds needed to use the Google Cloud Dataflow APIs. 
-  This class should dissapear before Dataflow goes public.
+  * ``DataflowWorkarounds``:
+    contains workarounds needed to use the Google Cloud Dataflow APIs. 
+    This class should dissapear before Dataflow goes public.
 
-GenomicsApi.java:
-  use this class to call the Genomics API - it contains many useful utilities to make API handling easier.
+  * ``GenomicsAuth.java``
+    Use this class for performing authentication when calling the API. It allows for using either 
+    an api key or client secrets file.
 
-GenomicsOptions.java:
-  extend this class for your command line options to make handling authorization 
-  for the Genomics APIs a bit easier.
+  * ``GenomicsOptions.java:
+    extend this class for your command line options to make handling authorization 
+    for the Genomics APIs a bit easier.
 
 
 Project status
