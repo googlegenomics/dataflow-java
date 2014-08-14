@@ -46,7 +46,6 @@ public class GenomicsOptions extends PipelineOptions {
   /**
    * Gets access token for this pipeline.
    * If there is an apiKey, this will always return null.
-   * This should be called before the pipeline is started.
    * 
    * @throws GeneralSecurityException 
    * @throws IOException 
