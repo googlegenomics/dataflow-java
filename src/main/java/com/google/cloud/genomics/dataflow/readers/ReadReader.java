@@ -19,6 +19,7 @@ package com.google.cloud.genomics.dataflow.readers;
 import com.google.api.services.genomics.Genomics;
 import com.google.api.services.genomics.model.Read;
 import com.google.api.services.genomics.model.SearchReadsRequest;
+import com.google.cloud.genomics.dataflow.utils.GenomicsAuth;
 import com.google.cloud.genomics.utils.Paginator;
 
 import java.io.IOException;
@@ -27,9 +28,23 @@ import java.util.logging.Logger;
 public class ReadReader extends GenomicsApiReader<SearchReadsRequest, Read> {
   private static final Logger LOG = Logger.getLogger(ReadReader.class.getName());
   
-  public ReadReader(String applicationName, String apiKey, 
-      String accessToken, String readFields) {
-    super(applicationName, apiKey, accessToken, readFields);
+  /**
+   * Create a ReadReader using a auth and fields parameter. All fields not specified under 
+   * readFields will not be returned in the API response.
+   * 
+   * @param auth Auth class containing credentials.
+   * @param readFields Fields to return in responses.
+   */
+  public ReadReader(GenomicsAuth auth, String readFields) {
+    super(auth, readFields);
+  }
+  
+  /**
+   * Create a ReadReader with no fields parameter, all information will be returned.
+   * @param auth Auth class containing credentials.
+   */
+  public ReadReader(GenomicsAuth auth) {
+    this(auth, null);
   }
   
   @Override
