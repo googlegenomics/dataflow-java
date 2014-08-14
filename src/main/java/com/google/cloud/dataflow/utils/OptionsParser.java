@@ -101,7 +101,7 @@ public class OptionsParser {
       if (description == null) {
         continue;
       }
-
+      System.out.println(f.getName());
       Option option =
           new Option(f.getName(), f.getName(), true, description.value());
       if (f.getType().equals(Boolean.TYPE)) {
@@ -118,18 +118,18 @@ public class OptionsParser {
 
     try {
       ObjectNode properties = parser.parseArgs(args, fieldTypes);
-
+      System.out.println("a");
       if (properties.get("help") != null) {
         parser.printHelp(programName);
         System.exit(1);
       }
-
+      System.out.println("b");
       for (Map.Entry<String, String> entry : defaultValues.entrySet()) {
         if (!properties.has(entry.getKey())) {
           properties.put(entry.getKey(), entry.getValue());
         }
       }
-
+      System.out.println("c");
       boolean ok = true;
       for (String argName : requiredArguments) {
         if (properties.get(argName) == null) {
@@ -137,22 +137,24 @@ public class OptionsParser {
           ok = false;
         }
       }
+      System.out.println("d");
       if (!ok) {
         parser.printHelp(programName);
         throw new IllegalArgumentException("Missing required arguments: " +
             requiredArguments);
       }
-
+      System.out.println("e");
       ObjectMapper mapper = new ObjectMapper();
       // Ignore properties which are not used by the object.
-      mapper.disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES);
-
-      LOG.fine("Provided: " +
+      //mapper.disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES);
+      System.out.println("f");
+      LOG.info("Provided: " +
           mapper.writerWithDefaultPrettyPrinter().writeValueAsString(properties));
-
-      T result = mapper.treeToValue(properties, type);
-      LOG.fine("Final Options: " +
+      System.out.println("g");
+      T result = mapper.convertValue(properties, type);
+      LOG.info("Final Options: " +
           mapper.writerWithDefaultPrettyPrinter().writeValueAsString(result));
+      System.out.println("h");
       return result;
     } catch (ParseException | IOException e) {
       throw new RuntimeException(e);

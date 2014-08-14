@@ -108,11 +108,9 @@ public class VariantSimilarity {
   public static void main(String[] args) throws IOException, GeneralSecurityException {
     Options options = OptionsParser.parse(args, Options.class,
         VariantSimilarity.class.getSimpleName());
-
-    GenomicsAuth auth = (options.apiKey != null) ? 
-        GenomicsAuth.fromApiKey(options.applicationName, options.apiKey) :
-        GenomicsAuth.fromAccessToken(options.applicationName, options.getAccessToken());
     
+    GenomicsAuth auth = DataflowWorkarounds.getGenomicsAuth(options);
+
     GetVariantsSummaryResponse summary = auth.getService().variants().getSummary()
         .setDatasetId(options.datasetId).setFields("contigBounds").execute();
 

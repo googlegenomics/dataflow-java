@@ -39,6 +39,8 @@ import org.reflections.util.ClasspathHelper;
 import org.reflections.util.ConfigurationBuilder;
 import org.reflections.util.FilterBuilder;
 
+import java.io.IOException;
+import java.security.GeneralSecurityException;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
@@ -170,5 +172,21 @@ public class DataflowWorkarounds {
   public static <T> PCollection<T> getPCollection(
       List<T> shardOptions, Pipeline p, double numWorkers) {
     return getPCollection(shardOptions, null, p, numWorkers);
+  }
+  
+  /**
+   * Gets a GenomicsAuth object from a GenomicsOptions object
+   * 
+   * @param options Options to take credentials from
+   * @return GenomicsAuth object used to authenticate API calls
+   * 
+   * @throws IOException
+   * @throws GeneralSecurityException
+   */
+  public static GenomicsAuth getGenomicsAuth(GenomicsOptions options) 
+      throws IOException, GeneralSecurityException {
+    return (options.apiKey != null) ? 
+        GenomicsAuth.fromApiKey(options.applicationName, options.apiKey) :
+        GenomicsAuth.fromAccessToken(options.applicationName, options.getAccessToken());
   }
 }
