@@ -67,7 +67,7 @@ readers:
 utils: 
   contains utilities for running dataflow workflows against the genomics API
   
-  * ``DataflowWorkarounds``:
+  * ``DataflowWorkarounds``
     contains workarounds needed to use the Google Cloud Dataflow APIs. 
     This class should dissapear before Dataflow goes public.
 
@@ -75,7 +75,7 @@ utils:
     Use this class for performing authentication when calling the API. It allows for using either 
     an api key or client secrets file.
 
-  * ``GenomicsOptions.java:
+  * ``GenomicsOptions.java``
     extend this class for your command line options to make handling authorization 
     for the Genomics APIs a bit easier.
 
