@@ -109,7 +109,7 @@ public class VariantSimilarity {
     Options options = OptionsParser.parse(args, Options.class,
         VariantSimilarity.class.getSimpleName());
     
-    GenomicsAuth auth = DataflowWorkarounds.getGenomicsAuth(options);
+    GenomicsAuth auth = options.getGenomicsAuth();
 
     GetVariantsSummaryResponse summary = auth.getService().variants().getSummary()
         .setDatasetId(options.datasetId).setFields("contigBounds").execute();
