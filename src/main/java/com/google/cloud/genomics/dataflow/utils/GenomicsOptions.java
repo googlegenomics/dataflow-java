@@ -19,6 +19,8 @@ import com.google.cloud.dataflow.sdk.runners.Description;
 import com.google.cloud.dataflow.sdk.runners.PipelineOptions;
 import com.google.cloud.genomics.utils.GenomicsFactory;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+
 import java.io.File;
 import java.io.IOException;
 import java.security.GeneralSecurityException;
@@ -45,17 +47,26 @@ public class GenomicsOptions extends PipelineOptions {
   
   /**
    * Gets access token for this pipeline.
-   * If there is an apiKey, this will always return null.
-   * 
-   * @throws GeneralSecurityException 
-   * @throws IOException 
    */
-  public String getAccessToken() throws IOException, GeneralSecurityException {
-    if (apiKey != null) {
-      return null;
-    } else {
-      return GenomicsFactory.builder(applicationName).build()
-            .makeCredential(new File(clientSecretsFilename)).getAccessToken();
-    }
+  @JsonIgnore
+  private String getAccessToken() throws IOException, GeneralSecurityException {
+    return GenomicsFactory.builder(applicationName).build()
+        .makeCredential(new File(clientSecretsFilename)).getAccessToken();
+  }
+  
+  /**
+   * Gets a GenomicsAuth object using credentials from this options
+   * 
+   * @return GenomicsAuth object used to authenticate API calls
+   * 
+   * @throws IOException
+   * @throws GeneralSecurityException
+   */
+  @JsonIgnore
+  public GenomicsAuth getGenomicsAuth() 
+      throws IOException, GeneralSecurityException {
+    return (apiKey != null) ? 
+        GenomicsAuth.fromApiKey(applicationName, apiKey) :
+        GenomicsAuth.fromAccessToken(applicationName, getAccessToken());
   }
 }
