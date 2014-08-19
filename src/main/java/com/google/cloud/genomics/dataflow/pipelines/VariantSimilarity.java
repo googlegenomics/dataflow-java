@@ -102,6 +102,10 @@ public class VariantSimilarity {
     @Description("Path of the file to write to")
     @RequiredOption
     public String output;
+    
+    @Description("The ID of the Google Genomics dataset this pipeline is working with. " +
+        "Defaults to 1000 Genomes.")
+    public String datasetId = "376902546192";
   }
 
   @SuppressWarnings("unchecked")
