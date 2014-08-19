@@ -81,7 +81,7 @@
     <dependency>
       <groupId>com.google.cloud.dataflow</groupId>
       <artifactId>dataflow-sdk</artifactId>
-      <version>1.0.140808</version>
+      <version>1.0.140818</version>
     </dependency>
     <dependency>
       <groupId>org.javassist</groupId>

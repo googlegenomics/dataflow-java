@@ -30,10 +30,6 @@ import java.security.GeneralSecurityException;
  * Extend this class to add additional command line args.
  */
 public class GenomicsOptions extends PipelineOptions {
-  @Description("The ID of the Google Genomics dataset this pipeline is working with. " +
-      "Defaults to 1000 Genomes.")
-  public String datasetId = "376902546192";
-
   @Description("If querying a public dataset, provide a Google API key that has access " +
       "to genomics data and no OAuth will be performed.")
   public String apiKey = null;
