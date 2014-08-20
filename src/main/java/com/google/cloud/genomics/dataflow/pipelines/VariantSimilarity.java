@@ -112,6 +112,7 @@ public class VariantSimilarity {
   public static void main(String[] args) throws IOException, GeneralSecurityException {
     Options options = OptionsParser.parse(args, Options.class,
         VariantSimilarity.class.getSimpleName());
+    options.validateOptions();
     
     GenomicsAuth auth = options.getGenomicsAuth();
 
