@@ -28,6 +28,9 @@ import java.security.GeneralSecurityException;
 /**
  * Contains common genomics pipeline options.
  * Extend this class to add additional command line args.
+ * 
+ * Note: All methods defined in this class will be called during command line parsing unless
+ * it is annotated with a @JsonIgnore annotation.
  */
 public class GenomicsOptions extends PipelineOptions {
   @Description("If querying a public dataset, provide a Google API key that has access " +
@@ -40,6 +43,19 @@ public class GenomicsOptions extends PipelineOptions {
   
   @Description("Name of the application for oauth purposes. Defaults to GoogleGenomicsApp")
   public String applicationName = "GoogleGenomicsApp";
+  
+  /**
+   * Makes sure options are valid.
+   * 
+   * This method is automatically called during options parsing by the parser.
+   */
+  public void validateOptions() {
+    if (clientSecretsFilename != null && apiKey != null) {
+      throw new IllegalArgumentException("Cannot use both a client secrets file and api key!");
+    } else if (clientSecretsFilename == null && apiKey == null) {
+      throw new IllegalArgumentException("Need to specify either clientSecretsFilename or apiKey!");
+    }
+  }
   
   /**
    * Gets access token for this pipeline.
