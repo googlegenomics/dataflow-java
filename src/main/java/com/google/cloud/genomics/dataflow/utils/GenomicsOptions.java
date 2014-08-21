@@ -35,11 +35,11 @@ import java.security.GeneralSecurityException;
 public class GenomicsOptions extends PipelineOptions {
   @Description("If querying a public dataset, provide a Google API key that has access " +
       "to genomics data and no OAuth will be performed.")
-  public String apiKey = null;
+  public String apiKey;
 
   @Description("If querying a private dataset, or performing any write operations, " +
       "you need to provide the path to client_secrets.json. Do not supply an api key.")
-  public String clientSecretsFilename = "client_secrets.json";
+  public String clientSecretsFilename;
   
   @Description("Name of the application for oauth purposes. Defaults to GoogleGenomicsApp")
   public String applicationName = "GoogleGenomicsApp";
