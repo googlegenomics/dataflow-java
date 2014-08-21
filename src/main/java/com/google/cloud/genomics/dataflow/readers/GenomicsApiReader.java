@@ -42,8 +42,9 @@ public abstract class GenomicsApiReader<I extends GenericJson, O extends Generic
    * Sets the number of times to retry requests. If 0, will never retry. If -1, will always retry.
    * @param numRetries Number of times to retry requests. Set to 0 for never or -1 for always.
    */
-  public void setRetries(int numRetries) {
+  public GenomicsApiReader<I, O> setRetries(int numRetries) {
     this.numRetries = numRetries;
+    return this;
   }
   
   /**
