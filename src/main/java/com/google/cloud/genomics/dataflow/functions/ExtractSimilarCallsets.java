@@ -49,8 +49,8 @@ public class ExtractSimilarCallsets extends DoFn<Variant, KV<String, String>> {
     for (Call call : variant.getCalls()) {
       for (int genotype : call.getGenotype()) {
         if (0 < genotype) {
-          // Use a great than zero test since no-calls are -1 and we
-          // don't want to count those
+          // Use a greater than zero test since no-calls are -1 and we
+          // don't want to count those.
           samplesWithVariant.add(call.getCallsetName());
           break;
         }
