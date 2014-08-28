@@ -33,10 +33,10 @@ public class ExtractSimilarCallsetsTest {
 
   @Test
   public void testGetSamplesWithVariant() throws Exception {
-    Call refCall = makeCall("ref", "0|0");
-    Call altCall1 = makeCall("alt1", "1|0");
-    Call altCall2 = makeCall("alt2", "0|1");
-    Call altCall3 = makeCall("alt3", "0/1");
+    Call refCall = makeCall("ref", 0, 0);
+    Call altCall1 = makeCall("alt1", 1, 0);
+    Call altCall2 = makeCall("alt2", 0, 1);
+    Call altCall3 = makeCall("alt3", 1, 1);
 
     ExtractSimilarCallsets fn = new ExtractSimilarCallsets();
     Variant variant = new Variant();
@@ -59,16 +59,16 @@ public class ExtractSimilarCallsetsTest {
     assertEquals("alt3", samples.get(2));
   }
 
-  private Call makeCall(String name, String genotype) {
-    List<String> gt = Lists.newArrayList();
-    gt.add(genotype);
-
-    Map<String, List<String>> info = Maps.newHashMap();
-    info.put("GT", gt);
+  private Call makeCall(String name,
+      Integer firstAllele,
+      Integer secondAllele) {
+    List<Integer> genotype = Lists.newArrayList();
+    genotype.add(firstAllele);
+    genotype.add(secondAllele);
 
     Call call1 = new Call();
     call1.setCallsetName(name);
-    call1.setInfo(info);
+    call1.setGenotype(genotype);
     return call1;
   }
 

@@ -23,20 +23,39 @@ import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.Lists;
 
 import java.util.List;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.logging.Logger;
 
 /**
  * Emits a callset pair every time they share a variant.
  */
-public class ExtractSimilarCallsets extends DoFn<Variant, KV<String, String>> {
+public class ExtractSimilarCallsets extends DoFn<Variant, KV<KV<String, String>, Long>> {
+  private static final Logger LOG = Logger.getLogger(ExtractSimilarCallsets.class.getName());
+  private HashMap<KV<String, String>, Long> accumulator;
+
+  @Override
+  public void startBatch(Context c) {
+    accumulator = new HashMap<KV<String, String>, Long>();
+  }
 
   @Override
   public void processElement(ProcessContext c) {
     Variant variant = c.element();
     List<String> samples = getSamplesWithVariant(variant);
 
+    // TODO: optimize this to emit all combinations instead of all permutations
     for (String s1 : samples) {
       for (String s2 : samples) {
-        c.output(KV.of(s1, s2));
+        KV<String, String> key = KV.of(s1, s2);
+        Long count = accumulator.get(key);
+        if(null == count) {
+          count = new Long(1);
+        }
+        else {
+          count++;
+        }
+        accumulator.put(key, count);
       }
     }
   }
@@ -45,12 +64,22 @@ public class ExtractSimilarCallsets extends DoFn<Variant, KV<String, String>> {
   List<String> getSamplesWithVariant(Variant variant) {
     List<String> samplesWithVariant = Lists.newArrayList();
     for (Call call : variant.getCalls()) {
-      String genotype = call.getInfo().get("GT").get(0); // TODO: Change to use real genotype field
-      genotype = genotype.replaceAll("[\\\\|0]", "");
-      if (!genotype.isEmpty()) {
-        samplesWithVariant.add(call.getCallsetName());
+      for (int genotype : call.getGenotype()) {
+        if (0 < genotype) {
+          // Use a greater than zero test since no-calls are -1 and we
+          // don't want to count those.
+          samplesWithVariant.add(call.getCallsetName());
+          break;
+        }
       }
     }
     return samplesWithVariant;
+  }
+
+  @Override
+  public void finishBatch(Context c) {
+    for (Map.Entry<KV<String, String>, Long> entry : accumulator.entrySet()) {
+      c.output(KV.of(entry.getKey(), entry.getValue()));
+    }
   }
 }

@@ -17,12 +17,12 @@ package com.google.cloud.genomics.dataflow.functions;
 
 import com.google.cloud.dataflow.sdk.io.TextIO;
 import com.google.cloud.dataflow.sdk.transforms.AsIterable;
-import com.google.cloud.dataflow.sdk.transforms.Count;
 import com.google.cloud.dataflow.sdk.transforms.DoFn;
 import com.google.cloud.dataflow.sdk.transforms.FromIterable;
 import com.google.cloud.dataflow.sdk.transforms.PTransform;
 import com.google.cloud.dataflow.sdk.transforms.ParDo;
 import com.google.cloud.dataflow.sdk.transforms.SeqDo;
+import com.google.cloud.dataflow.sdk.transforms.Sum;
 import com.google.cloud.dataflow.sdk.values.KV;
 import com.google.cloud.dataflow.sdk.values.PCollection;
 import com.google.cloud.dataflow.sdk.values.PDone;
@@ -35,7 +35,7 @@ import com.google.cloud.dataflow.sdk.values.PDone;
  * The input data must be for a similarity matrix which will be symmetric. This is not
  * the same as Principal Component Analysis.
 */
-public class OutputPCoAFile extends PTransform<PCollection<KV<String, String>>, PDone> {
+public class OutputPCoAFile extends PTransform<PCollection<KV<KV<String, String>, Long>>, PDone> {
   private final String outputFile;
 
   public OutputPCoAFile(String outputFile) {
@@ -43,8 +43,8 @@ public class OutputPCoAFile extends PTransform<PCollection<KV<String, String>>, 
   }
 
   @Override
-  public PDone apply(PCollection<KV<String, String>> similarPairs) {
-    return similarPairs.apply(Count.<KV<String, String>>create())
+      public PDone apply(PCollection<KV<KV<String, String>, Long>> similarPairs) {
+    return similarPairs.apply(Sum.<KV<String, String>>longsPerKey())
         .apply(AsIterable.<KV<KV<String, String>, Long>>create())
         .apply(SeqDo.named("PCoAAnalysis").of(new PCoAnalysis()))
         .apply(FromIterable.<PCoAnalysis.GraphResult>create())

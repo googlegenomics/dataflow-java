@@ -66,19 +66,22 @@ import java.util.logging.Logger;
  */
 public class VariantSimilarity {
   private static final Logger LOG = Logger.getLogger(VariantSimilarity.class.getName());
-  private static final String VARIANT_FIELDS = "nextPageToken,variants(id,calls(info,callsetName))";
+  private static final String VARIANT_FIELDS = "nextPageToken,variants(id,calls(genotype,callsetName))";
 
   private static List<SearchVariantsRequest> getVariantRequests(
       GetVariantsSummaryResponse summary, Options options) {
 
-    ContigBound bound = summary.getContigBounds().get(0);
-
     // TODO: Run this over all of the available contigBounds
-    // We just happen to know that there is data at this hardcoded start position
-    // NOTE: The default end parameter is set to run on tiny local machines
+    /*
+    ContigBound bound = summary.getContigBounds().get(0);
     String contig = bound.getContig();
-    long start = 25652000;
-    long end = start + 500;
+    */
+
+    // NOTE: This is hardcoded to BRCA1 so that it can run on
+    // tiny local machines
+    String contig = "17";
+    long start = 41196312;
+    long end = 41277500;
     long basesPerShard = 1000;
 
     double shards = Math.ceil((end - start) / (double) basesPerShard);
@@ -105,7 +108,7 @@ public class VariantSimilarity {
     
     @Description("The ID of the Google Genomics dataset this pipeline is working with. " +
         "Defaults to 1000 Genomes.")
-    public String datasetId = "376902546192";
+    public String datasetId = "1154144306496329440";
   }
 
   @SuppressWarnings("unchecked")

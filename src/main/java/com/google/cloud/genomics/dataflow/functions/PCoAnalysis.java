@@ -28,6 +28,7 @@ import Jama.Matrix;
 import java.io.Serializable;
 import java.util.List;
 import java.util.Map;
+import java.util.logging.Logger;
 
 /**
  * This function runs a Principal Coordinate Analysis inside of a SeqDo.
@@ -53,6 +54,7 @@ import java.util.Map;
  */
 public class PCoAnalysis implements SerializableFunction<Iterable<KV<KV<String, String>, Long>>,
     Iterable<PCoAnalysis.GraphResult>> {
+  private static final Logger LOG = Logger.getLogger(PCoAnalysis.class.getName());
 
   public static class GraphResult implements Serializable {
     public String name;
