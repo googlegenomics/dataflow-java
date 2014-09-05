@@ -15,7 +15,6 @@
  */
 package com.google.cloud.genomics.dataflow.pipelines;
 
-import com.google.api.services.genomics.model.ContigBound;
 import com.google.api.services.genomics.model.GetVariantsSummaryResponse;
 import com.google.api.services.genomics.model.SearchVariantsRequest;
 import com.google.cloud.dataflow.sdk.Pipeline;
@@ -92,7 +91,7 @@ public class VariantSimilarity {
 
       LOG.info("Adding request with " + shardStart + " to " + shardEnd);
       requests.add(new SearchVariantsRequest()
-          .setDatasetId(options.datasetId)
+          .setVariantsetId(options.datasetId)
           .setContig(contig)
           .setStartPosition(shardStart)
           .setEndPosition(shardEnd));
@@ -120,7 +119,7 @@ public class VariantSimilarity {
     GenomicsAuth auth = options.getGenomicsAuth();
 
     GetVariantsSummaryResponse summary = auth.getService().variants().getSummary()
-        .setDatasetId(options.datasetId).setFields("contigBounds").execute();
+        .setVariantsetId(options.datasetId).setFields("contigBounds").execute();
 
     List<SearchVariantsRequest> requests = getVariantRequests(summary, options);
 
