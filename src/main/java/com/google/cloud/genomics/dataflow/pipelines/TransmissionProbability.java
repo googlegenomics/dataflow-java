@@ -96,7 +96,7 @@ public class TransmissionProbability {
 
       LOG.info("Adding request with " + shardStart + " to " + shardEnd);
       requests.add(new SearchVariantsRequest()
-          .setDatasetId(options.datasetId)
+          .setVariantsetId(options.datasetId)
           .setContig(contig)
           .setStartPosition(shardStart)
           .setEndPosition(shardEnd));
