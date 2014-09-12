@@ -49,10 +49,9 @@ public class ExtractSimilarCallsets extends DoFn<Variant, KV<KV<String, String>,
       for (String s2 : samples) {
         KV<String, String> key = KV.of(s1, s2);
         Long count = accumulator.get(key);
-        if(null == count) {
+        if (null == count) {
           count = new Long(1);
-        }
-        else {
+        } else {
           count++;
         }
         accumulator.put(key, count);

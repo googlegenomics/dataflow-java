@@ -28,7 +28,7 @@ import com.google.cloud.dataflow.sdk.values.PCollection;
 import com.google.cloud.dataflow.sdk.values.PDone;
 
 /**
- * Given a set of similar pairs, this function collapses them into counts,
+ * Given a set of similar pair counts, this function aggregates the counts,
  * runs Principal Coordinate Analysis, and writes the result to a tab-delimited GCS file which
  * can be imported into Google Spreadsheets and rendered with a bubble graph.
  *
@@ -43,7 +43,7 @@ public class OutputPCoAFile extends PTransform<PCollection<KV<KV<String, String>
   }
 
   @Override
-      public PDone apply(PCollection<KV<KV<String, String>, Long>> similarPairs) {
+  public PDone apply(PCollection<KV<KV<String, String>, Long>> similarPairs) {
     return similarPairs.apply(Sum.<KV<String, String>>longsPerKey())
         .apply(AsIterable.<KV<KV<String, String>, Long>>create())
         .apply(SeqDo.named("PCoAAnalysis").of(new PCoAnalysis()))
