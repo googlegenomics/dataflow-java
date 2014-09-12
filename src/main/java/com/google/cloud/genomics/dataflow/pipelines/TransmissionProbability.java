@@ -124,7 +124,7 @@ public class TransmissionProbability {
     GenomicsAuth auth = options.getGenomicsAuth();
 
     GetVariantsSummaryResponse summary = auth.getService().variants().getSummary()
-        .setDatasetId(options.datasetId).setFields("contigBounds").execute();
+        .setVariantsetId(options.datasetId).setFields("contigBounds").execute();
 
     List<SearchVariantsRequest> requests = getVariantRequests(summary, options);
 
