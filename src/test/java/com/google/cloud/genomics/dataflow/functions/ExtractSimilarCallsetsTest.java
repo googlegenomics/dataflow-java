@@ -15,18 +15,17 @@ limitations under the License.
 */
 package com.google.cloud.genomics.dataflow.functions;
 
+import static org.junit.Assert.assertEquals;
+
 import com.google.api.client.util.Lists;
-import com.google.api.client.util.Maps;
 import com.google.api.services.genomics.model.Call;
 import com.google.api.services.genomics.model.Variant;
+
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 
 import java.util.List;
-import java.util.Map;
-
-import static org.junit.Assert.assertEquals;
 
 @RunWith(JUnit4.class)
 public class ExtractSimilarCallsetsTest {
