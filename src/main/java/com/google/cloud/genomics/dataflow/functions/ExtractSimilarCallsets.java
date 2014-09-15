@@ -22,16 +22,15 @@ import com.google.cloud.dataflow.sdk.values.KV;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.Lists;
 
-import java.util.List;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
-import java.util.logging.Logger;
 
 /**
  * Emits a callset pair every time they share a variant.
  */
 public class ExtractSimilarCallsets extends DoFn<Variant, KV<KV<String, String>, Long>> {
-  private static final Logger LOG = Logger.getLogger(ExtractSimilarCallsets.class.getName());
+
   private HashMap<KV<String, String>, Long> accumulator;
 
   @Override

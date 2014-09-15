@@ -15,7 +15,6 @@
  */
 package com.google.cloud.genomics.dataflow.pipelines;
 
-import com.google.api.services.genomics.model.GetVariantsSummaryResponse;
 import com.google.api.services.genomics.model.SearchVariantsRequest;
 import com.google.cloud.dataflow.sdk.Pipeline;
 import com.google.cloud.dataflow.sdk.runners.Description;
@@ -67,8 +66,7 @@ public class VariantSimilarity {
   private static final Logger LOG = Logger.getLogger(VariantSimilarity.class.getName());
   private static final String VARIANT_FIELDS = "nextPageToken,variants(id,calls(genotype,callsetName))";
 
-  private static List<SearchVariantsRequest> getVariantRequests(
-      GetVariantsSummaryResponse summary, Options options) {
+  private static List<SearchVariantsRequest> getVariantRequests(Options options) {
 
     // TODO: Run this over all of the available contigBounds
     /*
@@ -104,7 +102,7 @@ public class VariantSimilarity {
     @Description("Path of the file to write to")
     @RequiredOption
     public String output;
-    
+
     @Description("The ID of the Google Genomics dataset this pipeline is working with. " +
         "Defaults to 1000 Genomes.")
     public String datasetId = "1154144306496329440";
@@ -115,13 +113,10 @@ public class VariantSimilarity {
     Options options = OptionsParser.parse(args, Options.class,
         VariantSimilarity.class.getSimpleName());
     options.validateOptions();
-    
+
     GenomicsAuth auth = options.getGenomicsAuth();
 
-    GetVariantsSummaryResponse summary = auth.getService().variants().getSummary()
-        .setVariantsetId(options.datasetId).setFields("contigBounds").execute();
-
-    List<SearchVariantsRequest> requests = getVariantRequests(summary, options);
+    List<SearchVariantsRequest> requests = getVariantRequests(options);
 
     Pipeline p = Pipeline.create();
     DataflowWorkarounds.registerGenomicsCoders(p);
@@ -131,8 +126,7 @@ public class VariantSimilarity {
             .of(new VariantReader(auth, VARIANT_FIELDS)))
         .apply(ParDo.named("ExtractSimilarCallsets").of(new ExtractSimilarCallsets()))
         .apply(new OutputPCoAFile(options.output));
-    
+
     p.run(DataflowWorkarounds.getRunner(options));
   }
 }
- 
