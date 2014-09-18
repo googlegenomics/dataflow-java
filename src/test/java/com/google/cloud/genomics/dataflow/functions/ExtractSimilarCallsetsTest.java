@@ -66,7 +66,7 @@ public class ExtractSimilarCallsetsTest {
     genotype.add(secondAllele);
 
     Call call1 = new Call();
-    call1.setCallsetName(name);
+    call1.setCallSetName(name);
     call1.setGenotype(genotype);
     return call1;
   }
