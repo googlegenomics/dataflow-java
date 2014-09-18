@@ -81,22 +81,22 @@
     <dependency>
       <groupId>com.google.apis</groupId>
       <artifactId>google-api-services-genomics</artifactId>
-      <version>v1beta-rev29-1.19.0</version>
+      <version>v1beta-rev34-1.19.0</version>
     </dependency>
     <dependency>
       <groupId>com.google.cloud.dataflow</groupId>
       <artifactId>dataflow-sdk</artifactId>
-      <version>1.0.140828</version>
+      <version>1.0.140915</version>
     </dependency>
     <dependency>
       <groupId>org.javassist</groupId>
       <artifactId>javassist</artifactId>
-      <version>3.18.1-GA</version>
+      <version>3.18.2-GA</version>
     </dependency>
     <dependency>
       <groupId>org.reflections</groupId>
       <artifactId>reflections</artifactId>
-      <version>0.9.9-RC1</version>
+      <version>0.9.9-RC2</version>
     </dependency>
     <dependency>
       <!-- Command line parsing library. -->
@@ -112,12 +112,12 @@
     <dependency>
       <groupId>com.google.oauth-client</groupId>
       <artifactId>google-oauth-client</artifactId>
-      <version>1.18.0-rc</version>
+      <version>${google.api.version}</version>
     </dependency>
     <dependency>
       <groupId>com.google.cloud.genomics</groupId>
       <artifactId>google-genomics-utils</artifactId>
-      <version>0.9</version>
+      <version>0.10</version>
     </dependency>
   </dependencies>
 
@@ -163,8 +163,8 @@
   </build>
 
   <properties>
-    <junit.version>4.11</junit.version>
-    <google.api.version>1.18.0-rc</google.api.version>
+    <junit.version>4.12-beta-1</junit.version>
+    <google.api.version>1.19.0</google.api.version>
     <maven.enforcer.jdk-version>[1.7,)</maven.enforcer.jdk-version>
     <maven.compile.source>1.7</maven.compile.source>
     <maven.compile.target>1.7</maven.compile.target>

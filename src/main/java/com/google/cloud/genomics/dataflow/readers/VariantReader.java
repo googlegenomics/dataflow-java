@@ -58,6 +58,6 @@ public class VariantReader extends GenomicsApiReader<SearchVariantsRequest, Vari
     }
     
     LOG.info("Finished variants at: " + 
-        request.getContig() + "-" + request.getStartPosition());
+        request.getReferenceName() + "-" + request.getStart());
   }
 }

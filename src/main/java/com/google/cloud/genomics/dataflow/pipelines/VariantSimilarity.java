@@ -31,6 +31,7 @@ import com.google.common.collect.Lists;
 
 import java.io.IOException;
 import java.security.GeneralSecurityException;
+import java.util.Collections;
 import java.util.List;
 import java.util.logging.Logger;
 
@@ -89,10 +90,10 @@ public class VariantSimilarity {
 
       LOG.info("Adding request with " + shardStart + " to " + shardEnd);
       requests.add(new SearchVariantsRequest()
-          .setVariantsetId(options.datasetId)
-          .setContig(contig)
-          .setStartPosition(shardStart)
-          .setEndPosition(shardEnd));
+          .setVariantSetIds(Collections.singletonList(options.datasetId))
+          .setReferenceName(contig)
+          .setStart(shardStart)
+          .setEnd(shardEnd));
 
     }
     return requests;
