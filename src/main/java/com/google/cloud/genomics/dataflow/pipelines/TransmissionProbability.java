@@ -131,7 +131,13 @@ public class TransmissionProbability {
     Pipeline p = Pipeline.create();
     DataflowWorkarounds.registerGenomicsCoders(p);
 
-
+    // The below pipeline works as follows:
+    //    - Fetch the variants,
+    //    - For each variant, see which parent transferred the variant to the
+    //        child.
+    //    - Groups Transmission sources by Variant,
+    //    - Calculate transmission Probability for each variant
+    //    - Print calculated values to a file.
     DataflowWorkarounds.getPCollection(requests, p, options.numWorkers)
         .apply(ParDo.named("VariantReader")
             .of(new VariantReader(auth, VARIANT_FIELDS)))
