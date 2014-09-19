@@ -150,12 +150,15 @@ public class TransmissionProbability {
           @Override
           public void processElement(ProcessContext c) {
             KV<String, Iterable<Boolean>> input = c.element();
-            long m=0,f=0;
+            long m = 0,f = 0;
             for (Boolean b : input.getValue()) {
-              if (b) m++;
-              else f++;
+              if (b) {
+                m++;
+              } else {
+                f++;
+              }
             }
-            double tdt = Math.pow(m-f, 2.0) / (m+f);
+            double tdt = Math.pow(m - f, 2.0) / (m + f);
             c.output(KV.of(input.getKey(), tdt));
           }
         }))
