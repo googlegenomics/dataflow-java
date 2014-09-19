@@ -33,22 +33,32 @@ import java.util.List;
 public class ExtractFamilyVariantStatus
   extends DoFn<Variant, KV<String, Boolean>> {
 
-  static List<String[]> getTrios() {
-    // TODO(gunan): replace this with actual fetching of family informtion.
-    List<String[]> trioList = Lists.newArrayList();
-    trioList.add(new String[]{"NA12889", "NA12890", "NA12877"});
-    trioList.add(new String[]{"NA12891", "NA12892", "NA12878"});
-    trioList.add(new String[]{"NA12877", "NA12878", "NA12879"});
-    trioList.add(new String[]{"NA12877", "NA12878", "NA12880"});
-    trioList.add(new String[]{"NA12877", "NA12878", "NA12881"});
-    trioList.add(new String[]{"NA12877", "NA12878", "NA12882"});
-    trioList.add(new String[]{"NA12877", "NA12878", "NA12883"});
-    trioList.add(new String[]{"NA12877", "NA12878", "NA12884"});
-    trioList.add(new String[]{"NA12877", "NA12878", "NA12885"});
-    trioList.add(new String[]{"NA12877", "NA12878", "NA12886"});
-    trioList.add(new String[]{"NA12877", "NA12878", "NA12887"});
-    trioList.add(new String[]{"NA12877", "NA12878", "NA12888"});
-    trioList.add(new String[]{"NA12877", "NA12878", "NA12893"});
+  private class Trio {
+    String mom, dad, child;
+    Trio(String m, String d, String c) {
+      mom = m;
+      dad = d;
+      child = c;
+    }
+  }
+
+  List<Trio> getTrios() {
+    // TODO(gunan): Replace this with actual fetching of family informtion.
+    List<Trio> trioList = Lists.newArrayList();
+    // All Trio's are ordered as "mom, dad and child".
+    trioList.add(new Trio("NA12889", "NA12890", "NA12877"));
+    trioList.add(new Trio("NA12891", "NA12892", "NA12878"));
+    trioList.add(new Trio("NA12877", "NA12878", "NA12879"));
+    trioList.add(new Trio("NA12877", "NA12878", "NA12880"));
+    trioList.add(new Trio("NA12877", "NA12878", "NA12881"));
+    trioList.add(new Trio("NA12877", "NA12878", "NA12882"));
+    trioList.add(new Trio("NA12877", "NA12878", "NA12883"));
+    trioList.add(new Trio("NA12877", "NA12878", "NA12884"));
+    trioList.add(new Trio("NA12877", "NA12878", "NA12885"));
+    trioList.add(new Trio("NA12877", "NA12878", "NA12886"));
+    trioList.add(new Trio("NA12877", "NA12878", "NA12887"));
+    trioList.add(new Trio("NA12877", "NA12878", "NA12888"));
+    trioList.add(new Trio("NA12877", "NA12878", "NA12893"));
     return trioList;
   }
 
@@ -56,16 +66,16 @@ public class ExtractFamilyVariantStatus
   public void processElement(ProcessContext c) {
     Variant variant = c.element();
     List<String> samples = getSamplesWithVariant(variant);
-    List<String[]> trioList = getTrios();
+    List<Trio> trioList = getTrios();
 
-    for (String[] family : trioList) {
-      if (samples.contains(family[0]) &&
-          (!samples.contains(family[1])) &&
-          samples.contains(family[2])) {
+    for (Trio family : trioList) {
+      if (samples.contains(family.mom) &&
+          (!samples.contains(family.dad)) &&
+          samples.contains(family.child)) {
         c.output(KV.of(variant.getId(), true));
-      } else if ((!samples.contains(family[0])) &&
-                 samples.contains(family[1]) &&
-                 samples.contains(family[2])) {
+      } else if ((!samples.contains(family.mom)) &&
+                 samples.contains(family.dad) &&
+                 samples.contains(family.child)) {
         c.output(KV.of(variant.getId(), false));
       }
     }
