@@ -32,6 +32,7 @@ import com.google.cloud.dataflow.sdk.values.KV;
 import com.google.cloud.dataflow.utils.OptionsParser;
 import com.google.cloud.dataflow.utils.RequiredOption;
 import com.google.cloud.genomics.dataflow.coders.GenericJsonCoder;
+import com.google.cloud.genomics.dataflow.functions.CalculateTransmissionDisequilibrium;
 import com.google.cloud.genomics.dataflow.functions.ExtractFamilyVariantStatus;
 import com.google.cloud.genomics.dataflow.readers.VariantReader;
 import com.google.cloud.genomics.dataflow.utils.DataflowWorkarounds;
@@ -145,23 +146,7 @@ public class TransmissionProbability {
             .of(new ExtractFamilyVariantStatus()))
         .apply(GroupByKey.<String, Boolean>create())
         .apply(ParDo.named("CalculateTransmissionProbability")
-            .of(new DoFn<KV<String, Iterable<Boolean>>,
-                         KV<String, Double>>() {
-          @Override
-          public void processElement(ProcessContext c) {
-            KV<String, Iterable<Boolean>> input = c.element();
-            long m = 0,f = 0;
-            for (Boolean b : input.getValue()) {
-              if (b) {
-                m++;
-              } else {
-                f++;
-              }
-            }
-            double tdt = Math.pow(m - f, 2.0) / (m + f);
-            c.output(KV.of(input.getKey(), tdt));
-          }
-        }))
+            .of(new CalculateTransmissionDisequilibrium()))
         .apply(ParDo.named("WriteDataToFile")
             .of(new DoFn<KV<String, Double>, String>() {
           @Override
