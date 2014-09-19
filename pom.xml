@@ -164,7 +164,7 @@
 
   <properties>
     <junit.version>4.12-beta-1</junit.version>
-    <google.api.version>1.19.0</google.api.version>
+    <google.api.version>1.18.0-rc</google.api.version>
     <maven.enforcer.jdk-version>[1.7,)</maven.enforcer.jdk-version>
     <maven.compile.source>1.7</maven.compile.source>
     <maven.compile.target>1.7</maven.compile.target>
