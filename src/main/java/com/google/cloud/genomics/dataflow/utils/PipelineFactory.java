@@ -41,7 +41,6 @@ import com.google.api.services.bigquery.model.TableDataList;
 import com.google.api.services.bigquery.model.TableFieldSchema;
 import com.google.api.services.bigquery.model.TableList;
 import com.google.api.services.bigquery.model.TableReference;
-import com.google.api.services.bigquery.model.TableRow;
 import com.google.api.services.bigquery.model.TableSchema;
 import com.google.api.services.bigquery.model.ViewDefinition;
 import com.google.api.services.compute.model.AccessConfig;
@@ -529,7 +528,6 @@ public class PipelineFactory {
         TableList.class,
         TableList.Tables.class,
         TableReference.class,
-        TableRow.class,
         TableSchema.class,
         Tags.class,
         TargetHttpProxy.class,
