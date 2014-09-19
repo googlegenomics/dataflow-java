@@ -164,8 +164,7 @@ public class TransmissionProbability {
           @Override
           public void processElement(ProcessContext c) {
             KV<String, Double> pair = c.element();
-            String output = "Id : " + pair.getKey();
-            output += "\tValue:" + pair.getValue() + "\n";
+            String output = pair.getKey() + "\t" + pair.getValue() + "\n";
             c.output(output);
           }
         }))
