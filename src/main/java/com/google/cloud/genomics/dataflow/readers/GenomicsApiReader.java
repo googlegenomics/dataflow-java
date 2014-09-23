@@ -20,7 +20,6 @@ import com.google.api.services.genomics.Genomics;
 import com.google.cloud.dataflow.sdk.transforms.DoFn;
 import com.google.cloud.genomics.dataflow.utils.GenomicsAuth;
 import com.google.cloud.genomics.utils.Paginator;
-import com.google.common.base.Supplier;
 
 import java.io.IOException;
 import java.security.GeneralSecurityException;
@@ -32,12 +31,12 @@ public abstract class GenomicsApiReader<I extends GenericJson, O extends Generic
   protected final GenomicsAuth auth;
   protected final String fields;
   protected int numRetries = 10;
-  
+
   public GenomicsApiReader(GenomicsAuth auth, String fields) {
     this.auth = auth;
     this.fields = fields;
   }
-  
+
   /**
    * Sets the number of times to retry requests. If 0, will never retry. If -1, will always retry.
    * @param numRetries Number of times to retry requests. Set to 0 for never or -1 for always.
@@ -46,16 +45,16 @@ public abstract class GenomicsApiReader<I extends GenericJson, O extends Generic
     this.numRetries = numRetries;
     return this;
   }
-  
+
   /**
    * Returns the retry policy for this reader based on its numRetries field
    * @return the retry policy for this reader
    */
-  public Supplier<Paginator.RetryPolicy<I>> getRetryPolicy() {
+  public Paginator.RetryPolicy.Factory getRetryPolicy() {
     switch (numRetries) {
-      case -1:  return Paginator.alwaysRetry();
-      case 0:   return Paginator.neverRetry();
-      default:  return Paginator.retryNTimes(numRetries);
+      case -1:  return Paginator.RetryPolicy.ALWAYS_RETRY;
+      case 0:   return Paginator.RetryPolicy.NEVER_RETRY;
+      default:  return Paginator.RetryPolicy.retryNTimes(numRetries);
     }
   }
 
