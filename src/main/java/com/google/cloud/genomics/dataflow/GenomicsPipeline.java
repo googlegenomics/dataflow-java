@@ -13,7 +13,7 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package com.google.cloud.genomics.dataflow.utils;
+package com.google.cloud.genomics.dataflow;
 
 import com.google.api.client.json.GenericJson;
 import com.google.api.services.genomics.model.Beacon;
@@ -64,7 +64,7 @@ import com.google.cloud.genomics.dataflow.coders.GenericJsonCoder;
 import java.util.Arrays;
 import java.util.List;
 
-public class PipelineFactory {
+public class GenomicsPipeline {
 
   public static Pipeline create() {
     Pipeline pipeline = Pipeline.create();
