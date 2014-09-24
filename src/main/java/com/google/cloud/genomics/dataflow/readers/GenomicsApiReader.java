@@ -17,9 +17,10 @@ package com.google.cloud.genomics.dataflow.readers;
 
 import com.google.api.client.json.GenericJson;
 import com.google.api.services.genomics.Genomics;
+import com.google.api.services.genomics.GenomicsRequest;
 import com.google.cloud.dataflow.sdk.transforms.DoFn;
 import com.google.cloud.genomics.dataflow.utils.GenomicsAuth;
-import com.google.cloud.genomics.utils.Paginator;
+import com.google.cloud.genomics.utils.RetryPolicy;
 
 import java.io.IOException;
 import java.security.GeneralSecurityException;
@@ -50,11 +51,11 @@ public abstract class GenomicsApiReader<I extends GenericJson, O extends Generic
    * Returns the retry policy for this reader based on its numRetries field
    * @return the retry policy for this reader
    */
-  public Paginator.RetryPolicy.Factory getRetryPolicy() {
+  public RetryPolicy<GenomicsRequest<?>> getRetryPolicy() {
     switch (numRetries) {
-      case -1:  return Paginator.RetryPolicy.ALWAYS_RETRY;
-      case 0:   return Paginator.RetryPolicy.NEVER_RETRY;
-      default:  return Paginator.RetryPolicy.retryNTimes(numRetries);
+      case -1:  return RetryPolicy.ALWAYS_RETRY;
+      case 0:   return RetryPolicy.NEVER_RETRY;
+      default:  return RetryPolicy.nAttempts(numRetries);
     }
   }
 
