@@ -60,7 +60,7 @@ import java.util.logging.Logger;
  * and example configuration:
  *   --output=gs://<OUTPUT PATH>
  *
- * The input datasetId defaults to 376902546192 (1000 genomes) and can be
+ * The input datasetId defaults to 10473108253681171589 (1000 genomes) and can be
  * overridden with --datasetId.
  */
 public class VariantSimilarity {
@@ -106,7 +106,7 @@ public class VariantSimilarity {
 
     @Description("The ID of the Google Genomics dataset this pipeline is working with. " +
         "Defaults to 1000 Genomes.")
-    public String datasetId = "1154144306496329440";
+    public String datasetId = "10473108253681171589";
   }
 
   @SuppressWarnings("unchecked")
