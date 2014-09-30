@@ -119,19 +119,11 @@ public abstract class GenomicsDoFns<A, B, C extends GenomicsRequest<D>, D, E> {
             private A api;
 
             @Override public void processElement(ProcessContext context) throws IOException {
-              for (RetryPolicy<C, D>.Instance instance = retryPolicy.createInstance(); true;) {
-                C request = createRequest(api, context.element());
-                if (fields.isPresent()) {
-                  request.setFields(fields.get());
-                }
-                try {
-                  context.output(request.execute());
-                } catch (IOException e) {
-                  if (!instance.shouldRetry(request, e)) {
-                    throw e;
-                  }
-                }
+              C request = createRequest(api, context.element());
+              if (fields.isPresent()) {
+                request.setFields(fields.get());
               }
+              context.output(retryPolicy.execute(request));
             }
 
             @Override
