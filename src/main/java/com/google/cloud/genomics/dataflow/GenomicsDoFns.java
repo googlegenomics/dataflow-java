@@ -113,13 +113,13 @@ public abstract class GenomicsDoFns<A, B, C extends GenomicsRequest<D>, D, E> {
     @Override final DoFn<B, D> create(
         final GenomicsSupplier supplier,
         final Optional<String> fields,
-        final RetryPolicy<? super C> retryPolicy) {
+        final RetryPolicy<C, D> retryPolicy) {
       return new DoFn<B, D>() {
 
             private A api;
 
             @Override public void processElement(ProcessContext context) throws IOException {
-              for (RetryPolicy<? super C>.Instance instance = retryPolicy.createInstance(); true;) {
+              for (RetryPolicy<C, D>.Instance instance = retryPolicy.createInstance(); true;) {
                 C request = createRequest(api, context.element());
                 if (fields.isPresent()) {
                   request.setFields(fields.get());
@@ -308,20 +308,20 @@ public abstract class GenomicsDoFns<A, B, C extends GenomicsRequest<D>, D, E> {
       extends GenomicsDoFns<A, B, C, D, E> {
 
     static <A, B, C extends GenomicsRequest<D>, D, E> PaginatingGenomicsDoFns<A, B, C, D, E> create(
-        Paginator.Factory<? extends Paginator<A, B, C, D, E>, C> paginatorFactory) {
+        Paginator.Factory<? extends Paginator<A, B, C, D, E>, C, D> paginatorFactory) {
       return new PaginatingGenomicsDoFns<A, B, C, D, E>(paginatorFactory);
     }
 
-    private Paginator.Factory<? extends Paginator<A, B, C, D, E>, C> paginatorFactory;
+    private Paginator.Factory<? extends Paginator<A, B, C, D, E>, C, D> paginatorFactory;
 
     private PaginatingGenomicsDoFns(
-        Paginator.Factory<? extends Paginator<A, B, C, D, E>, C> paginatorFactory) {
+        Paginator.Factory<? extends Paginator<A, B, C, D, E>, C, D> paginatorFactory) {
       this.paginatorFactory = paginatorFactory;
     }
 
     @Override
     final DoFn<B, E> create(final GenomicsSupplier supplier, final Optional<String> fields,
-        final RetryPolicy<? super C> retryPolicy) {
+        final RetryPolicy<C, D> retryPolicy) {
       return new DoFn<B, E>() {
 
         private Paginator<A, B, C, D, E> paginator;
@@ -528,22 +528,22 @@ public abstract class GenomicsDoFns<A, B, C extends GenomicsRequest<D>, D, E> {
   }
 
   public final DoFn<B, E> create(GenomicsSupplier supplier) {
-    return create(supplier, Optional.<String>absent(), RetryPolicy.DEFAULT);
+    return create(supplier, Optional.<String>absent(), RetryPolicy.<C, D>defaultPolicy());
   }
 
   abstract DoFn<B, E> create(GenomicsSupplier supplier, Optional<String> fields,
-      RetryPolicy<? super C> retryPolicy);
+      RetryPolicy<C, D> retryPolicy);
 
-  public final DoFn<B, E> create(GenomicsSupplier supplier, RetryPolicy<? super C> retryPolicy) {
+  public final DoFn<B, E> create(GenomicsSupplier supplier, RetryPolicy<C, D> retryPolicy) {
     return create(supplier, Optional.<String>absent(), retryPolicy);
   }
 
   public final DoFn<B, E> create(GenomicsSupplier supplier, String fields) {
-    return create(supplier, Optional.of(fields), RetryPolicy.DEFAULT);
+    return create(supplier, Optional.of(fields), RetryPolicy.<C, D>defaultPolicy());
   }
 
   public final DoFn<B, E> create(GenomicsSupplier supplier, String fields,
-      RetryPolicy<? super C> retryPolicy) {
+      RetryPolicy<C, D> retryPolicy) {
     return create(supplier, Optional.of(fields), retryPolicy);
   }
 }

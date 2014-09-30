@@ -51,11 +51,14 @@ public abstract class GenomicsApiReader<I extends GenericJson, O extends Generic
    * Returns the retry policy for this reader based on its numRetries field
    * @return the retry policy for this reader
    */
-  public RetryPolicy<GenomicsRequest<?>> getRetryPolicy() {
+  public <C extends GenomicsRequest<D>, D> RetryPolicy<C, D> getRetryPolicy() {
     switch (numRetries) {
-      case -1:  return RetryPolicy.ALWAYS_RETRY;
-      case 0:   return RetryPolicy.NEVER_RETRY;
-      default:  return RetryPolicy.nAttempts(numRetries);
+      case -1:
+        return RetryPolicy.alwaysRetry();
+      case 0:
+        return RetryPolicy.neverRetry();
+      default:
+        return RetryPolicy.nAttempts(numRetries);
     }
   }
 
