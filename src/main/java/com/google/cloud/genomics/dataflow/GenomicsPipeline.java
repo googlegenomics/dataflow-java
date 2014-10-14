@@ -16,6 +16,7 @@
 package com.google.cloud.genomics.dataflow;
 
 import com.google.api.client.json.GenericJson;
+import com.google.api.services.dataflow.model.CloudWorkflowEnvironment;
 import com.google.api.services.genomics.model.Beacon;
 import com.google.api.services.genomics.model.Call;
 import com.google.api.services.genomics.model.CallSet;
@@ -59,7 +60,10 @@ import com.google.api.services.genomics.model.VariantSet;
 import com.google.cloud.dataflow.sdk.Pipeline;
 import com.google.cloud.dataflow.sdk.coders.Coder;
 import com.google.cloud.dataflow.sdk.coders.CoderRegistry;
+import com.google.cloud.dataflow.sdk.runners.BlockingDataflowPipelineRunner;
+import com.google.cloud.dataflow.sdk.runners.DataflowPipelineRunnerHooks;
 import com.google.cloud.dataflow.sdk.runners.PipelineOptions;
+import com.google.cloud.dataflow.sdk.runners.PipelineRunner;
 import com.google.cloud.genomics.dataflow.coders.GenericJsonCoder;
 
 import java.util.Arrays;
@@ -123,6 +127,16 @@ public class GenomicsPipeline {
             }
           });
     }
+
+    PipelineRunner<?> runner = pipeline.getRunner();
+    if (runner instanceof BlockingDataflowPipelineRunner) {
+      ((BlockingDataflowPipelineRunner) runner).setHooks(new DataflowPipelineRunnerHooks() {
+        public void modifyEnvironmentBeforeSubmission(CloudWorkflowEnvironment environment) {
+          environment.setMachineType("n1-standard-4");
+        }
+      });
+    }
+
     return pipeline;
   }
 }
