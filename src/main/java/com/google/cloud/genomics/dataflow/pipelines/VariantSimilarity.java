@@ -23,6 +23,7 @@ import com.google.cloud.dataflow.sdk.runners.Description;
 import com.google.cloud.dataflow.sdk.transforms.ParDo;
 import com.google.cloud.dataflow.utils.OptionsParser;
 import com.google.cloud.dataflow.utils.RequiredOption;
+import com.google.cloud.genomics.dataflow.GenomicsPipeline;
 import com.google.cloud.genomics.dataflow.functions.ExtractSimilarCallsets;
 import com.google.cloud.genomics.dataflow.functions.OutputPCoAFile;
 import com.google.cloud.genomics.dataflow.readers.VariantReader;
@@ -139,8 +140,7 @@ public class VariantSimilarity {
 
     List<SearchVariantsRequest> requests = getVariantRequests(auth, options);
 
-    Pipeline p = Pipeline.create();
-    DataflowWorkarounds.registerGenomicsCoders(p);
+    Pipeline p = GenomicsPipeline.create(options);
 
     DataflowWorkarounds.getPCollection(requests, p, options.numWorkers)
         .apply(ParDo.named("VariantReader")
@@ -148,6 +148,6 @@ public class VariantSimilarity {
         .apply(ParDo.named("ExtractSimilarCallsets").of(new ExtractSimilarCallsets()))
         .apply(new OutputPCoAFile(options.output));
 
-    p.run(DataflowWorkarounds.getRunner(options));
+    p.run();
   }
 }

@@ -81,7 +81,7 @@
     <dependency>
       <groupId>com.google.apis</groupId>
       <artifactId>google-api-services-genomics</artifactId>
-      <version>v1beta-rev34-1.19.0</version>
+      <version>v1beta-rev44-1.19.0</version>
     </dependency>
     <dependency>
       <groupId>org.javassist</groupId>
@@ -132,7 +132,7 @@
     <dependency>
       <groupId>com.google.cloud.dataflow</groupId>
       <artifactId>dataflow-sdk</artifactId>
-      <version>1.0.140924</version>
+      <version>1.0.141013</version>
     </dependency>
   </dependencies>
 

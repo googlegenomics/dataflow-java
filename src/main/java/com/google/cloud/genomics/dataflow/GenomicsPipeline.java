@@ -59,6 +59,7 @@ import com.google.api.services.genomics.model.VariantSet;
 import com.google.cloud.dataflow.sdk.Pipeline;
 import com.google.cloud.dataflow.sdk.coders.Coder;
 import com.google.cloud.dataflow.sdk.coders.CoderRegistry;
+import com.google.cloud.dataflow.sdk.runners.PipelineOptions;
 import com.google.cloud.genomics.dataflow.coders.GenericJsonCoder;
 
 import java.util.Arrays;
@@ -66,8 +67,8 @@ import java.util.List;
 
 public class GenomicsPipeline {
 
-  public static Pipeline create() {
-    Pipeline pipeline = Pipeline.create();
+  public static Pipeline create(PipelineOptions options) {
+    Pipeline pipeline = Pipeline.create(options);
     CoderRegistry registry = pipeline.getCoderRegistry();
     for (final Class<? extends GenericJson> type : Arrays.asList(
         Beacon.class,
@@ -112,9 +113,13 @@ public class GenomicsPipeline {
         VariantSet.class)) {
       registry.registerCoder(type,
           new CoderRegistry.CoderFactory() {
-            @Override public Coder<?> create(
-                @SuppressWarnings("rawtypes") List<? extends Coder> unused) {
+
+            @Override public Coder<?> create(List<? extends Coder<?>> typeArgumentCoders) {
               return GenericJsonCoder.of(type);
+            }
+
+            @Override public List<Object> getInstanceComponents(Object value) {
+              return null;
             }
           });
     }
