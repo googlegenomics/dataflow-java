@@ -99,13 +99,17 @@ public class DataflowWorkarounds {
    */
   public static <T> void registerCoder(Pipeline p, Class<T> clazz, final Coder<T> coder) {
     CoderRegistry registry = p.getCoderRegistry();
-    registry.registerCoder(clazz, new CoderRegistry.CoderFactory() {
-      @SuppressWarnings("rawtypes")
-      @Override
-      public Coder create(List<? extends Coder> typeArgumentCoders) {
-        return coder;
-      }
-    });
+    registry.registerCoder(clazz,
+        new CoderRegistry.CoderFactory() {
+
+          @Override public Coder<?> create(List<? extends Coder<?>> typeArgumentCoders) {
+            return coder;
+          }
+
+          @Override public List<Object> getInstanceComponents(Object value) {
+            return null;
+          }
+        });
     p.setCoderRegistry(registry);
   }
   
