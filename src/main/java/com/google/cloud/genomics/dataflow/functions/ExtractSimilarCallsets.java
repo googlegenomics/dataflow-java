@@ -20,47 +20,74 @@ import com.google.api.services.genomics.model.Variant;
 import com.google.cloud.dataflow.sdk.transforms.DoFn;
 import com.google.cloud.dataflow.sdk.values.KV;
 import com.google.common.annotations.VisibleForTesting;
-import com.google.common.collect.Lists;
+import com.google.common.base.Function;
+import com.google.common.collect.ContiguousSet;
+import com.google.common.collect.DiscreteDomains;
+import com.google.common.collect.FluentIterable;
+import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableMultiset;
+import com.google.common.collect.Iterators;
+import com.google.common.collect.Multiset;
+import com.google.common.collect.Ranges;
 
-import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
-import java.util.Map;
+import java.util.RandomAccess;
 
 /**
  * Emits a callset pair every time they share a variant.
  */
 public class ExtractSimilarCallsets extends DoFn<Variant, KV<KV<String, String>, Long>> {
 
-  private HashMap<KV<String, String>, Long> accumulator;
+  private ImmutableMultiset.Builder<KV<String, String>> accumulator;
 
   @Override
   public void startBatch(Context c) {
-    accumulator = new HashMap<KV<String, String>, Long>();
+    accumulator = ImmutableMultiset.builder();
   }
 
   @Override
-  public void processElement(ProcessContext c) {
-    Variant variant = c.element();
-    List<String> samples = getSamplesWithVariant(variant);
+  public void processElement(ProcessContext context) {
+    for (KV<String, String> pair : allPairs(getSamplesWithVariant(context.element()))) {
+      accumulator.add(pair);
+    }
+  }
 
-    // TODO: optimize this to emit all combinations instead of all permutations
-    for (String s1 : samples) {
-      for (String s2 : samples) {
-        KV<String, String> key = KV.of(s1, s2);
-        Long count = accumulator.get(key);
-        if (null == count) {
-          count = new Long(1);
-        } else {
-          count++;
-        }
-        accumulator.put(key, count);
-      }
+  @Override
+  public void finishBatch(Context context) {
+    for (Multiset.Entry<KV<String, String>> entry : accumulator.build().entrySet()) {
+      context.output(KV.of(entry.getElement(), Long.valueOf(entry.getCount())));
     }
   }
 
   @VisibleForTesting
-  List<String> getSamplesWithVariant(Variant variant) {
-    List<String> samplesWithVariant = Lists.newArrayList();
+  static <X, L extends List<? extends X> & RandomAccess>
+      FluentIterable<KV<X, X>> allPairs(final L list) {
+    return FluentIterable
+        .from(ContiguousSet.create(Ranges.closedOpen(0, list.size()), DiscreteDomains.integers()))
+        .transformAndConcat(
+            new Function<Integer, Iterable<KV<X, X>>>() {
+              @Override public Iterable<KV<X, X>> apply(final Integer i) {
+                return new Iterable<KV<X, X>>() {
+                      @Override public Iterator<KV<X, X>> iterator() {
+                        return Iterators.transform(list.listIterator(i),
+                            new Function<X, KV<X, X>>() {
+
+                              private final X key = list.get(i);
+
+                              @Override public KV<X, X> apply(X value) {
+                                return KV.of(key, value);
+                              }
+                            });
+                      }
+                    };
+              }
+            });
+  }
+
+  @VisibleForTesting
+  static ImmutableList<String> getSamplesWithVariant(Variant variant) {
+    ImmutableList.Builder<String> samplesWithVariant = ImmutableList.builder();
     for (Call call : variant.getCalls()) {
       for (int genotype : call.getGenotype()) {
         if (0 < genotype) {
@@ -71,13 +98,6 @@ public class ExtractSimilarCallsets extends DoFn<Variant, KV<KV<String, String>,
         }
       }
     }
-    return samplesWithVariant;
-  }
-
-  @Override
-  public void finishBatch(Context c) {
-    for (Map.Entry<KV<String, String>, Long> entry : accumulator.entrySet()) {
-      c.output(KV.of(entry.getKey(), entry.getValue()));
-    }
+    return samplesWithVariant.build();
   }
 }

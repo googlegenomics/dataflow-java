@@ -83,7 +83,11 @@ public class PCoAnalysis implements SerializableFunction<Iterable<KV<KV<String, 
       int d1 = getDataIndex(dataIndicies, entry.getKey().getKey());
       int d2 = getDataIndex(dataIndicies, entry.getKey().getValue());
 
-      matrixData[d1][d2] = entry.getValue();
+      double value = entry.getValue();
+      matrixData[d1][d2] = value;
+      if (d1 != d2) {
+        matrixData[d2][d1] = value;
+      }
     }
 
     // Run the actual pca
