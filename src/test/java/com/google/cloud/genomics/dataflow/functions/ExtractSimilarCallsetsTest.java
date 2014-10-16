@@ -40,13 +40,13 @@ public class ExtractSimilarCallsetsTest {
   public void testAllPairs() {
     assertEquals(
         Collections.emptyList(),
-        allPairs(Lists.newArrayList(Collections.emptyList())).toImmutableList());
+        allPairs(Lists.newArrayList(Collections.emptyList())).toList());
     assertEquals(
         Collections.singletonList(KV.of(1, 1)),
-        allPairs(Lists.newArrayList(Collections.singletonList(1))).toImmutableList());
+        allPairs(Lists.newArrayList(Collections.singletonList(1))).toList());
     assertEquals(
         Arrays.asList(KV.of(1, 1), KV.of(1, 2), KV.of(1, 3), KV.of(2, 2), KV.of(2, 3), KV.of(3, 3)),
-        allPairs(Lists.newArrayList(Arrays.asList(1, 2, 3))).toImmutableList());
+        allPairs(Lists.newArrayList(Arrays.asList(1, 2, 3))).toList());
   }
 
   @Test
