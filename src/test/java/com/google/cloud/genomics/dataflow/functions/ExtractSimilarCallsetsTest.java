@@ -15,60 +15,62 @@ limitations under the License.
 */
 package com.google.cloud.genomics.dataflow.functions;
 
+import static com.google.cloud.genomics.dataflow.functions.ExtractSimilarCallsets.allPairs;
+import static com.google.cloud.genomics.dataflow.functions.ExtractSimilarCallsets.getSamplesWithVariant;
 import static org.junit.Assert.assertEquals;
 
 import com.google.api.client.util.Lists;
 import com.google.api.services.genomics.model.Call;
 import com.google.api.services.genomics.model.Variant;
+import com.google.cloud.dataflow.sdk.values.KV;
 
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 
 @RunWith(JUnit4.class)
 public class ExtractSimilarCallsetsTest {
 
   @Test
+  public void testAllPairs() {
+    assertEquals(
+        Collections.emptyList(),
+        allPairs(Lists.newArrayList(Collections.emptyList())).toImmutableList());
+    assertEquals(
+        Collections.singletonList(KV.of(1, 1)),
+        allPairs(Lists.newArrayList(Collections.singletonList(1))).toImmutableList());
+    assertEquals(
+        Arrays.asList(KV.of(1, 1), KV.of(1, 2), KV.of(1, 3), KV.of(2, 2), KV.of(2, 3), KV.of(3, 3)),
+        allPairs(Lists.newArrayList(Arrays.asList(1, 2, 3))).toImmutableList());
+  }
+
+  @Test
   public void testGetSamplesWithVariant() throws Exception {
-    Call refCall = makeCall("ref", 0, 0);
-    Call altCall1 = makeCall("alt1", 1, 0);
-    Call altCall2 = makeCall("alt2", 0, 1);
-    Call altCall3 = makeCall("alt3", 1, 1);
-
-    ExtractSimilarCallsets fn = new ExtractSimilarCallsets();
     Variant variant = new Variant();
+    List<Call> calls = new ArrayList<Call>();
 
-    variant.setCalls(Lists.<Call>newArrayList());
-    assertEquals(0, fn.getSamplesWithVariant(variant).size());
+    variant.setCalls(calls);
+    assertEquals(Collections.emptyList(), getSamplesWithVariant(variant));
 
-    variant.getCalls().add(refCall);
-    assertEquals(0, fn.getSamplesWithVariant(variant).size());
+    calls.add(makeCall("ref", 0, 0));
+    assertEquals(Collections.emptyList(), getSamplesWithVariant(variant));
 
-    variant.getCalls().add(altCall1);
-    assertEquals(1, fn.getSamplesWithVariant(variant).size());
+    calls.add(makeCall("alt1", 1, 0));
+    assertEquals(Collections.singletonList("alt1"), getSamplesWithVariant(variant));
 
-    variant.getCalls().add(altCall2);
-    variant.getCalls().add(altCall3);
-    List<String> samples = fn.getSamplesWithVariant(variant);
-    assertEquals(3, samples.size());
-    assertEquals("alt1", samples.get(0));
-    assertEquals("alt2", samples.get(1));
-    assertEquals("alt3", samples.get(2));
+    calls.add(makeCall("alt2", 0, 1));
+    calls.add(makeCall("alt3", 1, 1));
+    assertEquals(Arrays.asList("alt1", "alt2", "alt3"), getSamplesWithVariant(variant));
   }
 
-  private Call makeCall(String name,
-      Integer firstAllele,
-      Integer secondAllele) {
-    List<Integer> genotype = Lists.newArrayList();
-    genotype.add(firstAllele);
-    genotype.add(secondAllele);
-
-    Call call1 = new Call();
-    call1.setCallSetName(name);
-    call1.setGenotype(genotype);
-    return call1;
+  private static Call makeCall(String name, Integer... alleles) {
+    return new Call()
+        .setCallSetName(name)
+        .setGenotype(Arrays.asList(alleles));
   }
-
 }
