@@ -17,6 +17,7 @@ package com.google.cloud.genomics.dataflow.readers;
 
 import com.google.api.services.genomics.Genomics;
 import com.google.api.services.genomics.model.SearchVariantsRequest;
+import com.google.api.services.genomics.model.SearchVariantsResponse;
 import com.google.api.services.genomics.model.Variant;
 import com.google.cloud.genomics.dataflow.utils.GenomicsAuth;
 import com.google.cloud.genomics.utils.Paginator;
@@ -37,7 +38,7 @@ public class VariantReader extends GenomicsApiReader<SearchVariantsRequest, Vari
   public VariantReader(GenomicsAuth auth, String variantFields) {
     super(auth, variantFields);
   }
-  
+
   /**
    * Create a VariantReader with no fields parameter, all information will be returned.
    * @param auth Auth class containing credentials.
@@ -50,14 +51,14 @@ public class VariantReader extends GenomicsApiReader<SearchVariantsRequest, Vari
   protected void processApiCall(Genomics genomics, ProcessContext c, SearchVariantsRequest request)
       throws IOException {
     LOG.info("Starting Variants read loop");
-    
-    Paginator.Variants searchVariants = Paginator.Variants.create(genomics, getRetryPolicy());
-    
-    for (Variant read : searchVariants.search(request, fields)) {
+
+    for (Variant read : Paginator.Variants
+        .create(genomics, this.<Genomics.Variants.Search, SearchVariantsResponse>getRetryPolicy())
+        .search(request, fields)) {
       c.output(read);
     }
-    
+
     LOG.info("Finished variants at: " + 
-        request.getContig() + "-" + request.getStartPosition());
+        request.getReferenceName() + "-" + request.getStart());
   }
 }

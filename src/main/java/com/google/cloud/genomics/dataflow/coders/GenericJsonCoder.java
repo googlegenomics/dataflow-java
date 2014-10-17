@@ -16,21 +16,20 @@
 package com.google.cloud.genomics.dataflow.coders;
 
 import com.google.api.client.json.GenericJson;
-import com.google.api.client.json.JsonGenerator;
-import com.google.api.client.json.JsonParser;
+import com.google.api.client.json.JsonFactory;
 import com.google.api.client.json.jackson2.JacksonFactory;
 import com.google.api.services.dataflow.model.CloudNamedParameter;
 import com.google.cloud.dataflow.sdk.coders.AtomicCoder;
+import com.google.cloud.dataflow.sdk.coders.Coder;
 import com.google.cloud.dataflow.sdk.coders.CoderException;
+import com.google.cloud.dataflow.sdk.coders.StringUtf8Coder;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
-import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
-import java.nio.charset.Charset;
 import java.util.Map;
 
 /**
@@ -38,79 +37,42 @@ import java.util.Map;
  * This includes all objects in the Google Genomics Java client library.
 */
 public class GenericJsonCoder<T extends GenericJson> extends AtomicCoder<T> {
-  private static final int READ_LIMIT = 1 << 22; // 4MB buffer for read limit
-  private static JacksonFactory jacksonFactory = new JacksonFactory();
+
+  private static final JsonFactory JSON_FACTORY = JacksonFactory.getDefaultInstance();
 
   public static <T extends GenericJson> GenericJsonCoder<T> of(Class<T> type) {
     return new GenericJsonCoder<>(type);
   }
 
-  @SuppressWarnings("unchecked")
   @JsonCreator
-  public static GenericJsonCoder<? > of(@JsonProperty("type") String classType)
+  @SuppressWarnings("unchecked")
+  public static <T extends GenericJson> GenericJsonCoder<T> of(@JsonProperty("type") String type)
       throws ClassNotFoundException {
-    return of((Class<? extends GenericJson>) Class.forName(classType));
+    return of((Class<T>) Class.forName(type));
   }
 
+  private Coder<String> delegate = StringUtf8Coder.of();
   private final Class<T> type;
 
-  protected GenericJsonCoder(Class<T> type) {
+  private GenericJsonCoder(Class<T> type) {
     this.type = type;
   }
 
-  @Override
-  public void encode(T value, OutputStream out, Context context) throws IOException {
-    if (value == null) {
-      throw new CoderException("cannot encode a null record");
-    }
-
-    JsonGenerator generator = jacksonFactory.createJsonGenerator(out, Charset.defaultCharset());
-    generator.serialize(value);
-    generator.flush();
+  @Override protected void addCloudEncodingDetails(Map<String, CloudNamedParameter> details) {
+    details.put("type", new CloudNamedParameter().setStringValue(type.getName()));
   }
 
-  @Override
-  public T decode(InputStream in, Context context) throws IOException {
-    if (context.isWholeStream) {
-      JsonParser jsonParser = jacksonFactory.createJsonParser(in);
-      T obj = jsonParser.parse(type);
-      jsonParser.close();
-      return obj;
-    } else {
-      /* 
-       * JsonParser reads past the end of the object in the InputStream by a large number of bytes.
-       * When coded in an Iterable, the stream contains concatenated json objects, so this will 
-       * cause errors. To fix this, we allow the inputstream to backtrack READ_LIMIT bytes and 
-       * move it to the end of the read object before closing.
-       * 
-       * NOTE:
-       * If encoded Json object is more than READ_LIMIT bytes and is in iterable, this will fail.
-       */
-      
-      in.mark(READ_LIMIT);
-      JsonParser jsonParser = jacksonFactory.createJsonParser(in);
-      T obj = jsonParser.parse(type);
-
-      ByteArrayOutputStream buf = new ByteArrayOutputStream();
-      encode(obj, buf, context);
-      int skip = buf.size();
-      in.reset();
-      in.skip(skip);
-      
-      jsonParser.close();
-      return obj;
-    }
+  @Override public T decode(InputStream inStream, Context context)
+      throws CoderException, IOException {
+    return JSON_FACTORY.fromString(delegate.decode(inStream, context), type);
   }
 
-  @Override
-  protected void addCloudEncodingDetails(
-      Map<String, CloudNamedParameter> encodingParameters) {
-    encodingParameters.put("type",
-        new CloudNamedParameter().setStringValue(type.getName()));
+  @Override public void encode(T value, OutputStream outStream, Context context)
+      throws CoderException, IOException {
+    delegate.encode(JSON_FACTORY.toString(value), outStream, context);
   }
 
-  @Override
-  public boolean isDeterministic() {
-    return true;
+  @Override public boolean isDeterministic() {
+    return delegate.isDeterministic();
   }
 }

@@ -15,13 +15,15 @@
  */
 package com.google.cloud.genomics.dataflow.pipelines;
 
-import com.google.api.services.genomics.model.GetVariantsSummaryResponse;
+import com.google.api.services.genomics.model.ReferenceBound;
 import com.google.api.services.genomics.model.SearchVariantsRequest;
+import com.google.api.services.genomics.model.VariantSet;
 import com.google.cloud.dataflow.sdk.Pipeline;
 import com.google.cloud.dataflow.sdk.runners.Description;
 import com.google.cloud.dataflow.sdk.transforms.ParDo;
 import com.google.cloud.dataflow.utils.OptionsParser;
 import com.google.cloud.dataflow.utils.RequiredOption;
+import com.google.cloud.genomics.dataflow.GenomicsPipeline;
 import com.google.cloud.genomics.dataflow.functions.ExtractSimilarCallsets;
 import com.google.cloud.genomics.dataflow.functions.OutputPCoAFile;
 import com.google.cloud.genomics.dataflow.readers.VariantReader;
@@ -32,6 +34,7 @@ import com.google.common.collect.Lists;
 
 import java.io.IOException;
 import java.security.GeneralSecurityException;
+import java.util.Collections;
 import java.util.List;
 import java.util.logging.Logger;
 
@@ -60,28 +63,41 @@ import java.util.logging.Logger;
  * and example configuration:
  *   --output=gs://<OUTPUT PATH>
  *
- * The input datasetId defaults to 376902546192 (1000 genomes) and can be
+ * The input datasetId defaults to 10473108253681171589 (1000 genomes) and can be
  * overridden with --datasetId.
  */
 public class VariantSimilarity {
   private static final Logger LOG = Logger.getLogger(VariantSimilarity.class.getName());
   private static final String VARIANT_FIELDS = "nextPageToken,variants(id,calls(genotype,callsetName))";
 
-  private static List<SearchVariantsRequest> getVariantRequests(
-      GetVariantsSummaryResponse summary, Options options) {
+  private static List<SearchVariantsRequest> getVariantRequests(GenomicsAuth auth, Options options)
+      throws IOException, GeneralSecurityException {
+    if (options.allContigs) {
+      List<SearchVariantsRequest> requests = Lists.newArrayList();
 
-    // TODO: Run this over all of the available contigBounds
-    /*
-    ContigBound bound = summary.getContigBounds().get(0);
-    String contig = bound.getContig();
-    */
+      VariantSet variantSet = auth.getService().variantsets().get(options.datasetId).execute();
+      for (ReferenceBound bound : variantSet.getReferenceBounds()) {
+        String contig = bound.getReferenceName().toLowerCase();
+        if (contig.contains("x") || contig.contains("y")) {
+          // X and Y skew PCA results
+          continue;
+        }
 
-    // NOTE: This is hardcoded to BRCA1 so that it can run on
-    // tiny local machines
-    String contig = "17";
-    long start = 41196312;
-    long end = 41277500;
-    long basesPerShard = 1000;
+        requests.addAll(getShardedRequests(variantSet.getId(),
+            bound.getReferenceName(), 0, bound.getUpperBound()));
+      }
+      return requests;
+
+    } else {
+      // If not running all contigs, we default to BRCA1
+      return getShardedRequests(options.datasetId, "17", 41196312, 41277500);
+    }
+  }
+
+  private static List<SearchVariantsRequest> getShardedRequests(String variantSetId, String contig,
+      long start, long end) {
+
+    long basesPerShard = 1000000; // 1 million
 
     double shards = Math.ceil((end - start) / (double) basesPerShard);
     List<SearchVariantsRequest> requests = Lists.newArrayList();
@@ -89,12 +105,19 @@ public class VariantSimilarity {
       long shardStart = start + (i * basesPerShard);
       long shardEnd = Math.min(end, shardStart + basesPerShard);
 
-      LOG.info("Adding request with " + shardStart + " to " + shardEnd);
+      LOG.info("Adding request with " + contig + " " + shardStart + " to " + shardEnd);
       requests.add(new SearchVariantsRequest()
+<<<<<<< HEAD
           .setVariantsetId(options.datasetId)
           .setContig(contig)
           .setStartPosition(shardStart)
           .setEndPosition(shardEnd));
+=======
+          .setVariantSetIds(Collections.singletonList(variantSetId))
+          .setReferenceName(contig)
+          .setStart(shardStart)
+          .setEnd(shardEnd));
+>>>>>>> master
 
     }
     return requests;
@@ -104,10 +127,14 @@ public class VariantSimilarity {
     @Description("Path of the file to write to")
     @RequiredOption
     public String output;
-    
+
     @Description("The ID of the Google Genomics dataset this pipeline is working with. " +
         "Defaults to 1000 Genomes.")
-    public String datasetId = "1154144306496329440";
+    public String datasetId = "10473108253681171589";
+
+    @Description("By default, PCA will be run on BRCA1, pass this flag to run on all " +
+        "non X and Y contigs present in the dataset")
+    public boolean allContigs = false;
   }
 
   @SuppressWarnings("unchecked")
@@ -115,24 +142,24 @@ public class VariantSimilarity {
     Options options = OptionsParser.parse(args, Options.class,
         VariantSimilarity.class.getSimpleName());
     options.validateOptions();
-    
-    GenomicsAuth auth = options.getGenomicsAuth();
 
+<<<<<<< HEAD
     GetVariantsSummaryResponse summary = auth.getService().variants().getSummary()
         .setVariantsetId(options.datasetId).setFields("contigBounds").execute();
+=======
+    GenomicsAuth auth = options.getGenomicsAuth();
+>>>>>>> master
 
-    List<SearchVariantsRequest> requests = getVariantRequests(summary, options);
+    List<SearchVariantsRequest> requests = getVariantRequests(auth, options);
 
-    Pipeline p = Pipeline.create();
-    DataflowWorkarounds.registerGenomicsCoders(p);
+    Pipeline p = GenomicsPipeline.create(options);
 
     DataflowWorkarounds.getPCollection(requests, p, options.numWorkers)
         .apply(ParDo.named("VariantReader")
             .of(new VariantReader(auth, VARIANT_FIELDS)))
         .apply(ParDo.named("ExtractSimilarCallsets").of(new ExtractSimilarCallsets()))
         .apply(new OutputPCoAFile(options.output));
-    
-    p.run(DataflowWorkarounds.getRunner(options));
+
+    p.run();
   }
 }
- 
