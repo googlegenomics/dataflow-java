@@ -21,7 +21,7 @@
       <distribution>repo</distribution>
     </license>
   </licenses>
-  
+
   <developers>
     <developer>
       <id>cassiedoll</id>
@@ -69,29 +69,41 @@
       <version>${google.api.version}</version>
     </dependency>
     <dependency>
+      <groupId>com.fasterxml.jackson.core</groupId>
+      <artifactId>jackson-core</artifactId>
+      <version>2.4.2</version>
+    </dependency>
+    <dependency>
       <groupId>com.google.api-client</groupId>
       <artifactId>google-api-client-java6</artifactId>
       <version>${google.api.version}</version>
+      <exclusions>
+        <exclusion>
+          <groupId>com.google.guava</groupId>
+          <artifactId>guava-jdk5</artifactId>
+        </exclusion>
+      </exclusions>
     </dependency>
     <dependency>
       <groupId>com.google.apis</groupId>
       <artifactId>google-api-services-genomics</artifactId>
-      <version>v1beta-rev29-1.19.0</version>
-    </dependency>
-    <dependency>
-      <groupId>com.google.cloud.dataflow</groupId>
-      <artifactId>dataflow-sdk</artifactId>
-      <version>1.0.140818</version>
+      <version>v1beta-rev44-1.19.0</version>
     </dependency>
     <dependency>
       <groupId>org.javassist</groupId>
       <artifactId>javassist</artifactId>
-      <version>3.18.1-GA</version>
+      <version>3.18.2-GA</version>
     </dependency>
     <dependency>
       <groupId>org.reflections</groupId>
       <artifactId>reflections</artifactId>
-      <version>0.9.9-RC1</version>
+      <version>0.9.9-RC2</version>
+      <exclusions>
+        <exclusion>
+          <groupId>com.google.guava</groupId>
+          <artifactId>guava</artifactId>
+        </exclusion>
+      </exclusions>
     </dependency>
     <dependency>
       <!-- Command line parsing library. -->
@@ -107,20 +119,41 @@
     <dependency>
       <groupId>com.google.oauth-client</groupId>
       <artifactId>google-oauth-client</artifactId>
-      <version>1.18.0-rc</version>
+      <version>${google.api.version}</version>
     </dependency>
     <dependency>
       <groupId>com.google.cloud.genomics</groupId>
       <artifactId>google-genomics-utils</artifactId>
-      <version>0.9</version>
+      <version>0.16</version>
+    </dependency>
+    <dependency>
+      <groupId>com.google.oauth-client</groupId>
+      <artifactId>google-oauth-client-jetty</artifactId>
+      <version>${google.api.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>org.mortbay.jetty</groupId>
+      <artifactId>jetty</artifactId>
+      <version>6.1.26</version>
+    </dependency>
+    <dependency>
+      <groupId>org.mortbay.jetty</groupId>
+      <artifactId>jetty-util</artifactId>
+      <version>6.1.26</version>
+    </dependency>
+    <dependency>
+      <groupId>com.google.cloud.dataflow</groupId>
+      <artifactId>dataflow-sdk</artifactId>
+      <version>1.0.141013</version>
     </dependency>
   </dependencies>
 
   <build>
     <plugins>
       <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-compiler-plugin</artifactId>
-        <version>3.1</version>
+        <version>3.2</version>
         <configuration>
           <source>${maven.compile.source}</source>
           <target>${maven.compile.target}</target>
@@ -158,8 +191,8 @@
   </build>
 
   <properties>
-    <junit.version>4.11</junit.version>
-    <google.api.version>1.18.0-rc</google.api.version>
+    <junit.version>4.12-beta-1</junit.version>
+    <google.api.version>1.19.0</google.api.version>
     <maven.enforcer.jdk-version>[1.7,)</maven.enforcer.jdk-version>
     <maven.compile.source>1.7</maven.compile.source>
     <maven.compile.target>1.7</maven.compile.target>
