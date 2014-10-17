@@ -22,13 +22,13 @@ import com.google.cloud.dataflow.sdk.values.KV;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Function;
 import com.google.common.collect.ContiguousSet;
-import com.google.common.collect.DiscreteDomains;
+import com.google.common.collect.DiscreteDomain;
 import com.google.common.collect.FluentIterable;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMultiset;
 import com.google.common.collect.Iterators;
 import com.google.common.collect.Multiset;
-import com.google.common.collect.Ranges;
+import com.google.common.collect.Range;
 
 import java.util.Iterator;
 import java.util.List;
@@ -48,7 +48,8 @@ public class ExtractSimilarCallsets extends DoFn<Variant, KV<KV<String, String>,
 
   @Override
   public void processElement(ProcessContext context) {
-    for (KV<String, String> pair : allPairs(getSamplesWithVariant(context.element()))) {
+    for (KV<String, String> pair : ExtractSimilarCallsets.<String, ImmutableList<String>>allPairs(
+        getSamplesWithVariant(context.element()))) {
       accumulator.add(pair);
     }
   }
@@ -64,7 +65,7 @@ public class ExtractSimilarCallsets extends DoFn<Variant, KV<KV<String, String>,
   static <X, L extends List<? extends X> & RandomAccess>
       FluentIterable<KV<X, X>> allPairs(final L list) {
     return FluentIterable
-        .from(ContiguousSet.create(Ranges.closedOpen(0, list.size()), DiscreteDomains.integers()))
+        .from(ContiguousSet.create(Range.closedOpen(0, list.size()), DiscreteDomain.integers()))
         .transformAndConcat(
             new Function<Integer, Iterable<KV<X, X>>>() {
               @Override public Iterable<KV<X, X>> apply(final Integer i) {
