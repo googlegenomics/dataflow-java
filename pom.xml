@@ -191,7 +191,7 @@
   </build>
 
   <properties>
-    <junit.version>4.12-beta-1</junit.version>
+    <junit.version>4.11</junit.version>
     <google.api.version>1.19.0</google.api.version>
     <maven.enforcer.jdk-version>[1.7,)</maven.enforcer.jdk-version>
     <maven.compile.source>1.7</maven.compile.source>
