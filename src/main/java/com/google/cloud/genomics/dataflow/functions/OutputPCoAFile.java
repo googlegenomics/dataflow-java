@@ -16,9 +16,8 @@
 package com.google.cloud.genomics.dataflow.functions;
 
 import com.google.cloud.dataflow.sdk.io.TextIO;
-import com.google.cloud.dataflow.sdk.transforms.AsIterable;
+import com.google.cloud.dataflow.sdk.transforms.Convert;
 import com.google.cloud.dataflow.sdk.transforms.DoFn;
-import com.google.cloud.dataflow.sdk.transforms.FromIterable;
 import com.google.cloud.dataflow.sdk.transforms.PTransform;
 import com.google.cloud.dataflow.sdk.transforms.ParDo;
 import com.google.cloud.dataflow.sdk.transforms.SeqDo;
@@ -45,9 +44,9 @@ public class OutputPCoAFile extends PTransform<PCollection<KV<KV<String, String>
   @Override
   public PDone apply(PCollection<KV<KV<String, String>, Long>> similarPairs) {
     return similarPairs.apply(Sum.<KV<String, String>>longsPerKey())
-        .apply(AsIterable.<KV<KV<String, String>, Long>>create())
+        .apply(Convert.<KV<KV<String, String>, Long>>toIterable())
         .apply(SeqDo.named("PCoAAnalysis").of(new PCoAnalysis()))
-        .apply(FromIterable.<PCoAnalysis.GraphResult>create())
+        .apply(Convert.<PCoAnalysis.GraphResult>fromIterable())
         .apply(ParDo.named("FormatGraphData").of(new DoFn<PCoAnalysis.GraphResult, String>() {
           @Override
           public void processElement(ProcessContext c) {

@@ -131,6 +131,7 @@ public class GenomicsPipeline {
     PipelineRunner<?> runner = pipeline.getRunner();
     if (runner instanceof BlockingDataflowPipelineRunner) {
       ((BlockingDataflowPipelineRunner) runner).setHooks(new DataflowPipelineRunnerHooks() {
+        @Override
         public void modifyEnvironmentBeforeSubmission(CloudWorkflowEnvironment environment) {
           environment.setMachineType("n1-standard-4");
         }
