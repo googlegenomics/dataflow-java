@@ -111,17 +111,19 @@ public class StorageTransforms {
       }
 
       @Override public final PCollection<T> apply(PCollection<StorageObject> input) {
-        return input.apply(ParDo.named("StorageTransforms.Objects.GetMedia").of(
-            new ObjectsDoFn<StorageObject, T>(applicationName) {
-              @Override protected void processElement(
-                  Storage.Objects objects, ProcessContext context) throws IOException {
-                StorageObject object = context.element();
-                for (T t : deserialize(objects.get(object.getBucket(),
-                    object.getName()).executeMediaAsInputStream())) {
-                  context.output(t);
-                }
-              }
-            }));
+        return input
+            .apply(ParDo.named("StorageTransforms.Objects.GetMedia").of(
+                new ObjectsDoFn<StorageObject, T>(applicationName) {
+                  @Override protected void processElement(
+                      Storage.Objects objects, ProcessContext context) throws IOException {
+                    StorageObject object = context.element();
+                    for (T t : deserialize(objects.get(object.getBucket(),
+                        object.getName()).executeMediaAsInputStream())) {
+                      context.output(t);
+                    }
+                  }
+                }))
+            .setOrdered(true);
       }
 
       protected abstract Iterable<T> deserialize(InputStream in) throws IOException;
