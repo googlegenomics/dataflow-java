@@ -61,11 +61,13 @@ public abstract class ApiDoFn<C extends AbstractGoogleJsonClient,
     startBatch(client = build(builder), context);
   }
 
+  @SuppressWarnings("unused")
   protected void finishBatch(C client, Context context) throws Exception {
   }
 
   protected abstract void processElement(C client, ProcessContext context) throws Exception;
 
+  @SuppressWarnings("unused")
   protected void startBatch(C client, Context context) throws Exception {
   }
 }
