@@ -20,10 +20,16 @@ import com.google.api.client.http.HttpTransport;
 import com.google.api.client.json.JsonFactory;
 import com.google.api.services.genomics.Genomics;
 
+import java.util.Collections;
+
 public abstract class GenomicsDoFn<I, O> extends ApiDoFn<Genomics, Genomics.Builder, I, O> {
 
   protected GenomicsDoFn(String applicationName) {
     super(applicationName);
+  }
+
+  @Override protected final Iterable<String> additionalScopes() {
+    return Collections.singletonList("https://www.googleapis.com/auth/genomics");
   }
 
   @Override protected Genomics build(Genomics.Builder builder) {
