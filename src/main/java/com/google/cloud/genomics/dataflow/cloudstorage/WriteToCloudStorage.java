@@ -99,7 +99,7 @@ public abstract class WriteToCloudStorage<T>
                     out.close();
                     String contentType = Optional
                         .fromNullable(object.getContentType())
-                        .or("application/octet-stream");
+                        .or("binary/octet-stream");
                     context.output(storage
                         .objects()
                         .insert(
