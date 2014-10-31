@@ -107,17 +107,10 @@ public class VariantSimilarity {
 
       LOG.info("Adding request with " + contig + " " + shardStart + " to " + shardEnd);
       requests.add(new SearchVariantsRequest()
-<<<<<<< HEAD
-          .setVariantsetId(options.datasetId)
-          .setContig(contig)
-          .setStartPosition(shardStart)
-          .setEndPosition(shardEnd));
-=======
           .setVariantSetIds(Collections.singletonList(variantSetId))
           .setReferenceName(contig)
           .setStart(shardStart)
           .setEnd(shardEnd));
->>>>>>> master
 
     }
     return requests;
@@ -143,12 +136,7 @@ public class VariantSimilarity {
         VariantSimilarity.class.getSimpleName());
     options.validateOptions();
 
-<<<<<<< HEAD
-    GetVariantsSummaryResponse summary = auth.getService().variants().getSummary()
-        .setVariantsetId(options.datasetId).setFields("contigBounds").execute();
-=======
     GenomicsAuth auth = options.getGenomicsAuth();
->>>>>>> master
 
     List<SearchVariantsRequest> requests = getVariantRequests(auth, options);
 
