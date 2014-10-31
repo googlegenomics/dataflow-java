@@ -19,25 +19,30 @@ import com.google.api.client.http.HttpRequestInitializer;
 import com.google.api.client.http.HttpTransport;
 import com.google.api.client.json.JsonFactory;
 import com.google.api.services.genomics.Genomics;
+import com.google.cloud.genomics.utils.JsonClientFactory;
 
 import java.util.Collections;
 
 public abstract class GenomicsDoFn<I, O> extends ApiDoFn<Genomics, Genomics.Builder, I, O> {
 
-  protected GenomicsDoFn(String applicationName) {
-    super(applicationName);
+  protected GenomicsDoFn(final String applicationName) {
+    super(
+        new JsonClientFactory.Logic<Genomics, Genomics.Builder>() {
+
+          @Override public Genomics build(Genomics.Builder builder) {
+            return builder
+                .setApplicationName(applicationName)
+                .build();
+          }
+
+          @Override public Genomics.Builder newBuilder(HttpTransport httpTransport,
+              JsonFactory jsonFactory, HttpRequestInitializer requestInitializer) {
+            return new Genomics.Builder(httpTransport, jsonFactory, requestInitializer);
+          }
+        });
   }
 
   @Override protected final Iterable<String> additionalScopes() {
     return Collections.singletonList("https://www.googleapis.com/auth/genomics");
-  }
-
-  @Override protected Genomics build(Genomics.Builder builder) {
-    return builder.build();
-  }
-
-  @Override protected Genomics.Builder newBuilder(HttpTransport httpTransport,
-      JsonFactory jsonFactory, HttpRequestInitializer requestInitializer) {
-    return new Genomics.Builder(httpTransport, jsonFactory, requestInitializer);
   }
 }

@@ -20,22 +20,24 @@ import com.google.api.client.http.HttpTransport;
 import com.google.api.client.json.JsonFactory;
 import com.google.api.services.storage.Storage;
 import com.google.cloud.genomics.dataflow.ApiDoFn;
+import com.google.cloud.genomics.utils.JsonClientFactory;
 
 public abstract class StorageDoFn<I, O> extends ApiDoFn<Storage, Storage.Builder, I, O> {
 
-  protected StorageDoFn(String applicationName) {
-    super(applicationName);
-  }
+  protected StorageDoFn(final String applicationName) {
+    super(
+        new JsonClientFactory.Logic<Storage, Storage.Builder>() {
 
-  @Override protected final Storage build(Storage.Builder builder) {
-    return builder.build();
-  }
+          @Override public Storage build(Storage.Builder builder) {
+            return builder
+                .setApplicationName(applicationName)
+                .build();
+          }
 
-  @Override protected final Storage.Builder newBuilder(
-      HttpTransport httpTransport,
-      JsonFactory jsonFactory,
-      HttpRequestInitializer requestInitializer) {
-    return new Storage.Builder(httpTransport, jsonFactory, requestInitializer);
+          @Override public Storage.Builder newBuilder(HttpTransport httpTransport,
+              JsonFactory jsonFactory, HttpRequestInitializer requestInitializer) {
+            return new Storage.Builder(httpTransport, jsonFactory, requestInitializer);
+          }
+        });
   }
-
 }
