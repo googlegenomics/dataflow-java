@@ -16,14 +16,11 @@
 package com.google.cloud.genomics.dataflow.pipelines;
 
 import com.google.cloud.dataflow.sdk.io.TextIO;
-import com.google.api.services.genomics.model.Call;
-import com.google.api.services.genomics.model.ContigBound;
-import com.google.api.services.genomics.model.GetVariantsSummaryResponse;
+import com.google.api.services.genomics.model.ReferenceBound;
 import com.google.api.services.genomics.model.SearchVariantsRequest;
-import com.google.api.services.genomics.model.Variant;
+import com.google.api.services.genomics.model.VariantSet;
 import com.google.cloud.dataflow.sdk.Pipeline;
 import com.google.cloud.dataflow.sdk.runners.Description;
-import com.google.cloud.dataflow.sdk.runners.PipelineRunner;
 import com.google.cloud.dataflow.sdk.transforms.Count;
 import com.google.cloud.dataflow.sdk.transforms.DoFn;
 import com.google.cloud.dataflow.sdk.transforms.GroupByKey;
@@ -31,7 +28,7 @@ import com.google.cloud.dataflow.sdk.transforms.ParDo;
 import com.google.cloud.dataflow.sdk.values.KV;
 import com.google.cloud.dataflow.utils.OptionsParser;
 import com.google.cloud.dataflow.utils.RequiredOption;
-import com.google.cloud.genomics.dataflow.coders.GenericJsonCoder;
+import com.google.cloud.genomics.dataflow.GenomicsPipeline;
 import com.google.cloud.genomics.dataflow.functions.CalculateTransmissionDisequilibrium;
 import com.google.cloud.genomics.dataflow.functions.ExtractFamilyVariantStatus;
 import com.google.cloud.genomics.dataflow.readers.VariantReader;
@@ -43,6 +40,7 @@ import com.google.common.collect.Lists;
 import java.io.IOException;
 import java.security.GeneralSecurityException;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.logging.Logger;
 
@@ -61,12 +59,12 @@ import java.util.logging.Logger;
  *
  *
  * To execute this pipeline locally, specify general pipeline configuration:
- *   --project=<PROJECT ID>  
+ *   --project=<PROJECT ID>
  * and example configuration:
  *   --output=[<LOCAL FILE> | gs://<OUTPUT PATH>]
  *
  * To execute this pipeline using the Dataflow service, specify pipeline configuration:
- *   --project=<PROJECT ID> --stagingLocation=gs://<STAGING DIRECTORY> 
+ *   --project=<PROJECT ID> --stagingLocation=gs://<STAGING DIRECTORY>
  *   --runner=BlockingDataflowPipelineRunner
  * and example configuration:
  *   --output=gs://<OUTPUT PATH>
@@ -78,16 +76,34 @@ public class TransmissionProbability {
   private static final Logger LOG = Logger.getLogger(TransmissionProbability.class.getName());
   private static final String VARIANT_FIELDS = "nextPageToken,variants(id,names,calls(info,callsetName))";
 
-  private static List<SearchVariantsRequest> getVariantRequests(
-      GetVariantsSummaryResponse summary, Options options) {
+  private static List<SearchVariantsRequest> getVariantRequests(GenomicsAuth auth, Options options)
+      throws IOException, GeneralSecurityException {
+    if (options.allContigs) {
+      List<SearchVariantsRequest> requests = Lists.newArrayList();
 
-    // TODO: Run this over all of the available contigBounds
-    ContigBound bound = summary.getContigBounds().get(0);
-    String contig = bound.getContig();
-    // NOTE: The default end parameter is set to run on tiny local machines
-    long start = 25652000;
-    long end = start + 10000;
-    long basesPerShard = 1000;
+      VariantSet variantSet = auth.getService().variantsets().get(options.datasetId).execute();
+      for (ReferenceBound bound : variantSet.getReferenceBounds()) {
+        String contig = bound.getReferenceName().toLowerCase();
+        if (contig.contains("x") || contig.contains("y")) {
+          // X and Y skew PCA results
+          continue;
+        }
+
+        requests.addAll(getShardedRequests(variantSet.getId(),
+            bound.getReferenceName(), 0, bound.getUpperBound()));
+      }
+      return requests;
+
+    } else {
+      // If not running all contigs, we default to BRCA1
+      return getShardedRequests(options.datasetId, "17", 41196312, 41277500);
+    }
+  }
+
+  private static List<SearchVariantsRequest> getShardedRequests(String variantSetId, String contig,
+      long start, long end) {
+
+    long basesPerShard = 1000000; // 1 million
 
     double shards = Math.ceil((end - start) / (double) basesPerShard);
     List<SearchVariantsRequest> requests = Lists.newArrayList();
@@ -95,12 +111,12 @@ public class TransmissionProbability {
       long shardStart = start + (i * basesPerShard);
       long shardEnd = Math.min(end, shardStart + basesPerShard);
 
-      LOG.info("Adding request with " + shardStart + " to " + shardEnd);
+      LOG.info("Adding request with " + contig + " " + shardStart + " to " + shardEnd);
       requests.add(new SearchVariantsRequest()
-          .setVariantsetId(options.datasetId)
-          .setContig(contig)
-          .setStartPosition(shardStart)
-          .setEndPosition(shardEnd));
+          .setVariantSetIds(Collections.singletonList(variantSetId))
+          .setReferenceName(contig)
+          .setStart(shardStart)
+          .setEnd(shardEnd));
 
     }
     return requests;
@@ -110,10 +126,14 @@ public class TransmissionProbability {
     @Description("Path of the file to write to")
     @RequiredOption
     public String output;
-    
+
     @Description("The ID of the Google Genomics dataset this pipeline is working with. " +
-        "Defaults to Platinum genomes dataset.")
+        "Defaults to 1000 Genomes.")
     public String datasetId = "14004469326575082626";
+
+    @Description("By default, PCA will be run on BRCA1, pass this flag to run on all " +
+        "non X and Y contigs present in the dataset")
+    public boolean allContigs = false;
   }
 
   @SuppressWarnings("unchecked")
@@ -124,12 +144,9 @@ public class TransmissionProbability {
 
     GenomicsAuth auth = options.getGenomicsAuth();
 
-    GetVariantsSummaryResponse summary = auth.getService().variants().getSummary()
-        .setVariantsetId(options.datasetId).setFields("contigBounds").execute();
+    List<SearchVariantsRequest> requests = getVariantRequests(auth, options);
 
-    List<SearchVariantsRequest> requests = getVariantRequests(summary, options);
-
-    Pipeline p = Pipeline.create();
+    Pipeline p = GenomicsPipeline.create(options);
     DataflowWorkarounds.registerGenomicsCoders(p);
 
     // The below pipeline works as follows:
@@ -158,7 +175,6 @@ public class TransmissionProbability {
         }))
         .apply(TextIO.Write.named("WriteCounts").to(options.output));
 
-    p.run(DataflowWorkarounds.getRunner(options));
+    p.run();
   }
 }
- 

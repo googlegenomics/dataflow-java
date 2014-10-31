@@ -85,7 +85,7 @@ public class ExtractFamilyVariantStatus
   List<String> getSamplesWithVariant(Variant variant) {
     List<String> samplesWithVariant = Lists.newArrayList();
     for (Call call : variant.getCalls()) {
-      samplesWithVariant.add(call.getCallsetName());
+      samplesWithVariant.add(call.getCallSetName());
     }
     return samplesWithVariant;
   }
