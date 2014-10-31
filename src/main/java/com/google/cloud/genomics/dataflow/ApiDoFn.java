@@ -33,7 +33,7 @@ public abstract class ApiDoFn<C extends AbstractGoogleJsonClient,
   private C client;
 
   protected ApiDoFn(JsonClientFactory.Logic<? extends C, B> logic) {
-    this.clientFactory = JsonClientFactory.create(logic);
+    this.clientFactory = JsonClientFactory.of(logic);
   }
 
   protected Iterable<String> additionalScopes() {
