@@ -15,14 +15,9 @@
  */
 package com.google.cloud.genomics.dataflow;
 
-import com.google.api.client.googleapis.auth.oauth2.GoogleCredential;
-import com.google.api.client.googleapis.javanet.GoogleNetHttpTransport;
 import com.google.api.client.googleapis.services.json.AbstractGoogleJsonClient;
-import com.google.api.client.http.HttpRequestInitializer;
-import com.google.api.client.http.HttpTransport;
-import com.google.api.client.json.JsonFactory;
-import com.google.api.client.json.jackson2.JacksonFactory;
 import com.google.cloud.dataflow.sdk.transforms.DoFn;
+import com.google.cloud.genomics.utils.JsonClientFactory;
 import com.google.common.collect.FluentIterable;
 
 import java.util.Arrays;
@@ -34,18 +29,16 @@ import java.util.Collections;
 public abstract class ApiDoFn<C extends AbstractGoogleJsonClient,
     B extends AbstractGoogleJsonClient.Builder, I, O> extends DoFn<I, O> {
 
-  private final String applicationName;
+  private final JsonClientFactory<? extends C, B> clientFactory;
   private C client;
 
-  protected ApiDoFn(String applicationName) {
-    this.applicationName = applicationName;
+  protected ApiDoFn(JsonClientFactory.Logic<? extends C, B> logic) {
+    this.clientFactory = JsonClientFactory.create(logic);
   }
 
   protected Iterable<String> additionalScopes() {
     return Collections.emptyList();
   }
-
-  protected abstract C build(B builder);
 
   @SuppressWarnings("unused")
   protected void finishBatch(C client, Context context) throws Exception {
@@ -54,11 +47,6 @@ public abstract class ApiDoFn<C extends AbstractGoogleJsonClient,
   @Override public final void finishBatch(Context context) throws Exception {
     finishBatch(client, context);
   }
-
-  protected abstract B newBuilder(
-      HttpTransport httpTransport,
-      JsonFactory jsonFactory,
-      HttpRequestInitializer requestInitializer);
 
   protected abstract void processElement(C client, ProcessContext context) throws Exception;
 
@@ -71,25 +59,15 @@ public abstract class ApiDoFn<C extends AbstractGoogleJsonClient,
   }
 
   @Override public final void startBatch(Context context) throws Exception {
-    HttpTransport httpTransport = GoogleNetHttpTransport.newTrustedTransport();
-    JsonFactory jsonFactory = JacksonFactory.getDefaultInstance();
-    B builder = newBuilder(
-        httpTransport,
-        jsonFactory,
-        GoogleCredential
-            .getApplicationDefault(
-                httpTransport,
-                jsonFactory)
-            .createScoped(
-                FluentIterable
-                    .from(Arrays.asList(
-                        "https://www.googleapis.com/auth/cloud-platform",
-                        "https://www.googleapis.com/auth/devstorage.full_control",
-                        "https://www.googleapis.com/auth/userinfo.email",
-                        "https://www.googleapis.com/auth/datastore"))
-                    .append(additionalScopes())
-                    .toSet()));
-    builder.setApplicationName(applicationName);
-    startBatch(client = build(builder), context);
+    startBatch(
+        client = clientFactory.create(FluentIterable
+            .from(Arrays.asList(
+                "https://www.googleapis.com/auth/cloud-platform",
+                "https://www.googleapis.com/auth/devstorage.full_control",
+                "https://www.googleapis.com/auth/userinfo.email",
+                "https://www.googleapis.com/auth/datastore"))
+            .append(additionalScopes())
+            .toSet()),
+        context);
   }
 }
