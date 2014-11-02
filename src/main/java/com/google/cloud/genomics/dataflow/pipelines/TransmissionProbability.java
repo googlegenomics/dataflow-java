@@ -30,8 +30,8 @@ import com.google.cloud.dataflow.utils.OptionsParser;
 import com.google.cloud.dataflow.utils.RequiredOption;
 import com.google.cloud.genomics.dataflow.data_structures.Allele;
 import com.google.cloud.genomics.dataflow.GenomicsPipeline;
-import com.google.cloud.genomics.dataflow.functions.CalculateTransmissionDisequilibrium;
-import com.google.cloud.genomics.dataflow.functions.ExtractFamilyVariantStatus;
+import com.google.cloud.genomics.dataflow.functions.CalculateTransmissionProbability;
+import com.google.cloud.genomics.dataflow.functions.ExtractAlleleTransmissionStatus;
 import com.google.cloud.genomics.dataflow.readers.VariantReader;
 import com.google.cloud.genomics.dataflow.utils.DataflowWorkarounds;
 import com.google.cloud.genomics.dataflow.utils.GenomicsAuth;
@@ -154,10 +154,6 @@ public class TransmissionProbability {
     //    - Fetch the variants,
     //    - For each Variant, see which alleles were actually transmitted to
     //        the child
-    //
-    //
-    //
-    //
     //    - Groups Transmission sources by Variant,
     //    - Calculate transmission Probability for each variant
     //    - Print calculated values to a file.
@@ -165,10 +161,10 @@ public class TransmissionProbability {
         .apply(ParDo.named("VariantReader")
             .of(new VariantReader(auth, VARIANT_FIELDS)))
         .apply(ParDo.named("ExtractFamilyVariantStatus")
-            .of(new ExtractFamilyVariantStatus()))
+            .of(new ExtractAlleleTransmissionStatus()))
         .apply(GroupByKey.<Allele, Boolean>create())
         .apply(ParDo.named("CalculateTransmissionProbability")
-            .of(new CalculateTransmissionDisequilibrium()))
+            .of(new CalculateTransmissionProbability()))
         .apply(ParDo.named("WriteDataToFile")
             .of(new DoFn<KV<Allele, Double>, String>() {
           @Override

@@ -32,10 +32,10 @@ import java.util.List;
  * i.e.
  *  If the genotype of the family is:
  *    Mother: AC, Father TG, Child is AG, function emits:
- *      (var, (A, True)), (var, (C, False)), (var, (T, False)), (var, (G, True))
+ *      (A, True), (C, False), (T, False), (G, True)
  */
-public class ExtractFamilyVariantStatus
-  extends DoFn<Variant, KV<Allele, Boolean>> {
+public class ExtractAlleleTransmissionStatus
+    extends DoFn<Variant, KV<Allele, Boolean>> {
 
   private class Trio {
     String mom, dad, child;
