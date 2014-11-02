@@ -19,19 +19,23 @@ import com.google.api.services.genomics.model.Call;
 import com.google.api.services.genomics.model.Variant;
 import com.google.cloud.dataflow.sdk.transforms.DoFn;
 import com.google.cloud.dataflow.sdk.values.KV;
+import com.google.cloud.genomics.dataflow.data_structures.Allele;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.Lists;
 
 import java.util.List;
 
 /**
- * Emits a (Variant name, boolean) pair, for each family-variant pair.
- * where
- * true indicates both 1st parent and child has the variant, and
- * false indicates that both 2nd parent and the child has the variant.
+ * Emits String, (Allele, Boolean) pairs for each Allele a parent has.
+ * The String is the Id of the Variant, and the Boolean is set to True
+ * if the child has the Allele, False if not.
+ * i.e.
+ *  If the genotype of the family is:
+ *    Mother: AC, Father TG, Child is AG, function emits:
+ *      (var, (A, True)), (var, (C, False)), (var, (T, False)), (var, (G, True))
  */
 public class ExtractFamilyVariantStatus
-  extends DoFn<Variant, KV<String, Boolean>> {
+  extends DoFn<Variant, KV<Allele, Boolean>> {
 
   private class Trio {
     String mom, dad, child;
@@ -65,28 +69,35 @@ public class ExtractFamilyVariantStatus
   @Override
   public void processElement(ProcessContext c) {
     Variant variant = c.element();
-    List<String> samples = getSamplesWithVariant(variant);
     List<Trio> trioList = getTrios();
 
+    List<String> sequences = variant.getAlternateBases();
+    sequences.add(0, variant.getReferenceBases());
+
     for (Trio family : trioList) {
-      if (samples.contains(family.mom) &&
-          (!samples.contains(family.dad)) &&
-          samples.contains(family.child)) {
-        c.output(KV.of(variant.getId(), true));
-      } else if ((!samples.contains(family.mom)) &&
-                 samples.contains(family.dad) &&
-                 samples.contains(family.child)) {
-        c.output(KV.of(variant.getId(), false));
+      List<Integer> childGenotypes = getSample(variant, family.child)
+          .getGenotype();
+
+      List<Integer> parentGenotypes = Lists.newArrayList();
+      parentGenotypes.addAll(getSample(variant, family.mom).getGenotype());
+      parentGenotypes.addAll(getSample(variant, family.dad).getGenotype());
+
+      for (Integer i: parentGenotypes) {
+        c.output(KV.of(new Allele(variant.getId(),
+                                  variant.getStart(),
+                                  sequences.get(i)),
+                       childGenotypes.contains(i)));
+        childGenotypes.remove(i);
       }
     }
   }
 
   @VisibleForTesting
-  List<String> getSamplesWithVariant(Variant variant) {
-    List<String> samplesWithVariant = Lists.newArrayList();
+  Call getSample(Variant variant, String sampleName) {
     for (Call call : variant.getCalls()) {
-      samplesWithVariant.add(call.getCallSetName());
+      if (call.getCallSetName() == sampleName)
+        return call;
     }
-    return samplesWithVariant;
+    return null;
   }
 }

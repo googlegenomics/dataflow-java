@@ -28,6 +28,7 @@ import com.google.cloud.dataflow.sdk.transforms.ParDo;
 import com.google.cloud.dataflow.sdk.values.KV;
 import com.google.cloud.dataflow.utils.OptionsParser;
 import com.google.cloud.dataflow.utils.RequiredOption;
+import com.google.cloud.genomics.dataflow.data_structures.Allele;
 import com.google.cloud.genomics.dataflow.GenomicsPipeline;
 import com.google.cloud.genomics.dataflow.functions.CalculateTransmissionDisequilibrium;
 import com.google.cloud.genomics.dataflow.functions.ExtractFamilyVariantStatus;
@@ -151,8 +152,12 @@ public class TransmissionProbability {
 
     // The below pipeline works as follows:
     //    - Fetch the variants,
-    //    - For each variant, see which parent transferred the variant to the
-    //        child.
+    //    - For each Variant, see which alleles were actually transmitted to
+    //        the child
+    //
+    //
+    //
+    //
     //    - Groups Transmission sources by Variant,
     //    - Calculate transmission Probability for each variant
     //    - Print calculated values to a file.
@@ -161,19 +166,20 @@ public class TransmissionProbability {
             .of(new VariantReader(auth, VARIANT_FIELDS)))
         .apply(ParDo.named("ExtractFamilyVariantStatus")
             .of(new ExtractFamilyVariantStatus()))
-        .apply(GroupByKey.<String, Boolean>create())
+        .apply(GroupByKey.<Allele, Boolean>create())
         .apply(ParDo.named("CalculateTransmissionProbability")
             .of(new CalculateTransmissionDisequilibrium()))
         .apply(ParDo.named("WriteDataToFile")
-            .of(new DoFn<KV<String, Double>, String>() {
+            .of(new DoFn<KV<Allele, Double>, String>() {
           @Override
           public void processElement(ProcessContext c) {
-            KV<String, Double> pair = c.element();
-            String output = pair.getKey() + "\t" + pair.getValue() + "\n";
+            KV<Allele, Double> pair = c.element();
+            String output = pair.getKey().getReferenceName() + "\t" +
+                pair.getKey().getAllele() + "\t" + pair.getValue() + "\n";
             c.output(output);
           }
         }))
-        .apply(TextIO.Write.named("WriteCounts").to(options.output));
+        .apply(TextIO.Write.named("WriteResults").to(options.output));
 
     p.run();
   }

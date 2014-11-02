@@ -17,25 +17,25 @@ package com.google.cloud.genomics.dataflow.functions;
 
 import com.google.cloud.dataflow.sdk.transforms.DoFn;
 import com.google.cloud.dataflow.sdk.values.KV;
+import com.google.cloud.genomics.dataflow.data_structures.Allele;
 
 // Calculates TransmissionProbability for each variant, based on the information
 // that which parent is the source of each variant.
 
 public class CalculateTransmissionDisequilibrium
-    extends DoFn<KV<String, Iterable<Boolean>>, KV<String, Double>> {
+    extends DoFn<KV<Allele, Iterable<Boolean>>, KV<Allele, Double>> {
 
   @Override
   public void processElement(ProcessContext c) {
-    KV<String, Iterable<Boolean>> input = c.element();
-    long m = 0,f = 0;
+    KV<Allele, Iterable<Boolean>> input = c.element();
+    double transmitted = 0, total = 0;
     for (Boolean b : input.getValue()) {
       if (b) {
-        m++;
-      } else {
-        f++;
+        transmitted += 1;
       }
+      total += 1;
     }
-    double tdt = Math.pow(m - f, 2.0) / (m + f);
-    c.output(KV.of(input.getKey(), tdt));
+    double tp = transmitted / total;
+    c.output(KV.of(input.getKey(), tp));
   }
 }
