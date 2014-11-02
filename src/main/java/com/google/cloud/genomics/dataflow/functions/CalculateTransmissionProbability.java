@@ -19,10 +19,15 @@ import com.google.cloud.dataflow.sdk.transforms.DoFn;
 import com.google.cloud.dataflow.sdk.values.KV;
 import com.google.cloud.genomics.dataflow.data_structures.Allele;
 
-// Calculates TransmissionProbability for each variant, based on the information
-// that which parent is the source of each variant.
+/*
+ * Calculates the Transmission probability of each Allele.
+ *
+ * For now, this class only calculates only a simple ratio by dividing the number of observed
+ * transmission of a certain allele (i.e. total times this allele is observed in a child) with the
+ * total number of occurences of the allele.
+ */
 
-public class CalculateTransmissionDisequilibrium
+public class CalculateTransmissionProbability
     extends DoFn<KV<Allele, Iterable<Boolean>>, KV<Allele, Double>> {
 
   @Override
