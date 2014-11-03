@@ -15,82 +15,78 @@
  */
 package com.google.cloud.genomics.dataflow.cloudstorage;
 
-import com.google.api.services.storage.Storage;
+import com.google.api.services.storage.model.StorageObject;
 import com.google.cloud.dataflow.sdk.transforms.Convert;
+import com.google.cloud.dataflow.sdk.transforms.DoFn;
 import com.google.cloud.dataflow.sdk.transforms.PTransform;
 import com.google.cloud.dataflow.sdk.transforms.ParDo;
 import com.google.cloud.dataflow.sdk.values.PCollection;
 import com.google.cloud.dataflow.sdk.values.PObject;
+import com.google.cloud.dataflow.sdk.values.PObjectTuple;
+import com.google.cloud.dataflow.sdk.values.PValue;
+import com.google.cloud.dataflow.sdk.values.TupleTag;
+import com.google.cloud.genomics.dataflow.AbstractPInput;
+import com.google.cloud.genomics.dataflow.ApiFactory;
 
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.Serializable;
-import java.util.Objects;
+import java.util.Arrays;
+import java.util.Collection;
 
 public abstract class ReadFromCloudStorage<T>
-    extends PTransform<PObject<ReadFromCloudStorage.Request>, PCollection<T>> {
+    extends PTransform<ReadFromCloudStorage.Input, PCollection<T>> {
 
-  public static class Request implements Serializable {
+  public static class Input extends AbstractPInput<Input> {
 
-    public static Request of(String bucket, String name) {
-      return new Request(bucket, name);
+    public static Input of(PObject<ApiFactory> apiFactory, PObject<StorageObject> object) {
+      return new Input(apiFactory, object);
     }
 
-    private final String bucket;
-    private final String name;
+    private final PObject<ApiFactory> apiFactory;
+    private final PObject<StorageObject> object;
 
-    private Request(String bucket, String name) {
-      this.bucket = bucket;
-      this.name = name;
+    private Input(PObject<ApiFactory> apiFactory, PObject<StorageObject> object) {
+      this.apiFactory = apiFactory;
+      this.object = object;
     }
 
-    public String bucket() {
-      return bucket;
+    public PObject<ApiFactory> apiFactory() {
+      return apiFactory;
     }
 
-    @Override public boolean equals(Object obj) {
-      if (null != obj && Request.class == obj.getClass()) {
-        Request rhs = (Request) obj;
-        return Objects.equals(bucket(), rhs.bucket()) && Objects.equals(name(), rhs.name());
-      }
-      return false;
+    @Override public Collection<? extends PValue> expand() {
+      return Arrays.asList(apiFactory(), object());
     }
 
-    @Override public int hashCode() {
-      return Objects.hash(bucket(), name());
-    }
-
-    public String name() {
-      return name;
+    public PObject<StorageObject> object() {
+      return object;
     }
   }
 
-  private final String applicationName;
+  private final TupleTag<ApiFactory> apiFactoryTag = new TupleTag<>();
 
-  protected ReadFromCloudStorage(String applicationName) {
-    this.applicationName = applicationName;
-  }
-
-  @Override public PCollection<T> apply(PObject<Request> inputs) {
-    return inputs
-        .apply(Convert.<Request>toSingleton())
-        .apply(ParDo.of(
-            new StorageDoFn<Request, T>(applicationName) {
-              @Override protected void processElement(Storage storage, ProcessContext context)
-                  throws IOException {
-                Storage.Objects objects = storage.objects();
-                Request request = context.element();
-                String bucket = request.bucket();
-                String name = request.name();
-                try (InputStream in = Compression
-                    .forContentType(objects.get(bucket, name).execute().getContentType())
-                    .wrap(objects.get(bucket, name).executeMediaAsInputStream())) {
-                  for (T object : deserialize(in)) {
-                    context.output(object);
+  @Override public PCollection<T> apply(Input input) {
+    return input
+        .object()
+        .apply(Convert.<StorageObject>toSingleton())
+        .apply(ParDo
+            .withSideInputs(PObjectTuple.of(apiFactoryTag, input.apiFactory()))
+            .of(
+                new DoFn<StorageObject, T>() {
+                  @Override public void processElement(ProcessContext context) throws IOException {
+                    StorageObject object = context.element();
+                    for (T output : deserialize(Compression
+                        .forContentType(object.getContentType())
+                        .wrap(context
+                            .sideInput(apiFactoryTag)
+                            .createApi(StorageApiFactoryImplementation.INSTANCE)
+                            .objects()
+                            .get(object.getBucket(), object.getName())
+                            .executeMediaAsInputStream()))) {
+                      context.output(output);
+                    }
                   }
-                }
-              }
-            }))
+                }))
         .setOrdered(true);
   }
 
