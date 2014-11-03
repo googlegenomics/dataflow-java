@@ -25,7 +25,7 @@ import java.util.Iterator;
 public abstract class AbstractPInput<I extends AbstractPInput<I>> implements PInput {
 
   @SuppressWarnings("unchecked")
-  public <O extends POutput> O apply(PTransform<? super I, O> transform) {
+  public final <O extends POutput> O apply(PTransform<? super I, O> transform) {
     return Pipeline.applyTransform((I) this, transform);
   }
 
