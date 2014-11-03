@@ -15,8 +15,11 @@ package com.google.cloud.genomics.dataflow;
 
 import com.google.api.client.auth.oauth2.Credential;
 import com.google.api.client.auth.oauth2.TokenResponse;
+import com.google.api.client.extensions.java6.auth.oauth2.AuthorizationCodeInstalledApp;
+import com.google.api.client.googleapis.auth.oauth2.GoogleAuthorizationCodeFlow;
 import com.google.api.client.googleapis.auth.oauth2.GoogleClientSecrets;
 import com.google.api.client.googleapis.auth.oauth2.GoogleCredential;
+import com.google.api.client.googleapis.extensions.java6.auth.oauth2.GooglePromptReceiver;
 import com.google.api.client.googleapis.services.json.AbstractGoogleJsonClient;
 import com.google.api.client.googleapis.util.Utils;
 import com.google.api.client.http.HttpRequestInitializer;
@@ -24,54 +27,70 @@ import com.google.api.client.http.HttpTransport;
 import com.google.api.client.json.GenericJson;
 import com.google.api.client.json.JsonFactory;
 import com.google.api.client.util.Key;
+import com.google.api.client.util.store.FileDataStoreFactory;
 import com.google.cloud.dataflow.sdk.Pipeline;
 import com.google.cloud.dataflow.sdk.runners.PipelineOptions;
 import com.google.cloud.dataflow.sdk.transforms.CreatePObject;
 import com.google.cloud.dataflow.sdk.transforms.PTransform;
-import com.google.cloud.dataflow.sdk.util.Credentials;
 import com.google.cloud.dataflow.sdk.values.PInput;
 import com.google.cloud.dataflow.sdk.values.PObject;
 import com.google.cloud.genomics.dataflow.coders.GenericJsonCoder;
 import com.google.common.base.Throwables;
 
+import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
 import java.io.Reader;
-import java.security.GeneralSecurityException;
+import java.util.Arrays;
+import java.util.Collection;
 
 public final class ApiFactory extends GenericJson {
 
-  public interface Implementation<
-      C extends AbstractGoogleJsonClient,
-      B extends AbstractGoogleJsonClient.Builder> {
-
-    C build(B builder);
-
-    B newBuilder(HttpTransport transport, JsonFactory factory, HttpRequestInitializer initializer);
+  public interface Implementation<C extends AbstractGoogleJsonClient> {
+    C createClient(
+        HttpTransport transport,
+        JsonFactory jsonFactory,
+        HttpRequestInitializer httpRequestInitializer,
+        String appName);
   }
 
-  public static PTransform<PInput, PObject<ApiFactory>> of() {
+  public static PTransform<PInput, PObject<ApiFactory>> of(final Collection<String> scopes) {
     return new PTransform<PInput, PObject<ApiFactory>>() {
           @Override public PObject<ApiFactory> apply(PInput input) {
             Pipeline pipeline = input.getPipeline();
             PipelineOptions options = pipeline.getOptions();
             try (Reader in = new FileReader(options.secretsFile)) {
-              Credential credential = Credentials.getUserCredential(options);
+              JsonFactory jsonFactory = Utils.getDefaultJsonFactory();
+              GoogleClientSecrets clientSecrets = GoogleClientSecrets.load(jsonFactory, in);
+              GoogleAuthorizationCodeFlow codeFlow = new GoogleAuthorizationCodeFlow
+                  .Builder(Utils.getDefaultTransport(), jsonFactory, clientSecrets, scopes)
+                  .setDataStoreFactory(
+                      new FileDataStoreFactory(new File(options.getCredentialDirOrDefault())))
+                  .build();
+              Credential credential =
+                  new AuthorizationCodeInstalledApp(codeFlow, new GooglePromptReceiver())
+                      .authorize(options.credentialId);
               return pipeline
                   .apply(CreatePObject.of(new ApiFactory()
-                      .setClientSecrets(GoogleClientSecrets.load(Utils.getDefaultJsonFactory(), in))
+                      .setAppName(options.appName)
+                      .setClientSecrets(clientSecrets)
                       .setTokenResponse(new TokenResponse()
                           .setAccessToken(credential.getAccessToken())
                           .setRefreshToken(credential.getRefreshToken())
                           .setExpiresInSeconds(credential.getExpiresInSeconds()))))
                   .setCoder(GenericJsonCoder.of(ApiFactory.class));
-            } catch (GeneralSecurityException | IOException e) {
+            } catch (IOException e) {
               throw Throwables.propagate(e);
             }
           }
         };
   }
 
+  public static PTransform<PInput, PObject<ApiFactory>> of(String... scopes) {
+    return of(Arrays.asList(scopes));
+  }
+
+  @Key("app_name") private String appName;
   @Key("client_secrets") private GoogleClientSecrets clientSecrets;
   @Key("token_response") private TokenResponse tokenResponse;
 
@@ -79,12 +98,11 @@ public final class ApiFactory extends GenericJson {
     return (ApiFactory) super.clone();
   }
 
-  public <C extends AbstractGoogleJsonClient,
-      B extends AbstractGoogleJsonClient.Builder> C createApi(
-      Implementation<? extends C, B> implementation) {
+  public <C extends AbstractGoogleJsonClient> C createApi(
+      Implementation<? extends C> implementation) {
     HttpTransport transport = Utils.getDefaultTransport();
     JsonFactory jsonFactory = Utils.getDefaultJsonFactory();
-    return implementation.build(implementation.newBuilder(
+    return implementation.createClient(
         transport,
         jsonFactory,
         new GoogleCredential.Builder()
@@ -92,7 +110,12 @@ public final class ApiFactory extends GenericJson {
             .setJsonFactory(jsonFactory)
             .setClientSecrets(getClientSecrets())
             .build()
-            .setFromTokenResponse(getTokenResponse())));
+            .setFromTokenResponse(getTokenResponse()),
+        appName);
+  }
+
+  public String getAppName() {
+    return appName;
   }
 
   public GoogleClientSecrets getClientSecrets() {
@@ -105,6 +128,11 @@ public final class ApiFactory extends GenericJson {
 
   @Override public ApiFactory set(String fieldName, Object value) {
     return (ApiFactory) super.set(fieldName, value);
+  }
+
+  public ApiFactory setAppName(String appName) {
+    this.appName = appName;
+    return this;
   }
 
   public ApiFactory setClientSecrets(GoogleClientSecrets clientSecrets) {
