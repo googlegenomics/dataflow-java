@@ -15,13 +15,12 @@
  */
 package com.google.cloud.genomics.dataflow.pipelines;
 
-import com.google.cloud.dataflow.sdk.io.TextIO;
 import com.google.api.services.genomics.model.ReferenceBound;
 import com.google.api.services.genomics.model.SearchVariantsRequest;
 import com.google.api.services.genomics.model.VariantSet;
 import com.google.cloud.dataflow.sdk.Pipeline;
+import com.google.cloud.dataflow.sdk.io.TextIO;
 import com.google.cloud.dataflow.sdk.runners.Description;
-import com.google.cloud.dataflow.sdk.transforms.Count;
 import com.google.cloud.dataflow.sdk.transforms.DoFn;
 import com.google.cloud.dataflow.sdk.transforms.GroupByKey;
 import com.google.cloud.dataflow.sdk.transforms.ParDo;
@@ -29,7 +28,6 @@ import com.google.cloud.dataflow.sdk.values.KV;
 import com.google.cloud.dataflow.utils.OptionsParser;
 import com.google.cloud.dataflow.utils.RequiredOption;
 import com.google.cloud.genomics.dataflow.data_structures.Allele;
-import com.google.cloud.genomics.dataflow.GenomicsPipeline;
 import com.google.cloud.genomics.dataflow.functions.CalculateTransmissionProbability;
 import com.google.cloud.genomics.dataflow.functions.ExtractAlleleTransmissionStatus;
 import com.google.cloud.genomics.dataflow.readers.VariantReader;
@@ -40,7 +38,6 @@ import com.google.common.collect.Lists;
 
 import java.io.IOException;
 import java.security.GeneralSecurityException;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.logging.Logger;
@@ -147,7 +144,7 @@ public class TransmissionProbability {
 
     List<SearchVariantsRequest> requests = getVariantRequests(auth, options);
 
-    Pipeline p = GenomicsPipeline.create(options);
+    Pipeline p = Pipeline.create(options);
     DataflowWorkarounds.registerGenomicsCoders(p);
 
     // The below pipeline works as follows:
