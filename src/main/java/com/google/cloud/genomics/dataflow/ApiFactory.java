@@ -31,11 +31,8 @@ import com.google.api.client.util.store.FileDataStoreFactory;
 import com.google.cloud.dataflow.sdk.Pipeline;
 import com.google.cloud.dataflow.sdk.runners.PipelineOptions;
 import com.google.cloud.dataflow.sdk.transforms.CreatePObject;
-import com.google.cloud.dataflow.sdk.transforms.PTransform;
-import com.google.cloud.dataflow.sdk.values.PInput;
 import com.google.cloud.dataflow.sdk.values.PObject;
 import com.google.cloud.genomics.dataflow.coders.GenericJsonCoder;
-import com.google.common.base.Throwables;
 
 import java.io.File;
 import java.io.FileReader;
@@ -54,40 +51,35 @@ public final class ApiFactory extends GenericJson {
         String appName);
   }
 
-  public static PTransform<PInput, PObject<ApiFactory>> of(final Collection<String> scopes) {
-    return new PTransform<PInput, PObject<ApiFactory>>() {
-          @Override public PObject<ApiFactory> apply(PInput input) {
-            Pipeline pipeline = input.getPipeline();
-            PipelineOptions options = pipeline.getOptions();
-            try (Reader in = new FileReader(options.secretsFile)) {
-              JsonFactory jsonFactory = Utils.getDefaultJsonFactory();
-              GoogleClientSecrets clientSecrets = GoogleClientSecrets.load(jsonFactory, in);
-              GoogleAuthorizationCodeFlow codeFlow = new GoogleAuthorizationCodeFlow
-                  .Builder(Utils.getDefaultTransport(), jsonFactory, clientSecrets, scopes)
-                  .setDataStoreFactory(
-                      new FileDataStoreFactory(new File(options.getCredentialDirOrDefault())))
-                  .build();
-              Credential credential =
-                  new AuthorizationCodeInstalledApp(codeFlow, new GooglePromptReceiver())
-                      .authorize(options.credentialId);
-              return pipeline
-                  .apply(CreatePObject.of(new ApiFactory()
-                      .setAppName(options.appName)
-                      .setClientSecrets(clientSecrets)
-                      .setTokenResponse(new TokenResponse()
-                          .setAccessToken(credential.getAccessToken())
-                          .setRefreshToken(credential.getRefreshToken())
-                          .setExpiresInSeconds(credential.getExpiresInSeconds()))))
-                  .setCoder(GenericJsonCoder.of(ApiFactory.class));
-            } catch (IOException e) {
-              throw Throwables.propagate(e);
-            }
-          }
-        };
+  public static PObject<ApiFactory> of(Pipeline pipeline, Collection<String> scopes)
+      throws IOException {
+    PipelineOptions options = pipeline.getOptions();
+    try (Reader in = new FileReader(options.secretsFile)) {
+      JsonFactory jsonFactory = Utils.getDefaultJsonFactory();
+      GoogleClientSecrets clientSecrets = GoogleClientSecrets.load(jsonFactory, in);
+      GoogleAuthorizationCodeFlow codeFlow = new GoogleAuthorizationCodeFlow
+          .Builder(Utils.getDefaultTransport(), jsonFactory, clientSecrets, scopes)
+          .setDataStoreFactory(
+              new FileDataStoreFactory(new File(options.getCredentialDirOrDefault())))
+          .build();
+      Credential credential =
+          new AuthorizationCodeInstalledApp(codeFlow, new GooglePromptReceiver())
+              .authorize(options.credentialId);
+      return pipeline
+          .apply(CreatePObject.of(new ApiFactory()
+              .setAppName(options.appName)
+              .setClientSecrets(clientSecrets)
+              .setTokenResponse(new TokenResponse()
+                  .setAccessToken(credential.getAccessToken())
+                  .setRefreshToken(credential.getRefreshToken())
+                  .setExpiresInSeconds(credential.getExpiresInSeconds()))))
+          .setCoder(GenericJsonCoder.of(ApiFactory.class));
+    }
   }
 
-  public static PTransform<PInput, PObject<ApiFactory>> of(String... scopes) {
-    return of(Arrays.asList(scopes));
+  public static PObject<ApiFactory> of(Pipeline pipeline, String... scopes)
+      throws IOException {
+    return of(pipeline, Arrays.asList(scopes));
   }
 
   @Key("app_name") private String appName;
