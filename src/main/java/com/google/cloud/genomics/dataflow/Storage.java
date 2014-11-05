@@ -160,19 +160,23 @@ public class Storage {
 
   public PObject<StorageObject> get(String bucket, String name) {
     return get(
-        getPipeline().apply(CreatePObject.of(bucket)).setCoder(StringUtf8Coder.of()),
-        getPipeline().apply(CreatePObject.of(name)).setCoder(StringUtf8Coder.of()));
+        pipeline().apply(CreatePObject.of(bucket)).setCoder(StringUtf8Coder.of()),
+        pipeline().apply(CreatePObject.of(name)).setCoder(StringUtf8Coder.of()));
   }
 
-  public Pipeline getPipeline() {
-    return apiFactory.getPipeline();
+  public PObject<ApiFactory> apiFactory() {
+    return apiFactory;
+  }
+
+  public Pipeline pipeline() {
+    return apiFactory().getPipeline();
   }
 
   @SuppressWarnings("unchecked")
   public <T> PCollection<T> read(PObject<StorageObject> object, Deserializer<T> deserializer) {
     return read(
         object,
-        getPipeline()
+        pipeline()
             .apply(CreatePObject.of(deserializer))
             .setCoder(SerializableCoder.of((Class<Deserializer<T>>) (Object) Deserializer.class)));
   }
@@ -210,7 +214,7 @@ public class Storage {
 
   public <T> PCollection<T> read(StorageObject object, Deserializer<T> deserializer) {
     return read(
-        getPipeline()
+        pipeline()
             .apply(CreatePObject.of(object))
             .setCoder(GenericJsonCoder.of(StorageObject.class)),
         deserializer);
@@ -275,7 +279,7 @@ public class Storage {
     return write(
         collection,
         object,
-        getPipeline()
+        pipeline()
             .apply(CreatePObject.of(serializer))
             .setCoder(SerializableCoder.of((Class<Serializer<T>>) (Object) Serializer.class)));
   }
@@ -286,7 +290,7 @@ public class Storage {
       Serializer<T> serializer) {
     return write(
         collection,
-        getPipeline()
+        pipeline()
             .apply(CreatePObject.of(object))
             .setCoder(GenericJsonCoder.of(StorageObject.class)),
         serializer);
