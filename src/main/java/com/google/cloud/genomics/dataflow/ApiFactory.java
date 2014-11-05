@@ -22,10 +22,14 @@ import com.google.api.client.googleapis.auth.oauth2.GoogleCredential;
 import com.google.api.client.googleapis.extensions.java6.auth.oauth2.GooglePromptReceiver;
 import com.google.api.client.googleapis.services.json.AbstractGoogleJsonClient;
 import com.google.api.client.googleapis.util.Utils;
+import com.google.api.client.http.HttpBackOffUnsuccessfulResponseHandler;
+import com.google.api.client.http.HttpRequest;
 import com.google.api.client.http.HttpRequestInitializer;
 import com.google.api.client.http.HttpTransport;
+import com.google.api.client.http.HttpUnsuccessfulResponseHandler;
 import com.google.api.client.json.GenericJson;
 import com.google.api.client.json.JsonFactory;
+import com.google.api.client.util.ExponentialBackOff;
 import com.google.api.client.util.Key;
 import com.google.api.client.util.store.FileDataStoreFactory;
 import com.google.cloud.dataflow.sdk.Pipeline;
@@ -92,17 +96,28 @@ public final class ApiFactory extends GenericJson {
 
   public <C extends AbstractGoogleJsonClient> C createApi(
       Implementation<? extends C> implementation) {
-    HttpTransport transport = Utils.getDefaultTransport();
-    JsonFactory jsonFactory = Utils.getDefaultJsonFactory();
+    final HttpTransport transport = Utils.getDefaultTransport();
+    final JsonFactory jsonFactory = Utils.getDefaultJsonFactory();
     return implementation.createClient(
         transport,
         jsonFactory,
-        new GoogleCredential.Builder()
-            .setTransport(transport)
-            .setJsonFactory(jsonFactory)
-            .setClientSecrets(getClientSecrets())
-            .build()
-            .setFromTokenResponse(getTokenResponse()),
+        new HttpRequestInitializer() {
+
+          private final GoogleCredential credential = new GoogleCredential.Builder()
+              .setTransport(transport)
+              .setJsonFactory(jsonFactory)
+              .setClientSecrets(getClientSecrets())
+              .build()
+              .setFromTokenResponse(getTokenResponse());
+
+          private final HttpUnsuccessfulResponseHandler unsuccessfulResponseHandler =
+              new HttpBackOffUnsuccessfulResponseHandler(new ExponentialBackOff());
+
+          @Override public void initialize(HttpRequest request) throws IOException {
+            credential.initialize(request);
+            request.setUnsuccessfulResponseHandler(unsuccessfulResponseHandler);
+          }
+        },
         appName);
   }
 
