@@ -78,8 +78,7 @@ public class Genomics {
                         .search(
                             context.sideInput(requestTag),
                             new Paginator.Callback<Read, Void>() {
-                              @Override public Void consumeResponses(Iterable<Read> responses)
-                                  throws IOException {
+                              @Override public Void consumeResponses(Iterable<Read> responses) {
                                 for (Read read : responses) {
                                   context.output(read);
                                 }
