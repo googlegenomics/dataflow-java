@@ -17,7 +17,6 @@ package com.google.cloud.genomics.dataflow.readers;
 
 import com.google.api.services.genomics.Genomics;
 import com.google.api.services.genomics.model.SearchVariantsRequest;
-import com.google.api.services.genomics.model.SearchVariantsResponse;
 import com.google.api.services.genomics.model.Variant;
 import com.google.cloud.genomics.dataflow.utils.GenomicsAuth;
 import com.google.cloud.genomics.utils.Paginator;
@@ -52,9 +51,7 @@ public class VariantReader extends GenomicsApiReader<SearchVariantsRequest, Vari
       throws IOException {
     LOG.info("Starting Variants read loop");
 
-    for (Variant read : Paginator.Variants
-        .create(genomics, this.<Genomics.Variants.Search, SearchVariantsResponse>getRetryPolicy())
-        .search(request, fields)) {
+    for (Variant read : Paginator.Variants.create(genomics).search(request, fields)) {
       c.output(read);
     }
 
