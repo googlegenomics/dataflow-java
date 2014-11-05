@@ -16,10 +16,8 @@ package com.google.cloud.genomics.dataflow;
 import com.google.api.client.http.HttpRequestInitializer;
 import com.google.api.client.http.HttpTransport;
 import com.google.api.client.json.JsonFactory;
-import com.google.api.services.genomics.Genomics.Reads;
 import com.google.api.services.genomics.model.Read;
 import com.google.api.services.genomics.model.SearchReadsRequest;
-import com.google.api.services.genomics.model.SearchReadsResponse;
 import com.google.cloud.dataflow.sdk.transforms.Convert;
 import com.google.cloud.dataflow.sdk.transforms.CreatePObject;
 import com.google.cloud.dataflow.sdk.transforms.DoFn;
@@ -30,7 +28,6 @@ import com.google.cloud.dataflow.sdk.values.PObjectTuple;
 import com.google.cloud.dataflow.sdk.values.TupleTag;
 import com.google.cloud.genomics.dataflow.coders.GenericJsonCoder;
 import com.google.cloud.genomics.utils.Paginator;
-import com.google.cloud.genomics.utils.RetryPolicy;
 
 import java.io.IOException;
 
@@ -77,9 +74,7 @@ public class Genomics {
                   @Override public void processElement(final ProcessContext context)
                       throws IOException {
                     Paginator.READS
-                        .createPaginator(
-                            context.element().createApi(GENOMICS_IMPL),
-                            RetryPolicy.<Reads.Search, SearchReadsResponse>neverRetry())
+                        .createPaginator(context.element().createApi(GENOMICS_IMPL))
                         .search(
                             context.sideInput(requestTag),
                             new Paginator.Callback<Read, Void>() {

@@ -17,10 +17,8 @@
 package com.google.cloud.genomics.dataflow.readers;
 
 import com.google.api.services.genomics.Genomics;
-import com.google.api.services.genomics.Genomics.Reads.Search;
 import com.google.api.services.genomics.model.Read;
 import com.google.api.services.genomics.model.SearchReadsRequest;
-import com.google.api.services.genomics.model.SearchReadsResponse;
 import com.google.cloud.genomics.dataflow.utils.GenomicsAuth;
 import com.google.cloud.genomics.utils.Paginator;
 
@@ -54,9 +52,7 @@ public class ReadReader extends GenomicsApiReader<SearchReadsRequest, Read> {
       throws IOException {
     LOG.info("Starting Reads read loop");
 
-    for (Read read : Paginator.Reads
-        .create(genomics, this.<Search, SearchReadsResponse>getRetryPolicy())
-        .search(request, fields)) {
+    for (Read read : Paginator.Reads.create(genomics).search(request, fields)) {
       c.output(read);
     }
   }

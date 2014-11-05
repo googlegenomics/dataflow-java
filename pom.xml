@@ -81,7 +81,7 @@
     <dependency>
       <groupId>com.google.cloud.genomics</groupId>
       <artifactId>google-genomics-utils</artifactId>
-      <version>v1beta2-0.7</version>
+      <version>v1beta2-0.8</version>
       <exclusions>
         <exclusion>
           <groupId>com.google.http-client</groupId>
