@@ -45,7 +45,7 @@ import java.util.Map;
 import java.util.zip.GZIPInputStream;
 import java.util.zip.GZIPOutputStream;
 
-public class Storage {
+public class Storage implements Serializable {
 
   private enum Compression {
 
@@ -130,7 +130,7 @@ public class Storage {
     return new Storage(apiFactory);
   }
 
-  private final PObject<ApiFactory> apiFactory;
+  private transient final PObject<ApiFactory> apiFactory;
 
   private Storage(PObject<ApiFactory> apiFactory) {
     this.apiFactory = apiFactory;
@@ -213,11 +213,7 @@ public class Storage {
   }
 
   public <T> PCollection<T> read(StorageObject object, Deserializer<T> deserializer) {
-    return read(
-        pipeline()
-            .apply(CreatePObject.of(object))
-            .setCoder(GenericJsonCoder.of(StorageObject.class)),
-        deserializer);
+    return read(pObject(object), deserializer);
   }
 
   public <T> PObject<StorageObject> write(
@@ -288,11 +284,13 @@ public class Storage {
       PCollection<? extends T> collection,
       StorageObject object,
       Serializer<T> serializer) {
-    return write(
-        collection,
-        pipeline()
-            .apply(CreatePObject.of(object))
-            .setCoder(GenericJsonCoder.of(StorageObject.class)),
-        serializer);
+    return write(collection, pObject(object), serializer);
+  }
+
+  public PObject<StorageObject> pObject(StorageObject object) {
+    return apiFactory()
+        .getPipeline()
+        .apply(CreatePObject.of(object))
+        .setCoder(GenericJsonCoder.of(StorageObject.class));
   }
 }
