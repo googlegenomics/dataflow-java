@@ -42,12 +42,13 @@ import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
 import java.io.Reader;
+import java.io.Serializable;
 import java.util.Arrays;
 import java.util.Collection;
 
 public final class ApiFactory extends GenericJson {
 
-  public interface Implementation<C extends AbstractGoogleJsonClient> {
+  public interface Implementation<C extends AbstractGoogleJsonClient> extends Serializable {
     C createClient(
         HttpTransport transport,
         JsonFactory jsonFactory,

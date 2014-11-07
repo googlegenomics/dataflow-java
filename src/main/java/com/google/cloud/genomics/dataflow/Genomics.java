@@ -30,8 +30,9 @@ import com.google.cloud.genomics.dataflow.coders.GenericJsonCoder;
 import com.google.cloud.genomics.utils.Paginator;
 
 import java.io.IOException;
+import java.io.Serializable;
 
-public class Genomics {
+public class Genomics implements Serializable {
 
   private static final ApiFactory.Implementation<com.google.api.services.genomics.Genomics>
       GENOMICS_IMPL =
@@ -52,7 +53,7 @@ public class Genomics {
     return new Genomics(apiFactory);
   }
 
-  private final PObject<ApiFactory> apiFactory;
+  private transient final PObject<ApiFactory> apiFactory;
 
   private Genomics(PObject<ApiFactory> apiFactory) {
     this.apiFactory = apiFactory;
