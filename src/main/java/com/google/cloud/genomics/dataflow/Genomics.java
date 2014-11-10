@@ -74,8 +74,8 @@ public class Genomics implements Serializable {
                 new DoFn<ApiFactory, Read>() {
                   @Override public void processElement(final ProcessContext context)
                       throws IOException {
-                    Paginator.READS
-                        .createPaginator(context.element().createApi(GENOMICS_IMPL))
+                    Paginator.Reads
+                        .create(context.element().createApi(GENOMICS_IMPL))
                         .search(
                             context.sideInput(requestTag),
                             new Paginator.Callback<Read, Void>() {
