@@ -15,7 +15,7 @@ Getting started
 
 * Then you can run a pipeline locally with the command line::
 
-    java -cp target/googlegenomics-dataflow-java-v1beta.jar \
+    java -cp target/googlegenomics-dataflow-java-v1beta2.jar \
       com.google.cloud.genomics.dataflow.pipelines.VariantSimilarity \
       --project=google.com:genomics-api \
       --output=gs://cloud-genomics-dataflow-tests/output/localtest.txt
@@ -25,7 +25,7 @@ Getting started
 * To deploy your pipeline (which runs on Google Compute Engine), some additional 
   command line arguments are required::
 
-    java -cp target/googlegenomics-dataflow-java-v1beta.jar \
+    java -cp target/googlegenomics-dataflow-java-v1beta2.jar \
       com.google.cloud.genomics.dataflow.pipelines.VariantSimilarity \
       --runner=BlockingDataflowPipelineRunner \
       --project=google.com:genomics-api \
