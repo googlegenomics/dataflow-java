@@ -67,7 +67,7 @@ import java.util.logging.Logger;
  */
 public class VariantSimilarity {
   private static final Logger LOG = Logger.getLogger(VariantSimilarity.class.getName());
-  private static final String VARIANT_FIELDS = "nextPageToken,variants(id,calls(genotype,callsetName))";
+  private static final String VARIANT_FIELDS = "nextPageToken,variants(id,calls(genotype,callSetName))";
 
   private static List<SearchVariantsRequest> getVariantRequests(GenomicsAuth auth, Options options)
       throws IOException, GeneralSecurityException {
