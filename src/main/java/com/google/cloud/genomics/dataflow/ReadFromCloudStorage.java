@@ -13,6 +13,7 @@
  */
 package com.google.cloud.genomics.dataflow;
 
+import com.google.api.services.storage.Storage;
 import com.google.api.services.storage.model.StorageObject;
 import com.google.cloud.dataflow.sdk.Pipeline;
 import com.google.cloud.dataflow.sdk.coders.Coder;
@@ -67,13 +68,19 @@ public abstract class ReadFromCloudStorage<T> implements Serializable {
                 new DoFn<StorageObject, T>() {
                   @Override public void processElement(ProcessContext context) throws IOException {
                     StorageObject storageObject = context.element();
-                    for (T object : deserialize(context
+                    Optional<String> contentEncoding =
+                        Optional.fromNullable(storageObject.getContentEncoding());
+                    Storage.Objects.Get request = context
                         .sideInput(jsonClientFactoryTag)
                         .createClient(StorageImplementation.INSTANCE)
                         .objects()
-                        .get(storageObject.getBucket(), storageObject.getName())
-                        .executeMediaAsInputStream())) {
-                      context.output(object);
+                        .get(storageObject.getBucket(), storageObject.getName());
+                    try (InputStream in = (contentEncoding.isPresent()
+                        ? request.set("Accept-Encoding", contentEncoding.get())
+                        : request).executeMediaAsInputStream()) {
+                      for (T object : deserialize(in)) {
+                        context.output(object);
+                      }
                     }
                   }
                 }))
