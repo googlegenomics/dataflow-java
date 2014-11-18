@@ -15,30 +15,27 @@
  */
 package com.google.cloud.genomics.dataflow.coders;
 
+import com.google.api.client.googleapis.util.Utils;
 import com.google.api.client.json.GenericJson;
 import com.google.api.client.json.JsonFactory;
-import com.google.api.client.json.jackson2.JacksonFactory;
 import com.google.api.services.dataflow.model.CloudNamedParameter;
-import com.google.cloud.dataflow.sdk.coders.AtomicCoder;
 import com.google.cloud.dataflow.sdk.coders.Coder;
-import com.google.cloud.dataflow.sdk.coders.CoderException;
 import com.google.cloud.dataflow.sdk.coders.StringUtf8Coder;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
 import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
 import java.util.Map;
 
 /**
  * Can be used as a coder for any object that extends GenericJson.
  * This includes all objects in the Google Genomics Java client library.
 */
-public class GenericJsonCoder<T extends GenericJson> extends AtomicCoder<T> {
+public class GenericJsonCoder<T extends GenericJson> extends DelegatingAtomicCoder<T, String> {
 
-  private static final JsonFactory JSON_FACTORY = JacksonFactory.getDefaultInstance();
+  private static final JsonFactory JSON_FACTORY = Utils.getDefaultJsonFactory();
+  private static final Coder<String> STRING_CODER = StringUtf8Coder.of();
 
   public static <T extends GenericJson> GenericJsonCoder<T> of(Class<T> type) {
     return new GenericJsonCoder<>(type);
@@ -51,10 +48,10 @@ public class GenericJsonCoder<T extends GenericJson> extends AtomicCoder<T> {
     return of((Class<T>) Class.forName(type));
   }
 
-  private Coder<String> delegate = StringUtf8Coder.of();
   private final Class<T> type;
 
   private GenericJsonCoder(Class<T> type) {
+    super(STRING_CODER);
     this.type = type;
   }
 
@@ -62,17 +59,11 @@ public class GenericJsonCoder<T extends GenericJson> extends AtomicCoder<T> {
     details.put("type", new CloudNamedParameter().setStringValue(type.getName()));
   }
 
-  @Override public T decode(InputStream inStream, Context context)
-      throws CoderException, IOException {
-    return JSON_FACTORY.fromString(delegate.decode(inStream, context), type);
+  @Override protected T from(String object) throws IOException {
+    return JSON_FACTORY.fromString(object, type);
   }
 
-  @Override public void encode(T value, OutputStream outStream, Context context)
-      throws CoderException, IOException {
-    delegate.encode(JSON_FACTORY.toString(value), outStream, context);
-  }
-
-  @Override public boolean isDeterministic() {
-    return delegate.isDeterministic();
+  @Override protected String to(T object) throws IOException {
+    return JSON_FACTORY.toString(object);
   }
 }
