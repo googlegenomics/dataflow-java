@@ -16,12 +16,26 @@ limitations under the License.
 package com.google.cloud.genomics.dataflow.pipelines;
 
 import com.google.cloud.dataflow.sdk.transforms.SerializableFunction;
-import com.google.common.math.DoubleMath;
+import com.google.cloud.dataflow.sdk.values.KV;
 
+/**
+ * Sums up a number of pairs of a double and an int to a single pair.
+ *
+ * Each pair represents the sum of ratio and number of shared alleles between two call set names for
+ * a set of variants.
+ */
 final class IBSCalculator implements
-    SerializableFunction<Iterable<Double>, Double> {
+    SerializableFunction<Iterable<KV<Double, Integer>>, KV<Double, Integer>> {
+
   @Override
-  public Double apply(Iterable<Double> ratiosOfSharedAlleles) {
-    return DoubleMath.mean(ratiosOfSharedAlleles);
+  public KV<Double, Integer> apply(Iterable<KV<Double, Integer>> sharedAllelesInfos) {
+    double sumOfRatios = 0.0;
+    int numberOfRatios = 0;
+    for (KV<Double, Integer> info : sharedAllelesInfos) {
+      sumOfRatios += info.getKey();
+      numberOfRatios += info.getValue();
+    }
+    return KV.of(sumOfRatios, numberOfRatios);
   }
+
 }
