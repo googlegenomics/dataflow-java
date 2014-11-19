@@ -33,7 +33,7 @@ import com.google.cloud.dataflow.sdk.values.KV;
 import com.google.cloud.dataflow.utils.OptionsParser;
 import com.google.cloud.dataflow.utils.RequiredOption;
 import com.google.cloud.genomics.dataflow.functions.FormatIBSData;
-import com.google.cloud.genomics.dataflow.functions.SharedAllelesCallsOfVariantCounter;
+import com.google.cloud.genomics.dataflow.functions.SharedAllelesCounter;
 import com.google.cloud.genomics.dataflow.readers.VariantReader;
 import com.google.cloud.genomics.dataflow.utils.DataflowWorkarounds;
 import com.google.cloud.genomics.dataflow.utils.GenomicsAuth;
@@ -142,8 +142,8 @@ public class IdentityByState {
         .apply(ParDo.named("VariantReader").of(new VariantReader(auth, VARIANT_FIELDS)))
         .apply(
             ParDo.named("SharedAllelesCallsOfVariantCounter").of(
-                new SharedAllelesCallsOfVariantCounter()))
-        .apply(Combine.<KV<String, String>, Double>perKey(new IBSCalculator()))
+                new SharedAllelesCounter()))
+        .apply(Combine.<KV<String, String>, KV<Double, Integer>>perKey(new IBSCalculator()))
         .apply(ParDo.named("FormatIBSData").of(new FormatIBSData()))
         .apply(TextIO.Write.named("WriteIBS").to(options.output));
 

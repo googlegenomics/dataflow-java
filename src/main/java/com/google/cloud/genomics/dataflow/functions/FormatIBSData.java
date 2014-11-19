@@ -19,13 +19,20 @@ package com.google.cloud.genomics.dataflow.functions;
 import com.google.cloud.dataflow.sdk.transforms.DoFn;
 import com.google.cloud.dataflow.sdk.values.KV;
 
-public final class FormatIBSData extends DoFn<KV<KV<String, String>, Double>, String> {
+/**
+ * Computes the IBS score based on the given sums of ratios and numbers of shared alleles. Then, it
+ * outputs the results to a file.
+ */
+public final class FormatIBSData extends DoFn<KV<KV<String, String>, KV<Double, Integer>>, String> {
   @Override
   public void processElement(ProcessContext c) {
-    KV<KV<String, String>, Double> result = c.element();
+    KV<KV<String, String>, KV<Double, Integer>> result = c.element();
     // Note: the extra tab is so this format plays nicely with
     // Google Sheet's bubble chart
-    c.output(result.getKey().getKey() + "\t\t" + result.getKey().getValue() + "\t"
-        + result.getValue());
+    String call1 = result.getKey().getKey();
+    String call2 = result.getKey().getValue();
+    Double sumOfRatios = result.getValue().getKey();
+    int numberOfRatios = result.getValue().getValue();
+    c.output(call1 + "\t\t" + call2 + "\t" + sumOfRatios / numberOfRatios);
   }
 }

@@ -27,7 +27,7 @@ import org.junit.runners.JUnit4;
 
 import com.google.api.services.genomics.model.Call;
 
-import static com.google.cloud.genomics.dataflow.functions.SharedAllelesCallsOfVariantCounter.ratioOfSharedAlleles;
+import static com.google.cloud.genomics.dataflow.functions.SharedAllelesCounter.ratioOfSharedAlleles;
 
 @RunWith(JUnit4.class)
 public class SharedAllelesCallsOfVariantCounterTest {
