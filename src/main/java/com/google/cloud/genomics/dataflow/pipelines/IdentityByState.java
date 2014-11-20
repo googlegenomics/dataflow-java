@@ -86,7 +86,7 @@ public class IdentityByState {
 
     } else {
       // If not running all contigs, we default to BRCA1
-      // TODO(reprogrammer): Different data sets refer to the same chromosome differently. Illumina
+      // TODO: Different data sets refer to the same chromosome differently. Illumina
       // refers to it as "chr17" while 1000 Genomes refers to it as "17". We need to take this
       // difference into account when referring to BRCA1.
       return getShardedRequests(options.datasetId, "chr17", 41196312, 41277500);
