@@ -13,7 +13,7 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package com.google.cloud.genomics.dataflow.data_structures;
+package com.google.cloud.genomics.dataflow.model;
 
 /**
  * A small container to store the alleles at a location
@@ -24,10 +24,10 @@ public class Allele {
   long position;
   String allele;
 
-  public Allele(String r, long p, String a) {
-    referenceName = r;
-    position = p;
-    allele = a;
+  public Allele(String referenceName, long position, String allele) {
+    this.referenceName = referenceName;
+    this.position = position;
+    this.allele = allele;
   }
 
   public String getReferenceName() {
