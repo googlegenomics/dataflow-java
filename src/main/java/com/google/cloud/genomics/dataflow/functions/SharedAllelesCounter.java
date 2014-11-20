@@ -31,6 +31,9 @@ import com.google.common.collect.ImmutableMultimap;
  * For each pair of calls on any of the given variants, computes the ratio, a number between 0 and 1
  * (inclusive), of the shared alleles between the two calls. Then, emits the sum and number of the
  * computed ratios for each pair of call set names across all the given variants.
+ *
+ * See <a href="http://konradjkarczewski.files.wordpress.com/2012/02/identity-howto.pdf">a
+ * description of Identity By State (IBS)</a> for the basis of this implementation.
  */
 public class SharedAllelesCounter extends
     DoFn<Variant, KV<KV<String, String>, KV<Double, Integer>>> {
