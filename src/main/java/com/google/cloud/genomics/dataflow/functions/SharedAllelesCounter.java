@@ -89,7 +89,7 @@ public class SharedAllelesCounter extends
     return CallFilters.getSamplesWithVariantOfMinGenotype(variant, 0);
   }
 
-  // TODO(reprogrammer): Double check that the following is the right way of computing the IBS
+  // TODO: Double check that the following is the right way of computing the IBS
   // scores when the number of alleles is different than 2 and when the genotypes are unphased.
   static double ratioOfSharedAlleles(Call call1, Call call2) {
     int minNumberOfGenotypes = Math.min(call1.getGenotype().size(), call2.getGenotype().size());
