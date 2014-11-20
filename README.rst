@@ -13,12 +13,13 @@ Getting started
     mvn compile
     mvn bundle:bundle
 
-* Then you can run a pipeline locally with the command line::
+* Then you can run a pipeline locally with the command line, passing in a valid
+  project ID and Google Cloud Storage bucket::
 
     java -cp target/googlegenomics-dataflow-java-v1beta2.jar \
       com.google.cloud.genomics.dataflow.pipelines.VariantSimilarity \
-      --project=google.com:genomics-api \
-      --output=gs://cloud-genomics-dataflow-tests/output/localtest.txt
+      --project=my-project-id \
+      --output=gs://my-bucket/output/localtest.txt
     
   Note: when running locally, you may run into memory issues depending on the capacity of your local machine.
   
@@ -28,11 +29,10 @@ Getting started
     java -cp target/googlegenomics-dataflow-java-v1beta2.jar \
       com.google.cloud.genomics.dataflow.pipelines.VariantSimilarity \
       --runner=BlockingDataflowPipelineRunner \
-      --project=google.com:genomics-api \
-      --stagingLocation=gs://cloud-genomics-dataflow-tests/staging \
-      --output=gs://cloud-genomics-dataflow-tests/output/test.txt \
-      --numWorkers=10 \
-      --zone=us-central1-b
+      --project=my-project-id \
+      --stagingLocation=gs://my-bucket/staging \
+      --output=gs://my-bucket/output/test.txt \
+      --numWorkers=10
 
   Note: By default, the max workers you can have without requesting more GCE quota 
   is 16. (That's the default limit on VMs)
