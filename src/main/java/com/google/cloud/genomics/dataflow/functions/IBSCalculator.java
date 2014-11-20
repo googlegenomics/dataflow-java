@@ -13,7 +13,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 */
-package com.google.cloud.genomics.dataflow.pipelines;
+package com.google.cloud.genomics.dataflow.functions;
 
 import com.google.cloud.dataflow.sdk.transforms.SerializableFunction;
 import com.google.cloud.dataflow.sdk.values.KV;
@@ -24,7 +24,7 @@ import com.google.cloud.dataflow.sdk.values.KV;
  * Each pair represents the sum of ratio and number of shared alleles between two call set names for
  * a set of variants.
  */
-final class IBSCalculator implements
+public final class IBSCalculator implements
     SerializableFunction<Iterable<KV<Double, Integer>>, KV<Double, Integer>> {
 
   @Override
