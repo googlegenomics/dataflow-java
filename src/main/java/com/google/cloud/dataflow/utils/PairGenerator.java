@@ -20,7 +20,6 @@ import java.util.List;
 import java.util.RandomAccess;
 
 import com.google.cloud.dataflow.sdk.values.KV;
-import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Function;
 import com.google.common.collect.ContiguousSet;
 import com.google.common.collect.DiscreteDomain;
@@ -30,7 +29,6 @@ import com.google.common.collect.Range;
 
 public class PairGenerator {
 
-  @VisibleForTesting
   public static <X, L extends List<? extends X> & RandomAccess> FluentIterable<KV<X, X>> allPairs(
       final L list) {
     return FluentIterable.from(
