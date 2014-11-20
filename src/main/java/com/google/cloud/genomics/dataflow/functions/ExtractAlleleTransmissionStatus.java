@@ -19,7 +19,7 @@ import com.google.api.services.genomics.model.Call;
 import com.google.api.services.genomics.model.Variant;
 import com.google.cloud.dataflow.sdk.transforms.DoFn;
 import com.google.cloud.dataflow.sdk.values.KV;
-import com.google.cloud.genomics.dataflow.data_structures.Allele;
+import com.google.cloud.genomics.dataflow.model.Allele;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.Lists;
 
