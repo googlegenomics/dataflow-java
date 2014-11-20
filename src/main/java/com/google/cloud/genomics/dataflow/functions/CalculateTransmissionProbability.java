@@ -17,7 +17,7 @@ package com.google.cloud.genomics.dataflow.functions;
 
 import com.google.cloud.dataflow.sdk.transforms.DoFn;
 import com.google.cloud.dataflow.sdk.values.KV;
-import com.google.cloud.genomics.dataflow.data_structures.Allele;
+import com.google.cloud.genomics.dataflow.model.Allele;
 
 /*
  * Calculates the Transmission probability of each Allele.
