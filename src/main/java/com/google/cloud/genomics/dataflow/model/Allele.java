@@ -24,10 +24,10 @@ public class Allele {
   long position;
   String allele;
 
-  public Allele(String r, long p, String a) {
-    referenceName = r;
-    position = p;
-    allele = a;
+  public Allele(String referenceName, long position, String allele) {
+    this.referenceName = referenceName;
+    this.position = position;
+    this.allele = allele;
   }
 
   public String getReferenceName() {
