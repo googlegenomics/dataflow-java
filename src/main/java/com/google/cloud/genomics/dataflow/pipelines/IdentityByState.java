@@ -33,6 +33,7 @@ import com.google.cloud.dataflow.sdk.values.KV;
 import com.google.cloud.dataflow.utils.OptionsParser;
 import com.google.cloud.dataflow.utils.RequiredOption;
 import com.google.cloud.genomics.dataflow.functions.FormatIBSData;
+import com.google.cloud.genomics.dataflow.functions.IBSCalculator;
 import com.google.cloud.genomics.dataflow.functions.SharedAllelesCounter;
 import com.google.cloud.genomics.dataflow.readers.VariantReader;
 import com.google.cloud.genomics.dataflow.utils.DataflowWorkarounds;
