@@ -13,7 +13,7 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package com.google.cloud.genomics.dataflow.data_structures;
+package com.google.cloud.genomics.dataflow.model;
 
 /**
  * A small container to store the alleles at a location

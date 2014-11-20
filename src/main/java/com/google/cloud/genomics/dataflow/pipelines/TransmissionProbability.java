@@ -27,7 +27,7 @@ import com.google.cloud.dataflow.sdk.transforms.ParDo;
 import com.google.cloud.dataflow.sdk.values.KV;
 import com.google.cloud.dataflow.utils.OptionsParser;
 import com.google.cloud.dataflow.utils.RequiredOption;
-import com.google.cloud.genomics.dataflow.data_structures.Allele;
+import com.google.cloud.genomics.dataflow.model.Allele;
 import com.google.cloud.genomics.dataflow.functions.CalculateTransmissionProbability;
 import com.google.cloud.genomics.dataflow.functions.ExtractAlleleTransmissionStatus;
 import com.google.cloud.genomics.dataflow.readers.VariantReader;
