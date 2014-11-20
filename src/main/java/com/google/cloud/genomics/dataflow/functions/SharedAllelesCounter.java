@@ -15,6 +15,7 @@
  */
 package com.google.cloud.genomics.dataflow.functions;
 
+import java.util.HashMap;
 import java.util.logging.Logger;
 
 import com.google.api.services.genomics.model.Call;
@@ -23,9 +24,9 @@ import com.google.cloud.dataflow.sdk.transforms.DoFn;
 import com.google.cloud.dataflow.sdk.values.KV;
 import com.google.cloud.dataflow.utils.CallFilters;
 import com.google.cloud.dataflow.utils.PairGenerator;
-import com.google.common.collect.ImmutableCollection;
+import com.google.common.collect.FluentIterable;
 import com.google.common.collect.ImmutableList;
-import com.google.common.collect.ImmutableMultimap;
+import com.google.common.collect.Maps;
 
 /**
  * For each pair of calls on any of the given variants, computes the ratio, a number between 0 and 1
@@ -43,48 +44,45 @@ public class SharedAllelesCounter extends
 
   private int numberOfVariants = 0;
 
-  private ImmutableMultimap.Builder<KV<String, String>, Double> accumulator;
+  // HashMap<KV<callsetname1, callsetname2>, sum of ratios of shared alleles>
+  private HashMap<KV<String, String>, Double> accumulator;
 
   @Override
   public void startBatch(Context c) {
-    accumulator = ImmutableMultimap.builder();
+    accumulator = Maps.newHashMap();
   }
 
   @Override
   public void processElement(ProcessContext context) {
     Variant variant = context.element();
-    for (KV<Call, Call> pair : PairGenerator
-        .<Call, ImmutableList<Call>>allPairs(getSamplesWithVariant(variant))) {
-      Call call1 = pair.getKey();
-      Call call2 = pair.getValue();
-      accumulator.put(KV.of(call1.getCallSetName(), call2.getCallSetName()),
-          ratioOfSharedAlleles(call1, call2));
+    FluentIterable<KV<Call, Call>> pairs =
+        PairGenerator.<Call, ImmutableList<Call>>allPairs(getSamplesWithVariant(variant));
+    for (KV<Call, Call> pair : pairs) {
+      accumulateSharedRatio(pair.getKey(), pair.getValue());
     }
     ++numberOfVariants;
   }
 
+  private void accumulateSharedRatio(Call call1, Call call2) {
+    KV<String, String> callPair = KV.of(call1.getCallSetName(), call2.getCallSetName());
+    if (!accumulator.containsKey(callPair)) {
+      accumulator.put(callPair, 0.0);
+    }
+    accumulator.put(callPair, accumulator.get(callPair) + ratioOfSharedAlleles(call1, call2));
+  }
+
   @Override
   public void finishBatch(Context context) {
-    ImmutableMultimap<KV<String, String>, Double> acc = accumulator.build();
-    for (KV<String, String> entry : acc.keySet()) {
+    for (KV<String, String> entry : accumulator.keySet()) {
       String call1 = entry.getKey();
       String call2 = entry.getValue();
       KV<String, String> call12 = KV.of(call1, call2);
-      ImmutableCollection<Double> ratios = acc.get(call12);
-      double sumOfRatios = sumDoubles(ratios);
-      int numberOfRatios = ratios.size();
+      double sumOfRatios = accumulator.get(call12);
+      int numberOfRatios = numberOfVariants;
       context.output(KV.of(call12, KV.of(sumOfRatios, numberOfRatios)));
-      LOG.info("Emitted " + call1 + ", " + call2 + ", " + sumOfRatios + ", " + numberOfRatios
-          + " for " + numberOfVariants + " variants.");
+      LOG.info("Emitted <" + call1 + ", " + call2 + ", " + sumOfRatios + ", " + numberOfRatios
+          + "> for " + numberOfVariants + " variants.");
     }
-  }
-
-  private double sumDoubles(ImmutableCollection<Double> call12ratios) {
-    double sumOfRatios = 0;
-    for (double ratio : call12ratios) {
-      sumOfRatios += ratio;
-    }
-    return sumOfRatios;
   }
 
   static ImmutableList<Call> getSamplesWithVariant(Variant variant) {
