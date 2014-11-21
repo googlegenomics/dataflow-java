@@ -33,8 +33,10 @@ import com.google.common.collect.Maps;
  * (inclusive), of the shared alleles between the two calls. Then, emits the sum and number of the
  * computed ratios for each pair of call set names across all the given variants.
  *
- * See <a href="http://konradjkarczewski.files.wordpress.com/2012/02/identity-howto.pdf">a
- * description of Identity By State (IBS)</a> for the basis of this implementation.
+ * See <a href="http://konradjkarczewski.files.wordpress.com/2012/02/identity-howto.pdf">this
+ * pdf</a> and <a
+ * href="https://www.udacity.com/course/viewer#!/c-bio110/l-301726617/e-300477269/m-300477271"
+ * >video</a> descriptions of Identity By State (IBS) for the basis of this implementation.
  */
 public class SharedAllelesCounter extends
     DoFn<Variant, KV<KV<String, String>, KV<Double, Integer>>> {
