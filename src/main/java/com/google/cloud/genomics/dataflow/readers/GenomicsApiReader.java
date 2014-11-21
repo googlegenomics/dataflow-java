@@ -29,20 +29,10 @@ public abstract class GenomicsApiReader<I extends GenericJson, O extends Generic
   // If the clientSecretsFile is null, then an apiKey is required
   protected final GenomicsAuth auth;
   protected final String fields;
-  protected int numRetries = 10;
 
   public GenomicsApiReader(GenomicsAuth auth, String fields) {
     this.auth = auth;
     this.fields = fields;
-  }
-
-  /**
-   * Sets the number of times to retry requests. If 0, will never retry. If -1, will always retry.
-   * @param numRetries Number of times to retry requests. Set to 0 for never or -1 for always.
-   */
-  public GenomicsApiReader<I, O> setRetries(int numRetries) {
-    this.numRetries = numRetries;
-    return this;
   }
 
   @Override
