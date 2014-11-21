@@ -37,7 +37,7 @@ public interface GenomicsOptions extends PipelineOptions {
     private static String getAccessToken(GenomicsOptions options) throws IOException,
         GeneralSecurityException {
       return GenomicsFactory.builder(options.getAppName()).build()
-          .makeCredential(new File(options.getSecretsFile())).getAccessToken();
+          .makeCredential(new File(options.getGenomicsSecretsFile())).getAccessToken();
     }
 
     /**
@@ -62,13 +62,13 @@ public interface GenomicsOptions extends PipelineOptions {
      * This method is automatically called during options parsing by the parser.
      */
     public static void validateOptions(GenomicsOptions options) {
-      String secretsFile = options.getSecretsFile(), apiKey = options.getApiKey();
+      String secretsFile = options.getGenomicsSecretsFile(), apiKey = options.getApiKey();
       if (secretsFile != null && apiKey != null) {
         throw new IllegalArgumentException(
-            "Cannot use both --secretsFile and --apiKey");
+            "Cannot use both --genomicsSecretsFile and --apiKey");
       } else if (secretsFile == null && apiKey == null) {
         throw new IllegalArgumentException(
-            "Need to specify either --secretsFile or --apiKey");
+            "Need to specify either --genomicsSecretsFile or --apiKey");
       }
     }
   }
@@ -78,4 +78,10 @@ public interface GenomicsOptions extends PipelineOptions {
   String getApiKey();
 
   void setApiKey(String apiKey);
+
+  @Description("If querying a private dataset, or performing any write operations, " +
+      "you need to provide the path to client_secrets.json. Do not supply an api key.")
+  String getGenomicsSecretsFile();
+
+  void setGenomicsSecretsFile(String genomicsSecretsFile);
 }
