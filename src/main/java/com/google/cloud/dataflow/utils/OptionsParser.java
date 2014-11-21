@@ -17,8 +17,8 @@
 
 package com.google.cloud.dataflow.utils;
 
-import com.google.cloud.dataflow.sdk.runners.Description;
-import com.google.cloud.dataflow.sdk.runners.PipelineOptions;
+import com.google.cloud.dataflow.sdk.options.Description;
+import com.google.cloud.dataflow.sdk.options.PipelineOptions;
 
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;

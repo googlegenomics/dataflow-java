@@ -29,7 +29,7 @@ import com.google.api.client.json.JsonFactory;
 import com.google.api.client.util.Key;
 import com.google.api.client.util.store.FileDataStoreFactory;
 import com.google.cloud.dataflow.sdk.Pipeline;
-import com.google.cloud.dataflow.sdk.runners.PipelineOptions;
+import com.google.cloud.dataflow.sdk.options.PipelineOptions;
 import com.google.cloud.dataflow.sdk.transforms.CreatePObject;
 import com.google.cloud.dataflow.sdk.values.PObject;
 import com.google.cloud.genomics.dataflow.coders.GenericJsonCoder;
@@ -77,8 +77,8 @@ public final class JsonClientFactory extends GenericJson {
       VerificationCodeReceiver verificationCodeReceiver,
       Collection<String> scopes) throws IOException {
     PipelineOptions options = pipeline.getOptions();
-    try (Reader in = new FileReader(options.secretsFile)) {
-      String applicationName = options.appName;
+    try (Reader in = new FileReader(options.getSecretsFile())) {
+      String applicationName = options.getAppName();
       GoogleClientSecrets clientSecrets = GoogleClientSecrets.load(jsonFactory, in);
       AuthorizationCodeInstalledApp installedApp = new AuthorizationCodeInstalledApp(
           new GoogleAuthorizationCodeFlow

@@ -30,6 +30,7 @@ import com.google.cloud.genomics.dataflow.readers.VariantReader;
 import com.google.cloud.genomics.dataflow.utils.DataflowWorkarounds;
 import com.google.cloud.genomics.dataflow.utils.GenomicsAuth;
 import com.google.cloud.genomics.dataflow.utils.GenomicsDatasetOptions;
+import com.google.cloud.genomics.dataflow.utils.GenomicsOptions;
 
 import java.io.IOException;
 import java.security.GeneralSecurityException;
@@ -46,10 +47,10 @@ public class TransmissionProbability {
   public static void main(String[] args) throws IOException, GeneralSecurityException {
     GenomicsDatasetOptions options = OptionsParser.parse(args, GenomicsDatasetOptions.class,
         TransmissionProbability.class.getSimpleName());
-    options.validateOptions();
+    GenomicsOptions.Methods.validateOptions(options);
 
-    GenomicsAuth auth = options.getGenomicsAuth();
-    List<SearchVariantsRequest> requests = options.getVariantRequests(auth);
+    GenomicsAuth auth = GenomicsOptions.Methods.getGenomicsAuth(options);
+    List<SearchVariantsRequest> requests = GenomicsDatasetOptions.Methods.getVariantRequests(options, auth);
 
     Pipeline p = Pipeline.create(options);
     DataflowWorkarounds.registerGenomicsCoders(p);
@@ -61,7 +62,7 @@ public class TransmissionProbability {
     //    - Groups Transmission sources by Variant,
     //    - Calculate transmission Probability for each variant
     //    - Print calculated values to a file.
-    DataflowWorkarounds.getPCollection(requests, p, options.numWorkers)
+    DataflowWorkarounds.getPCollection(requests, p, options.getNumWorkers())
         .apply(ParDo.named("VariantReader")
             .of(new VariantReader(auth, VARIANT_FIELDS)))
         .apply(ParDo.named("ExtractFamilyVariantStatus")
@@ -79,7 +80,7 @@ public class TransmissionProbability {
             c.output(output);
           }
         }))
-        .apply(TextIO.Write.named("WriteResults").to(options.output));
+        .apply(TextIO.Write.named("WriteResults").to(options.getOutput()));
 
     p.run();
   }

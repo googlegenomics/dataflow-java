@@ -15,7 +15,7 @@
  */
 package com.google.cloud.genomics.dataflow.utils;
 
-import com.google.cloud.dataflow.sdk.runners.PipelineOptions;
+import com.google.cloud.dataflow.sdk.options.PipelineOptions;
 import com.google.cloud.dataflow.sdk.runners.PipelineRunner;
 
 public enum PipelineRunnerFactory {
