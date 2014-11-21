@@ -7,6 +7,10 @@ dataflow-java
 Getting started
 ---------------
 
+* TODO: Instructions for getting a project, that has dataflow enabled
+* TODO: Instructions for making a GCS bucket within that project
+* TODO: Instructions for making a client_secrets file and dropping it in this directory
+
 * To use, first build the client using `Apache Maven`_::
 
     cd dataflow-java
@@ -19,7 +23,8 @@ Getting started
     java -cp target/googlegenomics-dataflow-java-v1beta2.jar \
       com.google.cloud.genomics.dataflow.pipelines.VariantSimilarity \
       --project=my-project-id \
-      --output=gs://my-bucket/output/localtest.txt
+      --output=gs://my-bucket/output/localtest.txt \
+      --secretsFile=client_secrets.json
     
   Note: when running locally, you may run into memory issues depending on the capacity of your local machine.
   
@@ -32,6 +37,7 @@ Getting started
       --project=my-project-id \
       --stagingLocation=gs://my-bucket/staging \
       --output=gs://my-bucket/output/test.txt \
+      --secretsFile=client_secrets.json \
       --numWorkers=10
 
   Note: By default, the max workers you can have without requesting more GCE quota 
@@ -60,7 +66,7 @@ pipelines:
   
   * ``VariantSimilarity`` runs a Principal coordinates analysis over a dataset containing variants, and 
     writes a file of graph results that can be easily displayed by Google Sheets.
-    
+
 readers:
   contains functions that perform API calls to read data from the genomics API
 

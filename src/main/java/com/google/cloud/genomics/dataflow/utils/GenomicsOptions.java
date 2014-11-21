@@ -65,10 +65,10 @@ public interface GenomicsOptions extends PipelineOptions {
       String secretsFile = options.getSecretsFile(), apiKey = options.getApiKey();
       if (secretsFile != null && apiKey != null) {
         throw new IllegalArgumentException(
-            "Cannot use both a client secrets file and api key!");
+            "Cannot use both --secretsFile and --apiKey");
       } else if (secretsFile == null && apiKey == null) {
         throw new IllegalArgumentException(
-            "Need to specify either clientSecretsFilename or apiKey!");
+            "Need to specify either --secretsFile or --apiKey");
       }
     }
   }

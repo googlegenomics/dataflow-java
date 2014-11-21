@@ -17,8 +17,8 @@ package com.google.cloud.genomics.dataflow.pipelines;
 
 import com.google.api.services.genomics.model.SearchVariantsRequest;
 import com.google.cloud.dataflow.sdk.Pipeline;
+import com.google.cloud.dataflow.sdk.options.CliPipelineOptionsFactory;
 import com.google.cloud.dataflow.sdk.transforms.ParDo;
-import com.google.cloud.dataflow.utils.OptionsParser;
 import com.google.cloud.genomics.dataflow.functions.ExtractSimilarCallsets;
 import com.google.cloud.genomics.dataflow.functions.OutputPCoAFile;
 import com.google.cloud.genomics.dataflow.readers.VariantReader;
@@ -40,12 +40,13 @@ public class VariantSimilarity {
       = "nextPageToken,variants(id,calls(genotype,callSetName))";
 
   public static void main(String[] args) throws IOException, GeneralSecurityException {
-    GenomicsDatasetOptions options = OptionsParser.parse(args, GenomicsDatasetOptions.class,
-        VariantSimilarity.class.getSimpleName());
+    GenomicsDatasetOptions options = CliPipelineOptionsFactory.create(
+        GenomicsDatasetOptions.class, args);
     GenomicsOptions.Methods.validateOptions(options);
 
     GenomicsAuth auth = GenomicsOptions.Methods.getGenomicsAuth(options);
-    List<SearchVariantsRequest> requests = GenomicsDatasetOptions.Methods.getVariantRequests(options, auth);
+    List<SearchVariantsRequest> requests = GenomicsDatasetOptions.Methods.getVariantRequests(
+        options, auth);
 
     Pipeline p = Pipeline.create(options);
     DataflowWorkarounds.registerGenomicsCoders(p);

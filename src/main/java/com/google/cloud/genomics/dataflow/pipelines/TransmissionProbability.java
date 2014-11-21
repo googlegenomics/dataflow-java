@@ -18,11 +18,11 @@ package com.google.cloud.genomics.dataflow.pipelines;
 import com.google.api.services.genomics.model.SearchVariantsRequest;
 import com.google.cloud.dataflow.sdk.Pipeline;
 import com.google.cloud.dataflow.sdk.io.TextIO;
+import com.google.cloud.dataflow.sdk.options.CliPipelineOptionsFactory;
 import com.google.cloud.dataflow.sdk.transforms.DoFn;
 import com.google.cloud.dataflow.sdk.transforms.GroupByKey;
 import com.google.cloud.dataflow.sdk.transforms.ParDo;
 import com.google.cloud.dataflow.sdk.values.KV;
-import com.google.cloud.dataflow.utils.OptionsParser;
 import com.google.cloud.genomics.dataflow.functions.CalculateTransmissionProbability;
 import com.google.cloud.genomics.dataflow.functions.ExtractAlleleTransmissionStatus;
 import com.google.cloud.genomics.dataflow.model.Allele;
@@ -45,12 +45,13 @@ public class TransmissionProbability {
       = "nextPageToken,variants(id,names,calls(info,callSetName))";
 
   public static void main(String[] args) throws IOException, GeneralSecurityException {
-    GenomicsDatasetOptions options = OptionsParser.parse(args, GenomicsDatasetOptions.class,
-        TransmissionProbability.class.getSimpleName());
+    GenomicsDatasetOptions options = CliPipelineOptionsFactory.create(
+        GenomicsDatasetOptions.class, args);
     GenomicsOptions.Methods.validateOptions(options);
 
     GenomicsAuth auth = GenomicsOptions.Methods.getGenomicsAuth(options);
-    List<SearchVariantsRequest> requests = GenomicsDatasetOptions.Methods.getVariantRequests(options, auth);
+    List<SearchVariantsRequest> requests = GenomicsDatasetOptions.Methods.getVariantRequests(
+        options, auth);
 
     Pipeline p = Pipeline.create(options);
     DataflowWorkarounds.registerGenomicsCoders(p);
