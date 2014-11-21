@@ -51,8 +51,8 @@ public class VariantReader extends GenomicsApiReader<SearchVariantsRequest, Vari
       throws IOException {
     LOG.info("Starting Variants read loop");
 
-    for (Variant read : Paginator.Variants.create(genomics).search(request, fields)) {
-      c.output(read);
+    for (Variant variant : Paginator.Variants.create(genomics).search(request, fields)) {
+      c.output(variant);
     }
 
     LOG.info("Finished variants at: " + 
