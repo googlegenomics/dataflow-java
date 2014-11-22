@@ -13,16 +13,23 @@
  */
 package com.google.cloud.genomics.dataflow.utils;
 
+import static com.google.common.collect.Lists.newArrayList;
+
 import com.google.api.services.genomics.model.ReferenceBound;
 import com.google.api.services.genomics.model.SearchVariantsRequest;
 import com.google.api.services.genomics.model.VariantSet;
 import com.google.cloud.dataflow.sdk.options.Default;
 import com.google.cloud.dataflow.sdk.options.Description;
+import com.google.cloud.genomics.dataflow.model.Contig;
 import com.google.cloud.genomics.utils.GenomicsFactory;
+import com.google.common.base.Function;
+import com.google.common.base.Splitter;
+import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
 
 import java.io.IOException;
 import java.security.GeneralSecurityException;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.logging.Logger;
@@ -32,6 +39,8 @@ import java.util.logging.Logger;
  * analysis to a file.
  */
 public interface GenomicsDatasetOptions extends GenomicsOptions {
+
+  public static final String DEFAULT_REFERNCES = "17:41196311:41277499";
 
   public static class Methods {
 
@@ -85,6 +94,19 @@ public interface GenomicsDatasetOptions extends GenomicsOptions {
         return getShardedRequests(datasetId, "17", 41196312, 41277500);
       }
     }
+
+    static Iterable<Contig> getContigs(String contigs) {
+      return Iterables.transform(Splitter.on(",").split(contigs), new Function<String, Contig>() {
+
+        @Override
+        public Contig apply(String contigString) {
+          ArrayList<String> contigInfo = newArrayList(Splitter.on(":").split(contigString));
+          return new Contig(contigInfo.get(0), Long.valueOf(contigInfo.get(1)), Long
+              .valueOf(contigInfo.get(2)));
+        }
+
+      });
+    }
   }
 
   @Description("The ID of the Google Genomics dataset this pipeline is working with. "
@@ -104,4 +126,11 @@ public interface GenomicsDatasetOptions extends GenomicsOptions {
   void setDatasetId(String datasetId);
 
   void setOutput(String output);
+
+  @Description("Comma separated tuples of reference:start:end,... Defaults to " + DEFAULT_REFERNCES)
+  @Default.String(DEFAULT_REFERNCES)
+  String getReferences();
+
+  void setReferences();
+
 }
