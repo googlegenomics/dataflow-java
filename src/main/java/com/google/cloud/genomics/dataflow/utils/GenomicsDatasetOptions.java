@@ -18,6 +18,7 @@ import com.google.api.services.genomics.model.SearchVariantsRequest;
 import com.google.api.services.genomics.model.VariantSet;
 import com.google.cloud.dataflow.sdk.options.Default;
 import com.google.cloud.dataflow.sdk.options.Description;
+import com.google.cloud.genomics.utils.GenomicsFactory;
 import com.google.common.collect.Lists;
 
 import java.io.IOException;
@@ -59,13 +60,13 @@ public interface GenomicsDatasetOptions extends GenomicsOptions {
     }
 
     public static List<SearchVariantsRequest> getVariantRequests(GenomicsDatasetOptions options,
-        GenomicsAuth auth) throws IOException, GeneralSecurityException {
+        GenomicsFactory.OfflineAuth auth) throws IOException, GeneralSecurityException {
       String datasetId = options.getDatasetId();
       if (options.isAllContigs()) {
         List<SearchVariantsRequest> requests = Lists.newArrayList();
 
         VariantSet variantSet =
-            auth.getService().variantsets().get(datasetId).execute();
+            auth.getGenomics().variantsets().get(datasetId).execute();
         for (ReferenceBound bound : variantSet.getReferenceBounds()) {
           String contig = bound.getReferenceName().toLowerCase();
           if (contig.contains("x") || contig.contains("y")) {

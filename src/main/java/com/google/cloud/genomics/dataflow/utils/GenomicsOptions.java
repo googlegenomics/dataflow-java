@@ -17,7 +17,6 @@ import com.google.cloud.dataflow.sdk.options.Description;
 import com.google.cloud.dataflow.sdk.options.PipelineOptions;
 import com.google.cloud.genomics.utils.GenomicsFactory;
 
-import java.io.File;
 import java.io.IOException;
 import java.security.GeneralSecurityException;
 
@@ -30,43 +29,16 @@ import java.security.GeneralSecurityException;
 public interface GenomicsOptions extends PipelineOptions {
 
   public static class Methods {
-
-    /**
-     * Gets access token for this pipeline.
-     */
-    private static String getAccessToken(GenomicsOptions options) throws IOException,
-        GeneralSecurityException {
-      return GenomicsFactory.builder(options.getAppName()).build()
-          .makeCredential(new File(options.getGenomicsSecretsFile())).getAccessToken();
-    }
-
-    /**
-     * Gets a GenomicsAuth object using credentials from this options
-     *
-     * @return GenomicsAuth object used to authenticate API calls
-     *
-     * @throws IOException
-     * @throws GeneralSecurityException
-     */
-    public static GenomicsAuth getGenomicsAuth(GenomicsOptions options)
+    public static GenomicsFactory.OfflineAuth getGenomicsAuth(GenomicsOptions options)
         throws IOException, GeneralSecurityException {
       String apiKey = options.getApiKey(), appName = options.getAppName();
-      return (apiKey != null)
-          ? GenomicsAuth.fromApiKey(appName, apiKey)
-          : GenomicsAuth.fromAccessToken(appName, getAccessToken(options));
+      return GenomicsFactory.builder(appName).build()
+          .getOfflineAuth(apiKey, options.getGenomicsSecretsFile());
     }
 
-    /**
-     * Makes sure options are valid.
-     *
-     * This method is automatically called during options parsing by the parser.
-     */
     public static void validateOptions(GenomicsOptions options) {
       String secretsFile = options.getGenomicsSecretsFile(), apiKey = options.getApiKey();
-      if (secretsFile != null && apiKey != null) {
-        throw new IllegalArgumentException(
-            "Cannot use both --genomicsSecretsFile and --apiKey");
-      } else if (secretsFile == null && apiKey == null) {
+      if (secretsFile == null && apiKey == null) {
         throw new IllegalArgumentException(
             "Need to specify either --genomicsSecretsFile or --apiKey");
       }
