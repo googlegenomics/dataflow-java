@@ -20,7 +20,6 @@ import com.google.api.services.genomics.model.SearchVariantsRequest;
 import com.google.api.services.genomics.model.Variant;
 import com.google.cloud.genomics.utils.GenomicsFactory;
 import com.google.cloud.genomics.utils.Paginator;
-import com.google.common.collect.Iterables;
 
 import java.io.IOException;
 import java.util.logging.Logger;
