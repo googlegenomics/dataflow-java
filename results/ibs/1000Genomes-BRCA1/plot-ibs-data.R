@@ -1,24 +1,18 @@
-# Identity By State (IBS) for 1000 Genomes BRAC1
 
-```{r echo=FALSE, eval=FALSE}
-# This codelab assumes that the current working directory is where the Rmd file
-# resides
-setwd("/YOUR/PATH/TO//1000Genomes-BRCA1/ibs")
-```
+## ----echo=FALSE, eval=FALSE----------------------------------------------
+## # This codelab assumes that the current working directory is where the Rmd file
+## # resides
+## setwd("/YOUR/PATH/TO//1000Genomes-BRCA1/ibs")
 
-The input IBS matrix is an $N^2\times 3$ matrix, where $N$ is the size of the
-population and each row represents the IBS score for a pair of individuals.
 
-```{r message=FALSE, comment=NA}
+## ----message=FALSE, comment=NA-------------------------------------------
 library(reshape2)
 ibs_pairs <- read.table("./1000genomes_phase1_brca1.ibs", header=FALSE,
                        stringsAsFactors=FALSE)
 colnames(ibs_pairs) <- c("sample1", "sample2", "ibs_score")
-```
 
-Then, draw a heat map based on the IBS scores.
 
-```{r ibs-heat-map, fig.align="center", fig.width=10, message=FALSE, comment=NA}
+## ----ibs-heat-map, fig.align="center", fig.width=10, message=FALSE, comment=NA----
 require(ggplot2)
 p <- ggplot(data=ibs_pairs, aes(x=sample1, y=sample2)) +
      theme(axis.ticks=element_blank(), axis.text=element_blank()) +
@@ -27,5 +21,5 @@ p <- ggplot(data=ibs_pairs, aes(x=sample1, y=sample2)) +
                          guide=guide_colourbar(title="IBS Score")) +
      labs(list(title="IBS Heat Map", x="Sample", y="Sample"))
 p
-```
+
 
