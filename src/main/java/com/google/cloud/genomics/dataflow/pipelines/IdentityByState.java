@@ -22,17 +22,18 @@ import java.util.List;
 import com.google.api.services.genomics.model.SearchVariantsRequest;
 import com.google.cloud.dataflow.sdk.Pipeline;
 import com.google.cloud.dataflow.sdk.io.TextIO;
+import com.google.cloud.dataflow.sdk.options.CliPipelineOptionsFactory;
 import com.google.cloud.dataflow.sdk.transforms.Combine;
 import com.google.cloud.dataflow.sdk.transforms.ParDo;
 import com.google.cloud.dataflow.sdk.values.KV;
-import com.google.cloud.dataflow.utils.OptionsParser;
 import com.google.cloud.genomics.dataflow.functions.FormatIBSData;
 import com.google.cloud.genomics.dataflow.functions.IBSCalculator;
 import com.google.cloud.genomics.dataflow.functions.SharedAllelesCounter;
 import com.google.cloud.genomics.dataflow.readers.VariantReader;
 import com.google.cloud.genomics.dataflow.utils.DataflowWorkarounds;
-import com.google.cloud.genomics.dataflow.utils.GenomicsAuth;
 import com.google.cloud.genomics.dataflow.utils.GenomicsDatasetOptions;
+import com.google.cloud.genomics.dataflow.utils.GenomicsOptions;
+import com.google.cloud.genomics.utils.GenomicsFactory;
 
 /**
  * A pipeline that computes Identity by State (IBS) for each pair of individuals in a dataset.
@@ -44,18 +45,17 @@ public class IdentityByState {
 
   public static void main(String[] args) throws IOException, GeneralSecurityException {
     GenomicsDatasetOptions options =
-        OptionsParser.parse(args, GenomicsDatasetOptions.class,
-            IdentityByState.class.getSimpleName());
-    options.validateOptions();
+        CliPipelineOptionsFactory.create(GenomicsDatasetOptions.class, args);
+    GenomicsOptions.Methods.validateOptions(options);
 
-    GenomicsAuth auth = options.getGenomicsAuth();
-
-    List<SearchVariantsRequest> requests = options.getVariantRequests(auth);
+    GenomicsFactory.OfflineAuth auth = GenomicsOptions.Methods.getGenomicsAuth(options);
+    List<SearchVariantsRequest> requests =
+        GenomicsDatasetOptions.Methods.getVariantRequests(options, auth);
 
     Pipeline p = Pipeline.create(options);
     DataflowWorkarounds.registerGenomicsCoders(p);
     DataflowWorkarounds
-        .getPCollection(requests, p, options.numWorkers)
+        .getPCollection(requests, p, options.getNumWorkers())
         .apply(
             ParDo.named(VariantReader.class.getSimpleName()).of(
                 new VariantReader(auth, VARIANT_FIELDS)))
@@ -63,7 +63,7 @@ public class IdentityByState {
             ParDo.named(SharedAllelesCounter.class.getSimpleName()).of(new SharedAllelesCounter()))
         .apply(Combine.<KV<String, String>, KV<Double, Integer>>perKey(new IBSCalculator()))
         .apply(ParDo.named(FormatIBSData.class.getSimpleName()).of(new FormatIBSData()))
-        .apply(TextIO.Write.named("WriteIBSData").to(options.output));
+        .apply(TextIO.Write.named("WriteIBSData").to(options.getOutput()));
 
     p.run();
   }
