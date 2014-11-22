@@ -89,7 +89,7 @@ utils:
     an api key or client secrets file.
 
   * ``GenomicsOptions.java`` and ``GenomicsDatasetOptions``
-    extend these class for your command line options to take advantage of common command
+    extend these classes for your command line options to take advantage of common command
     line functionality
 
 
@@ -108,3 +108,5 @@ This code is in active development, it will be deployed to Maven once Dataflow i
 * TODO: Explain all the possible command line args:``zone``, ``allContigs``, etc
 * TODO: clean up the pipeline warnings - especially the silly reflections ones
 * TODO: Setup Travis integration once this repo is public
+* TODO: Refine the transmission probability pipeline
+* TODO: Add more tests

@@ -28,9 +28,9 @@ import com.google.cloud.genomics.dataflow.functions.ExtractAlleleTransmissionSta
 import com.google.cloud.genomics.dataflow.model.Allele;
 import com.google.cloud.genomics.dataflow.readers.VariantReader;
 import com.google.cloud.genomics.dataflow.utils.DataflowWorkarounds;
-import com.google.cloud.genomics.dataflow.utils.GenomicsAuth;
 import com.google.cloud.genomics.dataflow.utils.GenomicsDatasetOptions;
 import com.google.cloud.genomics.dataflow.utils.GenomicsOptions;
+import com.google.cloud.genomics.utils.GenomicsFactory;
 
 import java.io.IOException;
 import java.security.GeneralSecurityException;
@@ -49,7 +49,7 @@ public class TransmissionProbability {
         GenomicsDatasetOptions.class, args);
     GenomicsOptions.Methods.validateOptions(options);
 
-    GenomicsAuth auth = GenomicsOptions.Methods.getGenomicsAuth(options);
+    GenomicsFactory.OfflineAuth auth = GenomicsOptions.Methods.getGenomicsAuth(options);
     List<SearchVariantsRequest> requests = GenomicsDatasetOptions.Methods.getVariantRequests(
         options, auth);
 
