@@ -18,8 +18,9 @@ package com.google.cloud.genomics.dataflow.readers;
 import com.google.api.services.genomics.Genomics;
 import com.google.api.services.genomics.model.SearchVariantsRequest;
 import com.google.api.services.genomics.model.Variant;
-import com.google.cloud.genomics.dataflow.utils.GenomicsAuth;
+import com.google.cloud.genomics.utils.GenomicsFactory;
 import com.google.cloud.genomics.utils.Paginator;
+import com.google.common.collect.Iterables;
 
 import java.io.IOException;
 import java.util.logging.Logger;
@@ -34,7 +35,7 @@ public class VariantReader extends GenomicsApiReader<SearchVariantsRequest, Vari
    * @param auth Auth class containing credentials.
    * @param variantFields Fields to return in responses.
    */
-  public VariantReader(GenomicsAuth auth, String variantFields) {
+  public VariantReader(GenomicsFactory.OfflineAuth auth, String variantFields) {
     super(auth, variantFields);
   }
 
@@ -42,7 +43,7 @@ public class VariantReader extends GenomicsApiReader<SearchVariantsRequest, Vari
    * Create a VariantReader with no fields parameter, all information will be returned.
    * @param auth Auth class containing credentials.
    */
-  public VariantReader(GenomicsAuth auth) {
+  public VariantReader(GenomicsFactory.OfflineAuth auth) {
     this(auth, null);
   }
 
@@ -52,8 +53,8 @@ public class VariantReader extends GenomicsApiReader<SearchVariantsRequest, Vari
     LOG.info("Starting Variants read loop");
 
     int numberOfVariants = 0;
-    for (Variant read : Paginator.Variants.create(genomics).search(request, fields)) {
-      c.output(read);
+    for (Variant variant : Paginator.Variants.create(genomics).search(request, fields)) {
+      c.output(variant);
       ++numberOfVariants;
     }
 
