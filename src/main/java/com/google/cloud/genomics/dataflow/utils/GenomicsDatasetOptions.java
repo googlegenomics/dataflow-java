@@ -13,16 +13,23 @@
  */
 package com.google.cloud.genomics.dataflow.utils;
 
+import static com.google.common.collect.Lists.newArrayList;
+
 import com.google.api.services.genomics.model.ReferenceBound;
 import com.google.api.services.genomics.model.SearchVariantsRequest;
 import com.google.api.services.genomics.model.VariantSet;
 import com.google.cloud.dataflow.sdk.options.Default;
 import com.google.cloud.dataflow.sdk.options.Description;
+import com.google.cloud.genomics.dataflow.model.Contig;
 import com.google.cloud.genomics.utils.GenomicsFactory;
+import com.google.common.base.Function;
+import com.google.common.base.Splitter;
+import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
 
 import java.io.IOException;
 import java.security.GeneralSecurityException;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.logging.Logger;
@@ -33,28 +40,40 @@ import java.util.logging.Logger;
  */
 public interface GenomicsDatasetOptions extends GenomicsOptions {
 
+  public static final String DEFAULT_REFERNCES = "17:41196311:41277499";
+
   public static class Methods {
 
     private static final Logger LOG = Logger.getLogger(GenomicsDatasetOptions.class.getName());
 
     // TODO: If needed, add getReadRequests method
     private static List<SearchVariantsRequest> getShardedRequests(String variantSetId,
-        String contig, long start, long end) {
+        Contig contig) {
 
       long basesPerShard = 1000000; // 1 million
 
-      double shards = Math.ceil((end - start) / (double) basesPerShard);
+      double shards = Math.ceil((contig.getEnd() - contig.getStart()) / (double) basesPerShard);
       List<SearchVariantsRequest> requests = Lists.newArrayList();
       for (int i = 0; i < shards; i++) {
-        long shardStart = start + (i * basesPerShard);
-        long shardEnd = Math.min(end, shardStart + basesPerShard);
+        long shardStart = contig.getStart() + (i * basesPerShard);
+        long shardEnd = Math.min(contig.getEnd(), shardStart + basesPerShard);
 
-        LOG.info("Adding request with " + contig + " " + shardStart + " to " + shardEnd);
+        LOG.info("Adding request with " + contig.getReferenceName() + " " + shardStart + " to "
+            + shardEnd);
         requests.add(new SearchVariantsRequest()
             .setVariantSetIds(Collections.singletonList(variantSetId))
-            .setReferenceName(contig)
+            .setReferenceName(contig.getReferenceName())
             .setStart(shardStart)
             .setEnd(shardEnd));
+      }
+      return requests;
+    }
+
+    private static List<SearchVariantsRequest> getShardedRequests(String variantSetId,
+        Iterable<Contig> contigs) {
+      List<SearchVariantsRequest> requests = newArrayList();
+      for (Contig contig : contigs) {
+        requests.addAll(getShardedRequests(variantSetId, contig));
       }
       return requests;
     }
@@ -74,16 +93,29 @@ public interface GenomicsDatasetOptions extends GenomicsOptions {
             continue;
           }
 
-          requests.addAll(getShardedRequests(variantSet.getId(), bound.getReferenceName(), 0,
-              bound.getUpperBound()));
+          requests.addAll(getShardedRequests(variantSet.getId(),
+              new Contig(bound.getReferenceName(), 0, bound.getUpperBound())));
         }
         return requests;
 
       } else {
         // If not running all contigs, we default to BRCA1
         // TODO: Look up the valid value for '17' from the referenceBounds call
-        return getShardedRequests(datasetId, "17", 41196312, 41277500);
+        return getShardedRequests(datasetId, getContigs(options.getReferences()));
       }
+    }
+
+    static Iterable<Contig> getContigs(String contigs) {
+      return Iterables.transform(Splitter.on(",").split(contigs), new Function<String, Contig>() {
+
+        @Override
+        public Contig apply(String contigString) {
+          ArrayList<String> contigInfo = newArrayList(Splitter.on(":").split(contigString));
+          return new Contig(contigInfo.get(0), Long.valueOf(contigInfo.get(1)), Long
+              .valueOf(contigInfo.get(2)));
+        }
+
+      });
     }
   }
 
@@ -104,4 +136,11 @@ public interface GenomicsDatasetOptions extends GenomicsOptions {
   void setDatasetId(String datasetId);
 
   void setOutput(String output);
+
+  @Description("Comma separated tuples of reference:start:end,... Defaults to " + DEFAULT_REFERNCES)
+  @Default.String(DEFAULT_REFERNCES)
+  String getReferences();
+
+  void setReferences(String references);
+
 }

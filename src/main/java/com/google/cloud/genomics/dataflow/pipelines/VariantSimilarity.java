@@ -32,7 +32,7 @@ import java.security.GeneralSecurityException;
 import java.util.List;
 
 /**
- * An pipeline that generates similarity data for variants in a dataset.
+ * A pipeline that generates similarity data for variants in a dataset.
  * See the README for running instructions.
  */
 public class VariantSimilarity {

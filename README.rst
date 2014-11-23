@@ -53,6 +53,32 @@ Getting started
 .. _Apache Maven: http://maven.apache.org/download.cgi
 .. _sign up instructions: https://cloud.google.com/genomics
 
+Identity By State (IBS)
+-----------------------
+
+* To run the IBS pipeline locally, run the command line, passing in a valid
+  project ID and Google Cloud Storage bucket::
+
+    java -cp target/googlegenomics-dataflow-java-v1beta2.jar \
+      com.google.cloud.genomics.dataflow.pipelines.IdentityByState \
+      --project=my-project-id \
+      --output=gs://my-bucket/localtest.txt \
+      --genomicsSecretsFile=client_secrets.json
+
+  Note: when running locally, you may run into memory issues depending on the capacity of your local machine.
+
+* To deploy your IBS pipeline (which runs on Google Compute Engine), some additional
+  command line arguments are required::
+
+    java -cp target/googlegenomics-dataflow-java-v1beta2.jar \
+      com.google.cloud.genomics.dataflow.pipelines.IdentityByState \
+      --runner=BlockingDataflowPipelineRunner \
+      --project=my-project-id \
+      --stagingLocation=gs://my-bucket/staging \
+      --output=gs://my-bucket/output/test.txt \
+      --genomicsSecretsFile=client_secrets.json \
+      --numWorkers=10
+
 
 Code layout
 -----------
