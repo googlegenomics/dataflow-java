@@ -33,6 +33,18 @@ public class Contig {
     this.end = end;
   }
 
+  public String getReferenceName() {
+    return referenceName;
+  }
+
+  public long getStart() {
+    return start;
+  }
+
+  public long getEnd() {
+    return end;
+  }
+
   @Override
   public int hashCode() {
     return hash(referenceName, start, end);
@@ -46,6 +58,5 @@ public class Contig {
     Contig c = (Contig) obj;
     return equal(referenceName, c.referenceName) && equal(start, c.start) && equal(end, c.end);
   }
-
   
 }
