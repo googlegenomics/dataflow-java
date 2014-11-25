@@ -15,6 +15,8 @@
  */
 package com.google.cloud.genomics.dataflow.utils;
 
+import static com.google.common.collect.Lists.newArrayList;
+
 import com.google.api.client.json.GenericJson;
 import com.google.api.services.dataflow.model.CloudWorkflowEnvironment;
 import com.google.cloud.dataflow.sdk.Pipeline;
@@ -30,6 +32,8 @@ import com.google.cloud.dataflow.sdk.transforms.Flatten;
 import com.google.cloud.dataflow.sdk.values.PCollection;
 import com.google.cloud.dataflow.sdk.values.PCollectionList;
 import com.google.cloud.genomics.dataflow.coders.GenericJsonCoder;
+import com.google.common.base.Predicate;
+import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
 
 import org.reflections.Reflections;
@@ -39,6 +43,9 @@ import org.reflections.util.ClasspathHelper;
 import org.reflections.util.ConfigurationBuilder;
 import org.reflections.util.FilterBuilder;
 
+import java.net.URL;
+import java.util.ArrayList;
+import java.util.Collection;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
@@ -124,10 +131,21 @@ public class DataflowWorkarounds {
     classLoadersList.add(ClasspathHelper.contextClassLoader());
     classLoadersList.add(ClasspathHelper.staticClassLoader());
 
+    Collection<URL> urls =
+        newArrayList(Iterables.filter(
+            ClasspathHelper.forClassLoader(classLoadersList.toArray(new ClassLoader[0])),
+            new Predicate<URL>() {
+
+              @Override
+              public boolean apply(URL url) {
+                return !url.toString().endsWith("jnilib") && !url.toString().endsWith("zip");
+              }
+
+            }));
+
     Reflections reflections = new Reflections(new ConfigurationBuilder()
         .setScanners(new SubTypesScanner(), new ResourcesScanner())
-        .setUrls(ClasspathHelper.forClassLoader(
-            classLoadersList.toArray(new ClassLoader[0])))
+        .setUrls(urls)
         .filterInputsBy(new FilterBuilder().include(
             FilterBuilder.prefix("com.google.api.services.genomics.model"))));
     
