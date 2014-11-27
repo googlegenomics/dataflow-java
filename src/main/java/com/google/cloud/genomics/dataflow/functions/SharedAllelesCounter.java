@@ -40,9 +40,6 @@ import com.google.common.collect.Maps;
 public class SharedAllelesCounter extends
     DoFn<Variant, KV<KV<String, String>, KV<Double, Integer>>> {
 
-  private static final Logger LOG = Logger.getLogger(SharedAllelesCounter.class
-      .getName());
-
   private int numberOfVariants = 0;
 
   // HashMap<KV<callsetname1, callsetname2>, sum of ratios of shared alleles>
@@ -81,8 +78,6 @@ public class SharedAllelesCounter extends
       double sumOfRatios = accumulator.get(call12);
       int numberOfRatios = numberOfVariants;
       context.output(KV.of(call12, KV.of(sumOfRatios, numberOfRatios)));
-      LOG.info("Emitted <" + call1 + ", " + call2 + ", " + sumOfRatios + ", " + numberOfRatios
-          + "> for " + numberOfVariants + " variants.");
     }
   }
 

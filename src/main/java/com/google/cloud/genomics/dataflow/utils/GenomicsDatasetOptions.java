@@ -42,21 +42,22 @@ public interface GenomicsDatasetOptions extends GenomicsOptions {
 
   public static final String DEFAULT_REFERNCES = "17:41196311:41277499";
 
+  public static final long DEFAULT_NUMBER_OF_BASES_PER_SHARD = 1000000;
+
   public static class Methods {
 
     private static final Logger LOG = Logger.getLogger(GenomicsDatasetOptions.class.getName());
 
     // TODO: If needed, add getReadRequests method
     private static List<SearchVariantsRequest> getShardedRequests(String variantSetId,
-        Contig contig) {
+        Contig contig, long numberOfBasesPerShard) {
 
-      long basesPerShard = 1000000; // 1 million
-
-      double shards = Math.ceil((contig.getEnd() - contig.getStart()) / (double) basesPerShard);
+      double shards =
+          Math.ceil((contig.getEnd() - contig.getStart()) / (double) numberOfBasesPerShard);
       List<SearchVariantsRequest> requests = Lists.newArrayList();
       for (int i = 0; i < shards; i++) {
-        long shardStart = contig.getStart() + (i * basesPerShard);
-        long shardEnd = Math.min(contig.getEnd(), shardStart + basesPerShard);
+        long shardStart = contig.getStart() + (i * numberOfBasesPerShard);
+        long shardEnd = Math.min(contig.getEnd(), shardStart + numberOfBasesPerShard);
 
         LOG.info("Adding request with " + contig.getReferenceName() + " " + shardStart + " to "
             + shardEnd);
@@ -70,10 +71,10 @@ public interface GenomicsDatasetOptions extends GenomicsOptions {
     }
 
     private static List<SearchVariantsRequest> getShardedRequests(String variantSetId,
-        Iterable<Contig> contigs) {
+        Iterable<Contig> contigs, long numberOfBasesPerShard) {
       List<SearchVariantsRequest> requests = newArrayList();
       for (Contig contig : contigs) {
-        requests.addAll(getShardedRequests(variantSetId, contig));
+        requests.addAll(getShardedRequests(variantSetId, contig, numberOfBasesPerShard));
       }
       return requests;
     }
@@ -94,14 +95,16 @@ public interface GenomicsDatasetOptions extends GenomicsOptions {
           }
 
           requests.addAll(getShardedRequests(variantSet.getId(),
-              new Contig(bound.getReferenceName(), 0, bound.getUpperBound())));
+              new Contig(bound.getReferenceName(), 0, bound.getUpperBound()),
+              options.getNumberOfBasesPerShard()));
         }
         return requests;
 
       } else {
         // If not running all contigs, we default to BRCA1
         // TODO: Look up the valid value for '17' from the referenceBounds call
-        return getShardedRequests(datasetId, getContigs(options.getReferences()));
+        return getShardedRequests(datasetId, getContigs(options.getReferences()),
+            options.getNumberOfBasesPerShard());
       }
     }
 
@@ -142,5 +145,11 @@ public interface GenomicsDatasetOptions extends GenomicsOptions {
   String getReferences();
 
   void setReferences(String references);
+
+  @Description("Number of bases per shard Defaults to " + DEFAULT_NUMBER_OF_BASES_PER_SHARD)
+  @Default.Long(DEFAULT_NUMBER_OF_BASES_PER_SHARD)
+  long getNumberOfBasesPerShard();
+
+  void setNumberOfBasesPerShard(long numberOfBasesPerShard);
 
 }
