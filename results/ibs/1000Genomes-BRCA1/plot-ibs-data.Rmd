@@ -16,6 +16,25 @@ ibs_pairs <- read.table("./1000genomes_phase1_brca1.ibs", header=FALSE,
 colnames(ibs_pairs) <- c("sample1", "sample2", "ibs_score")
 ```
 
+Extract the IBS matrix for a random sample of individuals.
+
+```{r message=FALSE, comment=NA}
+individuals <- unique(ibs_pairs$sample1)
+sample_size <- 100
+sample <- sample(individuals, sample_size)
+```
+
+Make the IBS matrix symmetric.
+
+```{r message=FALSE, comment=NA}
+ibs_pairs <- subset(ibs_pairs, ibs_pairs$sample1 %in% sample)
+ibs_pairs <- subset(ibs_pairs, ibs_pairs$sample2 %in% sample)
+ibs_pairs_mirrored <- data.frame(sample1=ibs_pairs$sample2,
+                                 sample2=ibs_pairs$sample1,
+                                 ibs_score=ibs_pairs$ibs_score)
+ibs_pairs <- rbind(ibs_pairs, ibs_pairs_mirrored)
+```
+
 Then, draw a heat map based on the IBS scores.
 
 ```{r ibs-heat-map, fig.align="center", fig.width=10, message=FALSE, comment=NA}
@@ -23,9 +42,9 @@ require(ggplot2)
 p <- ggplot(data=ibs_pairs, aes(x=sample1, y=sample2)) +
      theme(axis.ticks=element_blank(), axis.text=element_blank()) +
      geom_tile(aes(fill=ibs_score), colour="white") +
-     scale_fill_gradient(low="white", high="steelblue",
+     scale_fill_gradient(low="white", high="steelblue", na.value="black",
                          guide=guide_colourbar(title="IBS Score")) +
-     labs(list(title="IBS Heat Map", x="Sample", y="Sample"))
+     labs(list(title="Identity By State (IBS) Heat Map", x="Sample", y="Sample"))
 p
 ```
 
