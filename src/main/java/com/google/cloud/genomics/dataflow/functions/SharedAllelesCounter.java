@@ -16,7 +16,6 @@
 package com.google.cloud.genomics.dataflow.functions;
 
 import java.util.HashMap;
-import java.util.logging.Logger;
 
 import com.google.api.services.genomics.model.Call;
 import com.google.api.services.genomics.model.Variant;
