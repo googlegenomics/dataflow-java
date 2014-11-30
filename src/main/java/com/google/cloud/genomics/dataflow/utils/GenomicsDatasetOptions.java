@@ -15,24 +15,27 @@ package com.google.cloud.genomics.dataflow.utils;
 
 import static com.google.common.collect.Lists.newArrayList;
 
-import com.google.api.services.genomics.model.ReferenceBound;
-import com.google.api.services.genomics.model.SearchVariantsRequest;
-import com.google.api.services.genomics.model.VariantSet;
-import com.google.cloud.dataflow.sdk.options.Default;
-import com.google.cloud.dataflow.sdk.options.Description;
-import com.google.cloud.genomics.dataflow.model.Contig;
-import com.google.cloud.genomics.utils.GenomicsFactory;
-import com.google.common.base.Function;
-import com.google.common.base.Splitter;
-import com.google.common.collect.Iterables;
-import com.google.common.collect.Lists;
-
 import java.io.IOException;
 import java.security.GeneralSecurityException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.logging.Logger;
+
+import com.google.api.services.genomics.model.ReferenceBound;
+import com.google.api.services.genomics.model.SearchVariantsRequest;
+import com.google.api.services.genomics.model.VariantSet;
+import com.google.cloud.dataflow.sdk.options.Default;
+import com.google.cloud.dataflow.sdk.options.Description;
+import com.google.cloud.dataflow.sdk.options.Validation;
+import com.google.cloud.genomics.dataflow.functions.CallSimilarityCalculatorFactory;
+import com.google.cloud.genomics.dataflow.functions.SharedMinorAllelesCalculatorFactory;
+import com.google.cloud.genomics.dataflow.model.Contig;
+import com.google.cloud.genomics.utils.GenomicsFactory;
+import com.google.common.base.Function;
+import com.google.common.base.Splitter;
+import com.google.common.collect.Iterables;
+import com.google.common.collect.Lists;
 
 /**
  * A common options class for all pipelines that operate over a single dataset and write their
@@ -151,5 +154,12 @@ public interface GenomicsDatasetOptions extends GenomicsOptions {
   long getNumberOfBasesPerShard();
 
   void setNumberOfBasesPerShard(long numberOfBasesPerShard);
+
+  @Validation.Required
+  @Description("The class that determines the strategy for calculating the similarity of alleles.")
+  @Default.Class(SharedMinorAllelesCalculatorFactory.class)
+  Class<? extends CallSimilarityCalculatorFactory> getCallSimilarityCalculatorFactory();
+
+  void setCallSimilarityCalculatorFactory(Class<? extends CallSimilarityCalculatorFactory> kls);
 
 }
