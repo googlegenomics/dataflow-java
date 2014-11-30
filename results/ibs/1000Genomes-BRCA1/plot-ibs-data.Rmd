@@ -1,4 +1,4 @@
-# Identity By State (IBS) for 1000 Genomes BRAC1
+# Identity By State (IBS) for 1000 Genomes BRCA1
 
 ```{r echo=FALSE, eval=FALSE}
 # This codelab assumes that the current working directory is where the Rmd file
@@ -11,33 +11,33 @@ population and each row represents the IBS score for a pair of individuals.
 
 ```{r message=FALSE, comment=NA}
 library(reshape2)
-ibs_pairs <- read.table("./1000genomes_phase1_brca1.ibs", header=FALSE,
-                       stringsAsFactors=FALSE)
+ibs_pairs <- read.table(file=ibs_filename, stringsAsFactors=FALSE)
 colnames(ibs_pairs) <- c("sample1", "sample2", "ibs_score")
-```
-
-Extract the IBS matrix for a random sample of individuals.
-
-```{r message=FALSE, comment=NA}
-individuals <- unique(ibs_pairs$sample1)
-sample_size <- 100
-sample <- sample(individuals, sample_size)
 ```
 
 Make the IBS matrix symmetric.
 
 ```{r message=FALSE, comment=NA}
-ibs_pairs <- subset(ibs_pairs, ibs_pairs$sample1 %in% sample)
-ibs_pairs <- subset(ibs_pairs, ibs_pairs$sample2 %in% sample)
 ibs_pairs_mirrored <- data.frame(sample1=ibs_pairs$sample2,
                                  sample2=ibs_pairs$sample1,
                                  ibs_score=ibs_pairs$ibs_score)
 ibs_pairs <- rbind(ibs_pairs, ibs_pairs_mirrored)
+write.table(ibs_pairs, file=symmetric_ibs_filename)
 ```
 
-Then, draw a heat map based on the IBS scores.
+Extract the IBS matrix for a random sample of the individuals.
 
-```{r ibs-heat-map, fig.align="center", fig.width=10, message=FALSE, comment=NA}
+```{r message=FALSE, comment=NA}
+individuals <- unique(ibs_pairs$sample1)
+sample_size <- 50
+sample <- sample(individuals, sample_size)
+ibs_pairs <- subset(ibs_pairs, ibs_pairs$sample1 %in% sample)
+ibs_pairs <- subset(ibs_pairs, ibs_pairs$sample2 %in% sample)
+```
+
+Draw a heat map based on the IBS scores.
+
+```{r ibs-heat-map, fig.align="center", fig.width=10, fig.height=10, message=FALSE, comment=NA}
 require(ggplot2)
 p <- ggplot(data=ibs_pairs, aes(x=sample1, y=sample2)) +
      theme(axis.ticks=element_blank(), axis.text=element_blank()) +
