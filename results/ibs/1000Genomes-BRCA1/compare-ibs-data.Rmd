@@ -7,8 +7,8 @@ setwd("/YOUR/PATH/TO//1000Genomes-BRCA1/ibs")
 ```
 
 This script takes two file names `ibs_filename1` and `ibs_filename2` as input.
-Each input file should contain an $N^2\times 3$ matrix, where $N$ is the size of
-the population and each row represents the IBS score for a pair of individuals.
+Each input file should contain an N^2 * 3 matrix, where N is the size of the
+population and each row represents the IBS score for a pair of individuals.
 
 ```{r message=FALSE, comment=NA}
 library(reshape2)
