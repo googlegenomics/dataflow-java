@@ -22,9 +22,12 @@ import com.google.cloud.genomics.utils.GenomicsFactory;
 
 import java.io.IOException;
 import java.security.GeneralSecurityException;
+import java.util.logging.Logger;
 
 public abstract class GenomicsApiReader<I extends GenericJson, O extends GenericJson> 
     extends DoFn<I, O> {
+  private static final Logger LOG = Logger.getLogger(GenomicsApiReader.class.getName());
+
   // Used for access to the genomics API
   protected final GenomicsFactory.OfflineAuth auth;
   protected final String fields;
@@ -38,6 +41,13 @@ public abstract class GenomicsApiReader<I extends GenericJson, O extends Generic
   public void processElement(ProcessContext c) {
     try {
       processApiCall(auth.getGenomics(), c, c.element());
+
+      GenomicsFactory factory = auth.getFactory();
+      LOG.info("ApiReader processed " + factory.initializedRequestsCount() + " requests ("
+          + factory.unsuccessfulResponsesCount() + " server errors and "
+          + factory.ioExceptionsCount() + " IO exceptions)");
+
+
     } catch (IOException | GeneralSecurityException e) {
       throw new RuntimeException(
           "Failed to create genomics API request - this shouldn't happen.", e);
