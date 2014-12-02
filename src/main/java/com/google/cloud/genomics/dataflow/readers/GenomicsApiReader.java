@@ -40,9 +40,9 @@ public abstract class GenomicsApiReader<I extends GenericJson, O extends Generic
   @Override
   public void processElement(ProcessContext c) {
     try {
-      processApiCall(auth.getGenomics(), c, c.element());
+      GenomicsFactory factory = auth.getDefaultFactory();
+      processApiCall(auth.getGenomics(factory), c, c.element());
 
-      GenomicsFactory factory = auth.getFactory();
       LOG.info("ApiReader processed " + factory.initializedRequestsCount() + " requests ("
           + factory.unsuccessfulResponsesCount() + " server errors and "
           + factory.ioExceptionsCount() + " IO exceptions)");
