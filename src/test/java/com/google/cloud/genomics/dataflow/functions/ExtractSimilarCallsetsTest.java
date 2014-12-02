@@ -23,6 +23,8 @@ import com.google.api.services.genomics.model.Call;
 import com.google.api.services.genomics.model.Variant;
 import com.google.cloud.dataflow.sdk.values.KV;
 import com.google.cloud.dataflow.utils.PairGenerator;
+import com.google.cloud.genomics.dataflow.utils.DataUtils;
+
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
@@ -56,20 +58,15 @@ public class ExtractSimilarCallsetsTest {
     variant.setCalls(calls);
     assertEquals(Collections.emptyList(), getSamplesWithVariant(variant));
 
-    calls.add(makeCall("ref", 0, 0));
+    calls.add(DataUtils.makeCall("ref", 0, 0));
     assertEquals(Collections.emptyList(), getSamplesWithVariant(variant));
 
-    calls.add(makeCall("alt1", 1, 0));
+    calls.add(DataUtils.makeCall("alt1", 1, 0));
     assertEquals(Collections.singletonList("alt1"), getSamplesWithVariant(variant));
 
-    calls.add(makeCall("alt2", 0, 1));
-    calls.add(makeCall("alt3", 1, 1));
+    calls.add(DataUtils.makeCall("alt2", 0, 1));
+    calls.add(DataUtils.makeCall("alt3", 1, 1));
     assertEquals(Arrays.asList("alt1", "alt2", "alt3"), getSamplesWithVariant(variant));
   }
 
-  private static Call makeCall(String name, Integer... alleles) {
-    return new Call()
-        .setCallSetName(name)
-        .setGenotype(Arrays.asList(alleles));
-  }
 }

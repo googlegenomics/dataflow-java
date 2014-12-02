@@ -26,13 +26,15 @@ import com.google.cloud.dataflow.sdk.options.CliPipelineOptionsFactory;
 import com.google.cloud.dataflow.sdk.transforms.Combine;
 import com.google.cloud.dataflow.sdk.transforms.ParDo;
 import com.google.cloud.dataflow.sdk.values.KV;
+import com.google.cloud.genomics.dataflow.functions.AlleleSimilarityCalculator;
+import com.google.cloud.genomics.dataflow.functions.CallSimilarityCalculatorFactory;
 import com.google.cloud.genomics.dataflow.functions.FormatIBSData;
 import com.google.cloud.genomics.dataflow.functions.IBSCalculator;
-import com.google.cloud.genomics.dataflow.functions.SharedAllelesCounter;
 import com.google.cloud.genomics.dataflow.readers.VariantReader;
 import com.google.cloud.genomics.dataflow.utils.DataflowWorkarounds;
 import com.google.cloud.genomics.dataflow.utils.GenomicsDatasetOptions;
 import com.google.cloud.genomics.dataflow.utils.GenomicsOptions;
+import com.google.cloud.genomics.dataflow.utils.IdentityByStateOptions;
 import com.google.cloud.genomics.utils.GenomicsFactory;
 
 /**
@@ -43,9 +45,10 @@ import com.google.cloud.genomics.utils.GenomicsFactory;
 public class IdentityByState {
   private static final String VARIANT_FIELDS = "nextPageToken,variants(id,calls(genotype,callSetName))";
 
-  public static void main(String[] args) throws IOException, GeneralSecurityException {
-    GenomicsDatasetOptions options =
-        CliPipelineOptionsFactory.create(GenomicsDatasetOptions.class, args);
+  public static void main(String[] args) throws IOException, GeneralSecurityException,
+      InstantiationException, IllegalAccessException {
+    IdentityByStateOptions options =
+        CliPipelineOptionsFactory.create(IdentityByStateOptions.class, args);
     GenomicsOptions.Methods.validateOptions(options);
 
     GenomicsFactory.OfflineAuth auth = GenomicsOptions.Methods.getGenomicsAuth(options);
@@ -60,11 +63,18 @@ public class IdentityByState {
             ParDo.named(VariantReader.class.getSimpleName()).of(
                 new VariantReader(auth, VARIANT_FIELDS)))
         .apply(
-            ParDo.named(SharedAllelesCounter.class.getSimpleName()).of(new SharedAllelesCounter()))
+            ParDo.named(AlleleSimilarityCalculator.class.getSimpleName()).of(
+                new AlleleSimilarityCalculator(getCallSimilarityCalculatorFactory(options))))
         .apply(Combine.<KV<String, String>, KV<Double, Integer>>perKey(new IBSCalculator()))
         .apply(ParDo.named(FormatIBSData.class.getSimpleName()).of(new FormatIBSData()))
         .apply(TextIO.Write.named("WriteIBSData").to(options.getOutput()));
 
     p.run();
   }
+
+  private static CallSimilarityCalculatorFactory getCallSimilarityCalculatorFactory(
+      GenomicsDatasetOptions options) throws InstantiationException, IllegalAccessException {
+    return options.getCallSimilarityCalculatorFactory().newInstance();
+  }
+
 }

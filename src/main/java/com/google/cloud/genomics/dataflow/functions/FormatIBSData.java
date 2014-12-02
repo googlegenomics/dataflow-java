@@ -27,12 +27,10 @@ public final class FormatIBSData extends DoFn<KV<KV<String, String>, KV<Double, 
   @Override
   public void processElement(ProcessContext c) {
     KV<KV<String, String>, KV<Double, Integer>> result = c.element();
-    // Note: the extra tab is so this format plays nicely with
-    // Google Sheet's bubble chart
     String call1 = result.getKey().getKey();
     String call2 = result.getKey().getValue();
     Double sumOfRatios = result.getValue().getKey();
     int numberOfRatios = result.getValue().getValue();
-    c.output(call1 + "\t\t" + call2 + "\t" + sumOfRatios / numberOfRatios);
+    c.output(call1 + "\t" + call2 + "\t" + sumOfRatios / numberOfRatios);
   }
 }
