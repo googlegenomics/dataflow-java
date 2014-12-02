@@ -26,15 +26,15 @@ import com.google.cloud.dataflow.sdk.options.CliPipelineOptionsFactory;
 import com.google.cloud.dataflow.sdk.transforms.Combine;
 import com.google.cloud.dataflow.sdk.transforms.ParDo;
 import com.google.cloud.dataflow.sdk.values.KV;
+import com.google.cloud.genomics.dataflow.functions.AlleleSimilarityCalculator;
 import com.google.cloud.genomics.dataflow.functions.CallSimilarityCalculatorFactory;
 import com.google.cloud.genomics.dataflow.functions.FormatIBSData;
 import com.google.cloud.genomics.dataflow.functions.IBSCalculator;
-import com.google.cloud.genomics.dataflow.functions.AlleleSimilarityCalculator;
-import com.google.cloud.genomics.dataflow.functions.SharedAllelesRatioCalculatorFactory;
 import com.google.cloud.genomics.dataflow.readers.VariantReader;
 import com.google.cloud.genomics.dataflow.utils.DataflowWorkarounds;
 import com.google.cloud.genomics.dataflow.utils.GenomicsDatasetOptions;
 import com.google.cloud.genomics.dataflow.utils.GenomicsOptions;
+import com.google.cloud.genomics.dataflow.utils.IdentityByStateOptions;
 import com.google.cloud.genomics.utils.GenomicsFactory;
 
 /**
@@ -47,8 +47,8 @@ public class IdentityByState {
 
   public static void main(String[] args) throws IOException, GeneralSecurityException,
       InstantiationException, IllegalAccessException {
-    GenomicsDatasetOptions options =
-        CliPipelineOptionsFactory.create(GenomicsDatasetOptions.class, args);
+    IdentityByStateOptions options =
+        CliPipelineOptionsFactory.create(IdentityByStateOptions.class, args);
     GenomicsOptions.Methods.validateOptions(options);
 
     GenomicsFactory.OfflineAuth auth = GenomicsOptions.Methods.getGenomicsAuth(options);
