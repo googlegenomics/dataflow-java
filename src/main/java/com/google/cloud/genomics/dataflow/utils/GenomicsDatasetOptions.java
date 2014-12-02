@@ -13,15 +13,6 @@
  */
 package com.google.cloud.genomics.dataflow.utils;
 
-import static com.google.common.collect.Lists.newArrayList;
-
-import java.io.IOException;
-import java.security.GeneralSecurityException;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import java.util.logging.Logger;
-
 import com.google.api.services.genomics.model.ReferenceBound;
 import com.google.api.services.genomics.model.SearchVariantsRequest;
 import com.google.api.services.genomics.model.VariantSet;
@@ -36,6 +27,15 @@ import com.google.common.base.Function;
 import com.google.common.base.Splitter;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
+
+import java.io.IOException;
+import java.security.GeneralSecurityException;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.logging.Logger;
+
+import static com.google.common.collect.Lists.newArrayList;
 
 /**
  * A common options class for all pipelines that operate over a single dataset and write their
@@ -89,7 +89,7 @@ public interface GenomicsDatasetOptions extends GenomicsOptions {
         List<SearchVariantsRequest> requests = Lists.newArrayList();
 
         VariantSet variantSet =
-            auth.getGenomics().variantsets().get(datasetId).execute();
+            auth.getGenomics(auth.getDefaultFactory()).variantsets().get(datasetId).execute();
         for (ReferenceBound bound : variantSet.getReferenceBounds()) {
           String contig = bound.getReferenceName().toLowerCase();
           if (contig.contains("x") || contig.contains("y")) {
