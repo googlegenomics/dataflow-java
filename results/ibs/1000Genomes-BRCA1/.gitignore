@@ -1,3 +1,6 @@
-plot-ibs-data.R
+*.R
+!generate.R
 *.html
+compare/
+symmetric-*
 
