@@ -3,26 +3,30 @@
 library("rmarkdown")
 library("knitr")
 
-# Generates the files for the given Rmd file in the designated directory.
-generate_output <- function(rmd_file, dir_name) {
-  original_wd <- getwd()
-  dir.create(dir_name)
-  setwd(dir_name)
-  purl(rmd_file, documentation=1)
-  knit(rmd_file)
-  render(rmd_file, output_dir=dir_name)
-  setwd(original_wd)
+GenerateOutput <- function(rmdFile, dirName) {
+  # Generates the files for the given Rmd file in the designated directory.
+  #
+  # Args:
+  #  rmdFile: The .Rmd file to process.
+  #  dirName: The name of the output directory.
+  originalWD <- getwd()
+  dir.create(dirName)
+  setwd(dirName)
+  purl(rmdFile, documentation=1)
+  knit(rmdFile)
+  render(rmdFile, output_dir=dirName)
+  setwd(originalWD)
 }
 
-check_file_exists <- function(filename) {
+CheckFileExists <- function(filename) {
   if (file.exists(filename) == FALSE) {
     stop(paste(filename, "does not exist.", sep=" "))
   }
 }
 
-symmetric_filename <- function(filename)  {
-  symmetric_basename <- paste("symmetric", basename(filename), sep="-")
-  return (normalizePath(paste(dirname(filename), symmetric_basename, sep="/")))
+SymmetricFilename <- function(filename)  {
+  symmetricBasename <- paste("symmetric", basename(filename), sep="-")
+  return (normalizePath(paste(dirname(filename), symmetricBasename, sep="/")))
 }
 
 # The command line arguments are the names of the two IBS files to compare.
@@ -31,29 +35,29 @@ symmetric_filename <- function(filename)  {
 # input files reside.
 args <- commandArgs(TRUE)
 
-plot_rmd_file <- normalizePath("plot-ibs-data.rmd")
-check_file_exists(plot_rmd_file)
+plotRmdFile <- normalizePath("plot-ibs-data.rmd")
+CheckFileExists(plotRmdFile)
 
-compare_rmd_file <- normalizePath("compare-ibs-data.rmd")
-check_file_exists(compare_rmd_file)
+compareRmdFile <- normalizePath("compare-ibs-data.rmd")
+CheckFileExists(compareRmdFile)
 
-ibs_filename1 <- normalizePath(args[1])
-check_file_exists(ibs_filename1)
+ibsFilename1 <- normalizePath(args[1])
+CheckFileExists(ibsFilename1)
 
-ibs_filename2 <- normalizePath(args[2])
-check_file_exists(ibs_filename2)
+ibsFilename2 <- normalizePath(args[2])
+CheckFileExists(ibsFilename2)
 
-ibs_filename <- ibs_filename1
-symmetric_ibs_filename <- symmetric_filename(ibs_filename1)
-generate_output(rmd_file=plot_rmd_file, dir_name=dirname(ibs_filename1))
-check_file_exists(symmetric_ibs_filename)
+ibsFilename <- ibsFilename1
+symmetricIBSFilename <- SymmetricFilename(ibsFilename1)
+GenerateOutput(rmdFile=plotRmdFile, dirName=dirname(ibsFilename1))
+CheckFileExists(symmetricIBSFilename)
 
-ibs_filename <- ibs_filename2
-symmetric_ibs_filename <- symmetric_filename(ibs_filename2)
-generate_output(rmd_file=plot_rmd_file, dir_name=dirname(ibs_filename2))
-check_file_exists(symmetric_ibs_filename)
+ibsFilename <- ibsFilename2
+symmetricIBSFilename <- SymmetricFilename(ibsFilename2)
+GenerateOutput(rmdFile=plotRmdFile, dirName=dirname(ibsFilename2))
+CheckFileExists(symmetricIBSFilename)
 
-ibs_filename1 <- symmetric_filename(ibs_filename1)
-ibs_filename2 <- symmetric_filename(ibs_filename2)
-generate_output(rmd_file=compare_rmd_file, dir_name="compare")
+ibsFilename1 <- SymmetricFilename(ibsFilename1)
+ibsFilename2 <- SymmetricFilename(ibsFilename2)
+GenerateOutput(rmdFile=compareRmdFile, dirName="compare")
 
