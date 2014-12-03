@@ -43,9 +43,11 @@ import static com.google.common.collect.Lists.newArrayList;
  */
 public interface GenomicsDatasetOptions extends GenomicsOptions {
 
+  // If not running all contigs, we default to BRCA1
+  // TODO: Look up the valid value for '17' from the referenceBounds call
   public static final String DEFAULT_REFERNCES = "17:41196311:41277499";
 
-  public static final long DEFAULT_NUMBER_OF_BASES_PER_SHARD = 1000000;
+  public static final long DEFAULT_NUMBER_OF_BASES_PER_SHARD = 100000;
 
   public static class Methods {
 
@@ -85,9 +87,9 @@ public interface GenomicsDatasetOptions extends GenomicsOptions {
     public static List<SearchVariantsRequest> getVariantRequests(GenomicsDatasetOptions options,
         GenomicsFactory.OfflineAuth auth) throws IOException, GeneralSecurityException {
       String datasetId = options.getDatasetId();
-      if (options.isAllContigs()) {
-        List<SearchVariantsRequest> requests = Lists.newArrayList();
+      List<SearchVariantsRequest> requests = Lists.newArrayList();
 
+      if (options.isAllContigs()) {
         VariantSet variantSet =
             auth.getGenomics(auth.getDefaultFactory()).variantsets().get(datasetId).execute();
         for (ReferenceBound bound : variantSet.getReferenceBounds()) {
@@ -101,14 +103,14 @@ public interface GenomicsDatasetOptions extends GenomicsOptions {
               new Contig(bound.getReferenceName(), 0, bound.getUpperBound()),
               options.getNumberOfBasesPerShard()));
         }
-        return requests;
 
       } else {
-        // If not running all contigs, we default to BRCA1
-        // TODO: Look up the valid value for '17' from the referenceBounds call
-        return getShardedRequests(datasetId, getContigs(options.getReferences()),
+        requests = getShardedRequests(datasetId, getContigs(options.getReferences()),
             options.getNumberOfBasesPerShard());
       }
+
+      Collections.shuffle(requests); // Shuffle requests for better backend performance
+      return requests;
     }
 
     static Iterable<Contig> getContigs(String contigs) {
