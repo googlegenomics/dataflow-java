@@ -24,7 +24,8 @@ Getting started
   (Authentication will take place the first time you run a pipeline.)
 
 * Then you can run a pipeline locally with the command line, passing in the
-  Project ID and Google Cloud Storage bucket you made in the first step::
+  Project ID and Google Cloud Storage bucket you made in the first step.
+  This command runs the VariantSimilarity pipeline (which runs PCoA on a dataset)::
 
     java -cp target/googlegenomics-dataflow-java-v1beta2.jar \
       com.google.cloud.genomics.dataflow.pipelines.VariantSimilarity \
@@ -56,28 +57,15 @@ Getting started
 Identity By State (IBS)
 -----------------------
 
-* To run the IBS pipeline locally, run the command line, passing in a valid
-  project ID and Google Cloud Storage bucket::
+* In addition to variant similarity you can run other pipelines by changing the
+  first argument provided in the above command lines. For example, to run Identity by State
+  change ``VariantSimilarity`` to ``IdentityByState``::
 
     java -cp target/googlegenomics-dataflow-java-v1beta2.jar \
       com.google.cloud.genomics.dataflow.pipelines.IdentityByState \
       --project=my-project-id \
       --output=gs://my-bucket/localtest.txt \
       --genomicsSecretsFile=client_secrets.json
-
-  Note: when running locally, you may run into memory issues depending on the capacity of your local machine.
-
-* To deploy your IBS pipeline (which runs on Google Compute Engine), some additional
-  command line arguments are required::
-
-    java -cp target/googlegenomics-dataflow-java-v1beta2.jar \
-      com.google.cloud.genomics.dataflow.pipelines.IdentityByState \
-      --runner=BlockingDataflowPipelineRunner \
-      --project=my-project-id \
-      --stagingLocation=gs://my-bucket/staging \
-      --output=gs://my-bucket/output/test.txt \
-      --genomicsSecretsFile=client_secrets.json \
-      --numWorkers=10
 
 
 Code layout
@@ -100,6 +88,9 @@ pipelines:
   * ``VariantSimilarity`` runs a principal coordinates analysis over a dataset containing variants, and
     writes a file of graph results that can be easily displayed by Google Sheets.
 
+  * ``IdentityByState`` runs IBS over a dataset containing variants. See the `results/ibs <results/ibs>`_
+    directory for more information on how to use the pipeline's results.
+
 readers:
   contains functions that perform API calls to read data from the genomics API
 
@@ -107,12 +98,7 @@ utils:
   contains utilities for running dataflow workflows against the genomics API
   
   * ``DataflowWorkarounds``
-    contains workarounds needed to use the Google Cloud Dataflow APIs. 
-    This class should dissapear before Dataflow goes public.
-
-  * ``GenomicsAuth.java``
-    Use this class for performing authentication when calling the API. It allows for using either 
-    an api key or client secrets file.
+    contains workarounds needed to use the Google Cloud Dataflow APIs.
 
   * ``GenomicsOptions.java`` and ``GenomicsDatasetOptions``
     extend these classes for your command line options to take advantage of common command
