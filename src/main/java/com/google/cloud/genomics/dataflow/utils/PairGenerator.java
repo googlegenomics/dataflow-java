@@ -13,7 +13,7 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package com.google.cloud.dataflow.utils;
+package com.google.cloud.genomics.dataflow.utils;
 
 import java.util.Iterator;
 import java.util.List;

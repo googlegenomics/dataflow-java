@@ -15,10 +15,6 @@
  */
 package com.google.cloud.genomics.dataflow.pipelines;
 
-import java.io.IOException;
-import java.security.GeneralSecurityException;
-import java.util.List;
-
 import com.google.api.services.genomics.model.SearchVariantsRequest;
 import com.google.cloud.dataflow.sdk.Pipeline;
 import com.google.cloud.dataflow.sdk.io.TextIO;
@@ -36,6 +32,10 @@ import com.google.cloud.genomics.dataflow.utils.GenomicsDatasetOptions;
 import com.google.cloud.genomics.dataflow.utils.GenomicsOptions;
 import com.google.cloud.genomics.dataflow.utils.IdentityByStateOptions;
 import com.google.cloud.genomics.utils.GenomicsFactory;
+
+import java.io.IOException;
+import java.security.GeneralSecurityException;
+import java.util.List;
 
 /**
  * A pipeline that computes Identity by State (IBS) for each pair of individuals in a dataset.
@@ -73,7 +73,7 @@ public class IdentityByState {
   }
 
   private static CallSimilarityCalculatorFactory getCallSimilarityCalculatorFactory(
-      GenomicsDatasetOptions options) throws InstantiationException, IllegalAccessException {
+      IdentityByStateOptions options) throws InstantiationException, IllegalAccessException {
     return options.getCallSimilarityCalculatorFactory().newInstance();
   }
 

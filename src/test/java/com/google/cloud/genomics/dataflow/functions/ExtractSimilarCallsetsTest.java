@@ -22,7 +22,7 @@ import com.google.api.client.util.Lists;
 import com.google.api.services.genomics.model.Call;
 import com.google.api.services.genomics.model.Variant;
 import com.google.cloud.dataflow.sdk.values.KV;
-import com.google.cloud.dataflow.utils.PairGenerator;
+import com.google.cloud.genomics.dataflow.utils.PairGenerator;
 import com.google.cloud.genomics.dataflow.utils.DataUtils;
 
 import org.junit.Test;
