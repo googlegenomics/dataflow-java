@@ -15,16 +15,18 @@
  */
 package com.google.cloud.genomics.dataflow.functions;
 
-//import com.google.cloud.dataflow.sdk.io.TextIO;
-//import com.google.cloud.dataflow.sdk.transforms.Convert;
-//import com.google.cloud.dataflow.sdk.transforms.DoFn;
+import com.google.cloud.dataflow.sdk.io.TextIO;
+import com.google.cloud.dataflow.sdk.transforms.Combine;
+import com.google.cloud.dataflow.sdk.transforms.Convert;
+import com.google.cloud.dataflow.sdk.transforms.DoFn;
 import com.google.cloud.dataflow.sdk.transforms.PTransform;
-//import com.google.cloud.dataflow.sdk.transforms.ParDo;
-//import com.google.cloud.dataflow.sdk.transforms.SeqDo;
-//import com.google.cloud.dataflow.sdk.transforms.Sum;
+import com.google.cloud.dataflow.sdk.transforms.ParDo;
+import com.google.cloud.dataflow.sdk.transforms.SerializableFunction;
+import com.google.cloud.dataflow.sdk.transforms.Sum;
 import com.google.cloud.dataflow.sdk.values.KV;
 import com.google.cloud.dataflow.sdk.values.PCollection;
 import com.google.cloud.dataflow.sdk.values.PDone;
+import com.google.common.collect.ImmutableList;
 
 /**
  * Given a set of similar pair counts, this function aggregates the counts,
@@ -35,28 +37,70 @@ import com.google.cloud.dataflow.sdk.values.PDone;
  * the same as Principal Component Analysis.
 */
 public class OutputPCoAFile extends PTransform<PCollection<KV<KV<String, String>, Long>>, PDone> {
-//  private final String outputFile;
+
+  private static final Combine.CombineFn<KV<KV<String, String>, Long>,
+      ImmutableList.Builder<KV<KV<String, String>, Long>>,
+      Iterable<KV<KV<String, String>, Long>>> TO_LIST = new Combine.CombineFn<
+      KV<KV<String, String>, Long>, ImmutableList.Builder<KV<KV<String, String>, Long>>,
+      Iterable<KV<KV<String, String>, Long>>>() {
+
+        @Override
+        public void addInput(ImmutableList.Builder<KV<KV<String, String>, Long>> accumulator,
+            KV<KV<String, String>, Long> input) {
+          accumulator.add(input);
+        }
+
+        @Override
+        public ImmutableList.Builder<KV<KV<String, String>, Long>> createAccumulator() {
+          return ImmutableList.builder();
+        }
+
+        @Override
+        public Iterable<KV<KV<String, String>, Long>> extractOutput(
+            ImmutableList.Builder<KV<KV<String, String>, Long>> accumulator) {
+          return accumulator.build();
+        }
+
+        @Override
+        public ImmutableList.Builder<KV<KV<String, String>, Long>> mergeAccumulators(
+            Iterable<ImmutableList.Builder<KV<KV<String, String>, Long>>> accumulators) {
+          ImmutableList.Builder<KV<KV<String, String>, Long>> builder = ImmutableList.builder();
+          for (ImmutableList.Builder<KV<KV<String, String>, Long>> accumulator : accumulators) {
+            builder.addAll(accumulator.build());
+          }
+          return builder;
+        }
+      };
+
+  private static final SerializableFunction<Object, String> TO_STRING =
+      new SerializableFunction<Object, String>() {
+        @Override public String apply(Object input) {
+          return input.toString();
+        }
+      };
+
+  private static <X, Y> DoFn<X, Y> fromSerializableFunction(
+      final SerializableFunction<? super X, ? extends Y> function) {
+    return new DoFn<X, Y>() {
+          @Override public void processElement(ProcessContext context) {
+            context.output(function.apply(context.element()));
+          }
+        };
+  }
+
+  private final String outputFile;
 
   public OutputPCoAFile(String outputFile) {
-//    this.outputFile = outputFile;
+    this.outputFile = outputFile;
   }
 
   @Override
   public PDone apply(PCollection<KV<KV<String, String>, Long>> similarPairs) {
-//    return similarPairs.apply(Sum.<KV<String, String>>longsPerKey())
-//        .apply(Convert.<KV<KV<String, String>, Long>>toIterable())
-//        .apply(SeqDo.named("PCoAAnalysis").of(new PCoAnalysis()))
-//        .apply(Convert.<PCoAnalysis.GraphResult>fromIterable())
-//        .apply(ParDo.named("FormatGraphData").of(new DoFn<PCoAnalysis.GraphResult, String>() {
-//          @Override
-//          public void processElement(ProcessContext c) {
-//            PCoAnalysis.GraphResult result = c.element();
-//            // Note: the extra tab is so this format plays nicely with
-//            // Google Sheet's bubble chart
-//            c.output(result.name + "\t\t" + result.graphX + "\t" + result.graphY);
-//          }
-//        }))
-//        .apply(TextIO.Write.named("WriteCounts").to(outputFile));
-    throw new UnsupportedOperationException("This is broken but Cassie will fix it!");
+    return similarPairs
+        .apply(Sum.<KV<String, String>>longsPerKey()).apply(Combine.globally(TO_LIST))
+        .apply(ParDo.named("PCoAAnalysis").of(new PCoAnalysis()))
+        .apply(Convert.<PCoAnalysis.GraphResult>fromIterables())
+        .apply(ParDo.named("FormatGraphData").of(fromSerializableFunction(TO_STRING)))
+        .apply(TextIO.Write.named("WriteCounts").to(outputFile));
   }
 }
