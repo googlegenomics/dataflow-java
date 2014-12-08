@@ -36,7 +36,7 @@ public class ExtractSimilarCallsets extends DoFn<Variant, KV<KV<String, String>,
   private ImmutableMultiset.Builder<KV<String, String>> accumulator;
 
   @Override
-  public void startBatch(Context c) {
+  public void startBundle(Context c) {
     accumulator = ImmutableMultiset.builder();
   }
 
@@ -49,7 +49,7 @@ public class ExtractSimilarCallsets extends DoFn<Variant, KV<KV<String, String>,
   }
 
   @Override
-  public void finishBatch(Context context) {
+  public void finishBundle(Context context) {
     for (Multiset.Entry<KV<String, String>> entry : accumulator.build().entrySet()) {
       context.output(KV.of(entry.getElement(), Long.valueOf(entry.getCount())));
     }

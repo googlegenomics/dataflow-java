@@ -60,7 +60,7 @@
     <dependency>
       <groupId>com.google.cloud.dataflow</groupId>
       <artifactId>dataflow-sdk</artifactId>
-      <version>1.0.141120</version>
+      <version>1.0.141206</version>
     </dependency>
     <dependency>
       <groupId>commons-cli</groupId>
