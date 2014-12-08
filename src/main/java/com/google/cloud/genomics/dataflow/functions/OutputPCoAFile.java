@@ -15,13 +15,13 @@
  */
 package com.google.cloud.genomics.dataflow.functions;
 
-import com.google.cloud.dataflow.sdk.io.TextIO;
-import com.google.cloud.dataflow.sdk.transforms.Convert;
-import com.google.cloud.dataflow.sdk.transforms.DoFn;
+//import com.google.cloud.dataflow.sdk.io.TextIO;
+//import com.google.cloud.dataflow.sdk.transforms.Convert;
+//import com.google.cloud.dataflow.sdk.transforms.DoFn;
 import com.google.cloud.dataflow.sdk.transforms.PTransform;
-import com.google.cloud.dataflow.sdk.transforms.ParDo;
-import com.google.cloud.dataflow.sdk.transforms.SeqDo;
-import com.google.cloud.dataflow.sdk.transforms.Sum;
+//import com.google.cloud.dataflow.sdk.transforms.ParDo;
+//import com.google.cloud.dataflow.sdk.transforms.SeqDo;
+//import com.google.cloud.dataflow.sdk.transforms.Sum;
 import com.google.cloud.dataflow.sdk.values.KV;
 import com.google.cloud.dataflow.sdk.values.PCollection;
 import com.google.cloud.dataflow.sdk.values.PDone;
@@ -35,27 +35,28 @@ import com.google.cloud.dataflow.sdk.values.PDone;
  * the same as Principal Component Analysis.
 */
 public class OutputPCoAFile extends PTransform<PCollection<KV<KV<String, String>, Long>>, PDone> {
-  private final String outputFile;
+//  private final String outputFile;
 
   public OutputPCoAFile(String outputFile) {
-    this.outputFile = outputFile;
+//    this.outputFile = outputFile;
   }
 
   @Override
   public PDone apply(PCollection<KV<KV<String, String>, Long>> similarPairs) {
-    return similarPairs.apply(Sum.<KV<String, String>>longsPerKey())
-        .apply(Convert.<KV<KV<String, String>, Long>>toIterable())
-        .apply(SeqDo.named("PCoAAnalysis").of(new PCoAnalysis()))
-        .apply(Convert.<PCoAnalysis.GraphResult>fromIterable())
-        .apply(ParDo.named("FormatGraphData").of(new DoFn<PCoAnalysis.GraphResult, String>() {
-          @Override
-          public void processElement(ProcessContext c) {
-            PCoAnalysis.GraphResult result = c.element();
-            // Note: the extra tab is so this format plays nicely with
-            // Google Sheet's bubble chart
-            c.output(result.name + "\t\t" + result.graphX + "\t" + result.graphY);
-          }
-        }))
-        .apply(TextIO.Write.named("WriteCounts").to(outputFile));
+//    return similarPairs.apply(Sum.<KV<String, String>>longsPerKey())
+//        .apply(Convert.<KV<KV<String, String>, Long>>toIterable())
+//        .apply(SeqDo.named("PCoAAnalysis").of(new PCoAnalysis()))
+//        .apply(Convert.<PCoAnalysis.GraphResult>fromIterable())
+//        .apply(ParDo.named("FormatGraphData").of(new DoFn<PCoAnalysis.GraphResult, String>() {
+//          @Override
+//          public void processElement(ProcessContext c) {
+//            PCoAnalysis.GraphResult result = c.element();
+//            // Note: the extra tab is so this format plays nicely with
+//            // Google Sheet's bubble chart
+//            c.output(result.name + "\t\t" + result.graphX + "\t" + result.graphY);
+//          }
+//        }))
+//        .apply(TextIO.Write.named("WriteCounts").to(outputFile));
+    throw new UnsupportedOperationException("This is broken but Cassie will fix it!");
   }
 }

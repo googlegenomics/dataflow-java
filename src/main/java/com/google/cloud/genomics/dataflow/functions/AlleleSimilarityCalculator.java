@@ -48,7 +48,7 @@ public class AlleleSimilarityCalculator extends
   }
 
   @Override
-  public void startBatch(Context c) {
+  public void startBundle(Context c) {
     accumulator = Maps.newHashMap();
   }
 
@@ -76,7 +76,7 @@ public class AlleleSimilarityCalculator extends
   }
 
   @Override
-  public void finishBatch(Context context) {
+  public void finishBundle(Context context) {
     for (KV<String, String> entry : accumulator.keySet()) {
       String call1 = entry.getKey();
       String call2 = entry.getValue();
