@@ -17,15 +17,17 @@
 package com.google.cloud.genomics.dataflow.functions;
 
 import com.google.api.client.util.Lists;
-import com.google.cloud.dataflow.sdk.transforms.SerializableFunction;
+import com.google.cloud.dataflow.sdk.transforms.DoFn;
 import com.google.cloud.dataflow.sdk.values.KV;
 import com.google.common.collect.BiMap;
 import com.google.common.collect.HashBiMap;
+import com.google.common.collect.ImmutableList;
 
 import Jama.EigenvalueDecomposition;
 import Jama.Matrix;
 
 import java.io.Serializable;
+import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 
@@ -51,10 +53,11 @@ import java.util.Map;
  * KV(KV(data2, data2), 5)
  * KV(KV(data2, data1), 2)
  */
-public class PCoAnalysis implements SerializableFunction<Iterable<KV<KV<String, String>, Long>>,
+public class PCoAnalysis extends DoFn<Iterable<KV<KV<String, String>, Long>>,
     Iterable<PCoAnalysis.GraphResult>> {
 
   public static class GraphResult implements Serializable {
+
     public String name;
     public double graphX;
     public double graphY;
@@ -64,22 +67,26 @@ public class PCoAnalysis implements SerializableFunction<Iterable<KV<KV<String, 
       this.graphX = Math.floor(x * 100) / 100;
       this.graphY = Math.floor(y * 100) / 100;
     }
+
+    @Override public String toString() {
+      return String.format("%s\t\t%s\t%s", name, graphX, graphY);
+    }
   }
 
-  @Override
-  public Iterable<GraphResult> apply(Iterable<KV<KV<String, String>, Long>> similarityData) {
+  @Override public void processElement(ProcessContext context) {
+    Collection<KV<KV<String, String>, Long>> element = ImmutableList.copyOf(context.element());
     // Transform the data into a matrix
     BiMap<String, Integer> dataIndicies = HashBiMap.create();
 
     // TODO: Clean up this code
-    for (KV<KV<String, String>, Long> entry : similarityData) {
+    for (KV<KV<String, String>, Long> entry : element) {
       getDataIndex(dataIndicies, entry.getKey().getKey());
       getDataIndex(dataIndicies, entry.getKey().getValue());
     }
 
     int dataSize = dataIndicies.size();
     double[][] matrixData = new double[dataSize][dataSize];
-    for (KV<KV<String, String>, Long> entry : similarityData) {
+    for (KV<KV<String, String>, Long> entry : element) {
       int d1 = getDataIndex(dataIndicies, entry.getKey().getKey());
       int d2 = getDataIndex(dataIndicies, entry.getKey().getValue());
 
@@ -89,9 +96,7 @@ public class PCoAnalysis implements SerializableFunction<Iterable<KV<KV<String, 
         matrixData[d2][d1] = value;
       }
     }
-
-    // Run the actual pca
-    return getPcaData(matrixData, dataIndicies.inverse());
+    context.output(getPcaData(matrixData, dataIndicies.inverse()));
   }
 
   private int getDataIndex(Map<String, Integer> dataIndicies, String dataName) {
