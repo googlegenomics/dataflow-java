@@ -58,9 +58,9 @@ public class PCoAnalysis extends DoFn<Iterable<KV<KV<String, String>, Long>>,
 
   public static class GraphResult implements Serializable {
 
-    public String name;
     public double graphX;
     public double graphY;
+    public String name;
 
     public GraphResult(String name, double x, double y) {
       this.name = name;
@@ -73,31 +73,13 @@ public class PCoAnalysis extends DoFn<Iterable<KV<KV<String, String>, Long>>,
     }
   }
 
-  @Override public void processElement(ProcessContext context) {
-    Collection<KV<KV<String, String>, Long>> element = ImmutableList.copyOf(context.element());
-    // Transform the data into a matrix
-    BiMap<String, Integer> dataIndicies = HashBiMap.create();
+  private static final PCoAnalysis INSTANCE = new PCoAnalysis();
 
-    // TODO: Clean up this code
-    for (KV<KV<String, String>, Long> entry : element) {
-      getDataIndex(dataIndicies, entry.getKey().getKey());
-      getDataIndex(dataIndicies, entry.getKey().getValue());
-    }
-
-    int dataSize = dataIndicies.size();
-    double[][] matrixData = new double[dataSize][dataSize];
-    for (KV<KV<String, String>, Long> entry : element) {
-      int d1 = getDataIndex(dataIndicies, entry.getKey().getKey());
-      int d2 = getDataIndex(dataIndicies, entry.getKey().getValue());
-
-      double value = entry.getValue();
-      matrixData[d1][d2] = value;
-      if (d1 != d2) {
-        matrixData[d2][d1] = value;
-      }
-    }
-    context.output(getPcaData(matrixData, dataIndicies.inverse()));
+  public static PCoAnalysis of() {
+    return INSTANCE;
   }
+
+  private PCoAnalysis() {}
 
   private int getDataIndex(Map<String, Integer> dataIndicies, String dataName) {
     if (!dataIndicies.containsKey(dataName)) {
@@ -176,5 +158,31 @@ public class PCoAnalysis extends DoFn<Iterable<KV<KV<String, String>, Long>>,
     }
 
     return results;
+  }
+
+  @Override public void processElement(ProcessContext context) {
+    Collection<KV<KV<String, String>, Long>> element = ImmutableList.copyOf(context.element());
+    // Transform the data into a matrix
+    BiMap<String, Integer> dataIndicies = HashBiMap.create();
+
+    // TODO: Clean up this code
+    for (KV<KV<String, String>, Long> entry : element) {
+      getDataIndex(dataIndicies, entry.getKey().getKey());
+      getDataIndex(dataIndicies, entry.getKey().getValue());
+    }
+
+    int dataSize = dataIndicies.size();
+    double[][] matrixData = new double[dataSize][dataSize];
+    for (KV<KV<String, String>, Long> entry : element) {
+      int d1 = getDataIndex(dataIndicies, entry.getKey().getKey());
+      int d2 = getDataIndex(dataIndicies, entry.getKey().getValue());
+
+      double value = entry.getValue();
+      matrixData[d1][d2] = value;
+      if (d1 != d2) {
+        matrixData[d2][d1] = value;
+      }
+    }
+    context.output(getPcaData(matrixData, dataIndicies.inverse()));
   }
 }
