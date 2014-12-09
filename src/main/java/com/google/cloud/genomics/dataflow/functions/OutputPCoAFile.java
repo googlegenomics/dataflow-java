@@ -28,6 +28,8 @@ import com.google.cloud.dataflow.sdk.values.PCollection;
 import com.google.cloud.dataflow.sdk.values.PDone;
 import com.google.common.collect.ImmutableList;
 
+import java.util.ArrayList;
+
 /**
  * Given a set of similar pair counts, this function aggregates the counts,
  * runs Principal Coordinate Analysis, and writes the result to a tab-delimited GCS file which
@@ -39,8 +41,8 @@ import com.google.common.collect.ImmutableList;
 public class OutputPCoAFile extends PTransform<PCollection<KV<KV<String, String>, Long>>, PDone> {
 
   private static final Combine.CombineFn<KV<KV<String, String>, Long>,
-      ImmutableList.Builder<KV<KV<String, String>, Long>>,
-      Iterable<KV<KV<String, String>, Long>>> TO_LIST = toImmutableList();
+      ArrayList<KV<KV<String, String>, Long>>, Iterable<KV<KV<String, String>, Long>>> TO_LIST =
+      toImmutableList();
 
   private static final SerializableFunction<Object, String> TO_STRING =
       new SerializableFunction<Object, String>() {
@@ -58,27 +60,26 @@ public class OutputPCoAFile extends PTransform<PCollection<KV<KV<String, String>
         };
   }
 
-  private static <X>
-      Combine.CombineFn<X, ImmutableList.Builder<X>, Iterable<X>> toImmutableList() {
-    return new Combine.CombineFn<X, ImmutableList.Builder<X>, Iterable<X>>() {
+  private static <X> Combine.CombineFn<X, ArrayList<X>, Iterable<X>> toImmutableList() {
+    return new Combine.CombineFn<X, ArrayList<X>, Iterable<X>>() {
 
-          @Override public void addInput(ImmutableList.Builder<X> accumulator, X input) {
+          @Override public void addInput(ArrayList<X> accumulator, X input) {
             accumulator.add(input);
           }
 
-          @Override public ImmutableList.Builder<X> createAccumulator() {
-            return ImmutableList.builder();
+          @Override public ArrayList<X> createAccumulator() {
+            return new ArrayList<>();
           }
 
-          @Override public Iterable<X> extractOutput(ImmutableList.Builder<X> accumulator) {
-            return accumulator.build();
+          @Override public Iterable<X> extractOutput(ArrayList<X> accumulator) {
+            return accumulator;
           }
 
-          @Override public ImmutableList.Builder<X> mergeAccumulators(
-              Iterable<ImmutableList.Builder<X>> accumulators) {
-            ImmutableList.Builder<X> merged = ImmutableList.builder();
-            for (ImmutableList.Builder<X> accumulator : accumulators) {
-              merged.addAll(accumulator.build());
+          @Override public ArrayList<X> mergeAccumulators(
+              Iterable<ArrayList<X>> accumulators) {
+            ArrayList<X> merged = new ArrayList<>();
+            for (ArrayList<X> accumulator : accumulators) {
+              merged.addAll(accumulator);
             }
             return merged;
           }
