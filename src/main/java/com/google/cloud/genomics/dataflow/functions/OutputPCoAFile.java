@@ -40,37 +40,7 @@ public class OutputPCoAFile extends PTransform<PCollection<KV<KV<String, String>
 
   private static final Combine.CombineFn<KV<KV<String, String>, Long>,
       ImmutableList.Builder<KV<KV<String, String>, Long>>,
-      Iterable<KV<KV<String, String>, Long>>> TO_LIST = new Combine.CombineFn<
-      KV<KV<String, String>, Long>, ImmutableList.Builder<KV<KV<String, String>, Long>>,
-      Iterable<KV<KV<String, String>, Long>>>() {
-
-        @Override
-        public void addInput(ImmutableList.Builder<KV<KV<String, String>, Long>> accumulator,
-            KV<KV<String, String>, Long> input) {
-          accumulator.add(input);
-        }
-
-        @Override
-        public ImmutableList.Builder<KV<KV<String, String>, Long>> createAccumulator() {
-          return ImmutableList.builder();
-        }
-
-        @Override
-        public Iterable<KV<KV<String, String>, Long>> extractOutput(
-            ImmutableList.Builder<KV<KV<String, String>, Long>> accumulator) {
-          return accumulator.build();
-        }
-
-        @Override
-        public ImmutableList.Builder<KV<KV<String, String>, Long>> mergeAccumulators(
-            Iterable<ImmutableList.Builder<KV<KV<String, String>, Long>>> accumulators) {
-          ImmutableList.Builder<KV<KV<String, String>, Long>> builder = ImmutableList.builder();
-          for (ImmutableList.Builder<KV<KV<String, String>, Long>> accumulator : accumulators) {
-            builder.addAll(accumulator.build());
-          }
-          return builder;
-        }
-      };
+      Iterable<KV<KV<String, String>, Long>>> TO_LIST = toImmutableList();
 
   private static final SerializableFunction<Object, String> TO_STRING =
       new SerializableFunction<Object, String>() {
@@ -88,6 +58,33 @@ public class OutputPCoAFile extends PTransform<PCollection<KV<KV<String, String>
         };
   }
 
+  private static <X>
+      Combine.CombineFn<X, ImmutableList.Builder<X>, Iterable<X>> toImmutableList() {
+    return new Combine.CombineFn<X, ImmutableList.Builder<X>, Iterable<X>>() {
+
+          @Override public void addInput(ImmutableList.Builder<X> accumulator, X input) {
+            accumulator.add(input);
+          }
+
+          @Override public ImmutableList.Builder<X> createAccumulator() {
+            return ImmutableList.builder();
+          }
+
+          @Override public Iterable<X> extractOutput(ImmutableList.Builder<X> accumulator) {
+            return accumulator.build();
+          }
+
+          @Override public ImmutableList.Builder<X> mergeAccumulators(
+              Iterable<ImmutableList.Builder<X>> accumulators) {
+            ImmutableList.Builder<X> merged = ImmutableList.builder();
+            for (ImmutableList.Builder<X> accumulator : accumulators) {
+              merged.addAll(accumulator.build());
+            }
+            return merged;
+          }
+        };
+  }
+
   private final String outputFile;
 
   public OutputPCoAFile(String outputFile) {
@@ -98,7 +95,7 @@ public class OutputPCoAFile extends PTransform<PCollection<KV<KV<String, String>
   public PDone apply(PCollection<KV<KV<String, String>, Long>> similarPairs) {
     return similarPairs
         .apply(Sum.<KV<String, String>>longsPerKey()).apply(Combine.globally(TO_LIST))
-        .apply(ParDo.named("PCoAAnalysis").of(new PCoAnalysis()))
+        .apply(ParDo.named("PCoAAnalysis").of(PCoAnalysis.of()))
         .apply(Convert.<PCoAnalysis.GraphResult>fromIterables())
         .apply(ParDo.named("FormatGraphData").of(fromSerializableFunction(TO_STRING)))
         .apply(TextIO.Write.named("WriteCounts").to(outputFile));
