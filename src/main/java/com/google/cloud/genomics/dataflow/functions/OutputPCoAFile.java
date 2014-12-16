@@ -15,6 +15,7 @@
  */
 package com.google.cloud.genomics.dataflow.functions;
 
+import com.google.cloud.dataflow.sdk.coders.StringUtf8Coder;
 import com.google.cloud.dataflow.sdk.io.TextIO;
 import com.google.cloud.dataflow.sdk.transforms.Combine;
 import com.google.cloud.dataflow.sdk.transforms.Convert;
@@ -99,6 +100,7 @@ public class OutputPCoAFile extends PTransform<PCollection<KV<KV<String, String>
         .apply(ParDo.named("PCoAAnalysis").of(PCoAnalysis.of()))
         .apply(Convert.<PCoAnalysis.GraphResult>fromIterables())
         .apply(ParDo.named("FormatGraphData").of(fromSerializableFunction(TO_STRING)))
+        .setCoder(StringUtf8Coder.of())
         .apply(TextIO.Write.named("WriteCounts").to(outputFile));
   }
 }
