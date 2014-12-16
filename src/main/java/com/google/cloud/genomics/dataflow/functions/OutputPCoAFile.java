@@ -26,9 +26,9 @@ import com.google.cloud.dataflow.sdk.transforms.Sum;
 import com.google.cloud.dataflow.sdk.values.KV;
 import com.google.cloud.dataflow.sdk.values.PCollection;
 import com.google.cloud.dataflow.sdk.values.PDone;
-import com.google.common.collect.ImmutableList;
 
 import java.util.ArrayList;
+import java.util.List;
 
 /**
  * Given a set of similar pair counts, this function aggregates the counts,
@@ -41,7 +41,7 @@ import java.util.ArrayList;
 public class OutputPCoAFile extends PTransform<PCollection<KV<KV<String, String>, Long>>, PDone> {
 
   private static final Combine.CombineFn<KV<KV<String, String>, Long>,
-      ArrayList<KV<KV<String, String>, Long>>, Iterable<KV<KV<String, String>, Long>>> TO_LIST =
+      List<KV<KV<String, String>, Long>>, Iterable<KV<KV<String, String>, Long>>> TO_LIST =
       toImmutableList();
 
   private static final SerializableFunction<Object, String> TO_STRING =
@@ -60,25 +60,25 @@ public class OutputPCoAFile extends PTransform<PCollection<KV<KV<String, String>
         };
   }
 
-  private static <X> Combine.CombineFn<X, ArrayList<X>, Iterable<X>> toImmutableList() {
-    return new Combine.CombineFn<X, ArrayList<X>, Iterable<X>>() {
+  private static <X> Combine.CombineFn<X, List<X>, Iterable<X>> toImmutableList() {
+    return new Combine.CombineFn<X, List<X>, Iterable<X>>() {
 
-          @Override public void addInput(ArrayList<X> accumulator, X input) {
+          @Override public void addInput(List<X> accumulator, X input) {
             accumulator.add(input);
           }
 
-          @Override public ArrayList<X> createAccumulator() {
+          @Override public List<X> createAccumulator() {
             return new ArrayList<>();
           }
 
-          @Override public Iterable<X> extractOutput(ArrayList<X> accumulator) {
+          @Override public Iterable<X> extractOutput(List<X> accumulator) {
             return accumulator;
           }
 
-          @Override public ArrayList<X> mergeAccumulators(
-              Iterable<ArrayList<X>> accumulators) {
-            ArrayList<X> merged = new ArrayList<>();
-            for (ArrayList<X> accumulator : accumulators) {
+          @Override public List<X> mergeAccumulators(
+              Iterable<List<X>> accumulators) {
+            List<X> merged = new ArrayList<>();
+            for (List<X> accumulator : accumulators) {
               merged.addAll(accumulator);
             }
             return merged;

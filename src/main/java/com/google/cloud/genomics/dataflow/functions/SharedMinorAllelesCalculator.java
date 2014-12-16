@@ -23,7 +23,7 @@ import com.google.common.collect.Iterables;
  * Computes the similarity of two calls based on whether they share a minor allele or not.
  */
 public class SharedMinorAllelesCalculator implements CallSimilarityCalculator {
-  
+
   private final boolean isReferenceMajor;
 
   public SharedMinorAllelesCalculator(boolean isReferenceMajor) {
@@ -41,10 +41,11 @@ public class SharedMinorAllelesCalculator implements CallSimilarityCalculator {
           return genotype == 0;
         }
       }
-      
+
     });
   }
 
+  @Override
   public double similarity(Call call1, Call call2) {
     if (call1.getCallSetName().equals(call2.getCallSetName())) {
       return 1.0;

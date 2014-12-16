@@ -26,6 +26,7 @@ public class SharedAllelesRatioCalculator implements CallSimilarityCalculator {
   
   // TODO: Double check that the following is the right way of computing the IBS
   // scores when the number of alleles is different than 2 and when the genotypes are unphased.
+  @Override
   public double similarity(Call call1, Call call2) {
     int minNumberOfGenotypes = Math.min(call1.getGenotype().size(), call2.getGenotype().size());
     int numberOfSharedAlleles = 0;
