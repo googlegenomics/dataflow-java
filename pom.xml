@@ -41,40 +41,118 @@
 
   <contributors/>
 
-  <!-- Delete this and the /jars folder once the dataflow-sdk is in non-local maven -->
-  <repositories>
-    <repository>
-      <id>dataflow-snapshot</id>
-      <url>file://${project.basedir}/jars</url>
-      <releases>
-        <enabled>true</enabled>
-      </releases>
-      <snapshots>
-        <enabled>true</enabled>
-        <updatePolicy>always</updatePolicy>
-      </snapshots>
-    </repository>
-  </repositories>
-
   <dependencies>
+    <!-- Dataflow SDK -->
     <dependency>
       <groupId>com.google.cloud.dataflow</groupId>
-      <artifactId>dataflow-sdk</artifactId>
-      <version>1.0.141206</version>
+      <artifactId>google-cloud-dataflow-java-sdk-all</artifactId>
+      <version>0.3.141216</version>
+    </dependency>
+
+    <!-- Dataflow requirements -->
+    <dependency>
+      <groupId>com.fasterxml.jackson.core</groupId>
+      <artifactId>jackson-core</artifactId>
+      <version>${jackson.version}</version>
     </dependency>
     <dependency>
-      <groupId>commons-cli</groupId>
-      <artifactId>commons-cli</artifactId>
-      <version>1.2</version>
+      <groupId>com.fasterxml.jackson.core</groupId>
+      <artifactId>jackson-annotations</artifactId>
+      <version>${jackson.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>com.fasterxml.jackson.core</groupId>
+      <artifactId>jackson-databind</artifactId>
+      <version>${jackson.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>org.codehaus.jackson</groupId>
+      <artifactId>jackson-core-asl</artifactId>
+      <version>1.9.13</version>
+    </dependency>
+    <dependency>
+      <groupId>org.codehaus.jackson</groupId>
+      <artifactId>jackson-mapper-asl</artifactId>
+      <version>1.9.13</version>
+    </dependency>
+    <dependency>
+      <groupId>org.slf4j</groupId>
+      <artifactId>slf4j-api</artifactId>
+      <version>1.7.7</version>
+    </dependency>
+    <dependency>
+      <groupId>org.slf4j</groupId>
+      <artifactId>slf4j-jdk14</artifactId>
+      <version>1.7.7</version>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.avro</groupId>
+      <artifactId>avro</artifactId>
+      <version>1.7.7</version>
+    </dependency>
+
+    <!-- Google client dependencies -->
+    <dependency>
+      <groupId>com.google.api-client</groupId>
+      <artifactId>google-api-client</artifactId>
+      <version>${google.api.version}</version>
+      <exclusions>
+        <!-- Exclude an old version of guava which is being pulled
+             in by a transitive dependency google-api-client 1.19.0 -->
+        <exclusion>
+          <groupId>com.google.guava</groupId>
+          <artifactId>guava-jdk5</artifactId>
+        </exclusion>
+      </exclusions>
+    </dependency>
+    <dependency>
+      <groupId>com.google.oauth-client</groupId>
+      <artifactId>google-oauth-client</artifactId>
+      <version>${google.api.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>com.google.oauth-client</groupId>
+      <artifactId>google-oauth-client-jetty</artifactId>
+      <version>${google.api.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>com.google.oauth-client</groupId>
+      <artifactId>google-oauth-client-java6</artifactId>
+      <version>${google.api.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>com.google.http-client</groupId>
+      <artifactId>google-http-client</artifactId>
+      <version>${google.api.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>com.google.http-client</groupId>
+      <artifactId>google-http-client-jackson2</artifactId>
+      <version>${google.api.version}</version>
     </dependency>
     <dependency>
       <groupId>com.google.apis</groupId>
       <artifactId>google-api-services-genomics</artifactId>
       <version>v1beta2-rev9-1.19.0</version>
       <exclusions>
+        <!-- Exclude an old version of guava which is being pulled
+             in by a transitive dependency google-api-client 1.19.0 -->
         <exclusion>
-          <groupId>com.google.api-client</groupId>
-          <artifactId>google-api-client</artifactId>
+          <groupId>com.google.guava</groupId>
+          <artifactId>guava-jdk5</artifactId>
+        </exclusion>
+      </exclusions>
+    </dependency>
+    <dependency>
+      <groupId>com.google.apis</groupId>
+      <artifactId>google-api-services-dataflow</artifactId>
+      <version>v1beta3-rev3-1.19.0</version>
+      <exclusions>
+        <!-- Exclude an old version of guava which is being pulled
+             in by a transitive dependency google-api-client 1.19.0 -->
+        <exclusion>
+          <groupId>com.google.guava</groupId>
+          <artifactId>guava-jdk5</artifactId>
         </exclusion>
       </exclusions>
     </dependency>
@@ -83,15 +161,45 @@
       <artifactId>google-genomics-utils</artifactId>
       <version>v1beta2-0.17</version>
       <exclusions>
+        <!-- Exclude an old version of guava which is being pulled
+             in by a transitive dependency google-api-client 1.19.0 -->
         <exclusion>
-          <groupId>com.google.http-client</groupId>
-          <artifactId>google-http-client-jackson2</artifactId>
-        </exclusion>
-        <exclusion>
-          <groupId>org.utgenome.thirdparty</groupId>
-          <artifactId>picard</artifactId>
+          <groupId>com.google.guava</groupId>
+          <artifactId>guava-jdk5</artifactId>
         </exclusion>
       </exclusions>
+    </dependency>
+    <dependency>
+      <groupId>com.google.apis</groupId>
+      <artifactId>google-api-services-storage</artifactId>
+      <version>v1-rev11-1.19.0</version>
+      <exclusions>
+        <!-- Exclude an old version of guava which is being pulled
+             in by a transitive dependency google-api-client 1.19.0 -->
+        <exclusion>
+          <groupId>com.google.guava</groupId>
+          <artifactId>guava-jdk5</artifactId>
+        </exclusion>
+      </exclusions>
+    </dependency>
+    <dependency>
+      <groupId>com.google.apis</groupId>
+      <artifactId>google-api-services-bigquery</artifactId>
+      <version>v2-rev167-1.19.0</version>
+      <exclusions>
+        <!-- Exclude an old version of guava which is being pulled
+             in by a transitive dependency google-api-client 1.19.0 -->
+        <exclusion>
+          <groupId>com.google.guava</groupId>
+          <artifactId>guava-jdk5</artifactId>
+        </exclusion>
+      </exclusions>
+    </dependency>
+
+    <dependency>
+      <groupId>com.google.guava</groupId>
+      <artifactId>guava</artifactId>
+      <version>18.0</version>
     </dependency>
     <dependency>
       <groupId>gov.nist.math.jama</groupId>
@@ -114,6 +222,11 @@
       </exclusions>
     </dependency>
     <dependency>
+      <groupId>joda-time</groupId>
+      <artifactId>joda-time</artifactId>
+      <version>2.4</version>
+    </dependency>
+    <dependency>
       <groupId>org.javassist</groupId>
       <artifactId>javassist</artifactId>
       <version>3.18.2-GA</version>
@@ -124,12 +237,6 @@
       <artifactId>junit</artifactId>
       <version>4.11</version>
       <scope>test</scope>
-    </dependency>
-    <dependency>
-      <groupId>com.google.oauth-client</groupId>
-      <artifactId>google-oauth-client-jetty</artifactId>
-      <version>${google.api.version}</version>
-      <scope>compile</scope>
     </dependency>
     <dependency>
       <groupId>org.mortbay.jetty</groupId>
@@ -198,6 +305,7 @@
     <jetty.version>6.1.26</jetty.version>
     <junit.version>4.11</junit.version>
     <google.api.version>1.19.0</google.api.version>
+    <jackson.version>2.4.2</jackson.version>
     <maven.enforcer.jdk-version>[1.7,)</maven.enforcer.jdk-version>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <project.build.targetEncoding>UTF-8</project.build.targetEncoding>

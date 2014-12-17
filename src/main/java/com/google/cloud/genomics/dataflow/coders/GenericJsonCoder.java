@@ -15,18 +15,16 @@
  */
 package com.google.cloud.genomics.dataflow.coders;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import com.google.api.client.googleapis.util.Utils;
 import com.google.api.client.json.GenericJson;
 import com.google.api.client.json.JsonFactory;
-import com.google.api.services.dataflow.model.CloudNamedParameter;
 import com.google.cloud.dataflow.sdk.coders.Coder;
 import com.google.cloud.dataflow.sdk.coders.StringUtf8Coder;
-
-import com.fasterxml.jackson.annotation.JsonCreator;
-import com.fasterxml.jackson.annotation.JsonProperty;
+import com.google.cloud.dataflow.sdk.util.CloudObject;
 
 import java.io.IOException;
-import java.util.Map;
 
 /**
  * Can be used as a coder for any object that extends GenericJson.
@@ -55,8 +53,11 @@ public class GenericJsonCoder<T extends GenericJson> extends DelegatingAtomicCod
     this.type = type;
   }
 
-  @Override protected void addCloudEncodingDetails(Map<String, CloudNamedParameter> details) {
-    details.put("type", new CloudNamedParameter().setStringValue(type.getName()));
+  @Override
+  public CloudObject asCloudObject() {
+    CloudObject result = super.asCloudObject();
+    result.put("type", type.getName());
+    return result;
   }
 
   @Override protected T from(String object) throws IOException {

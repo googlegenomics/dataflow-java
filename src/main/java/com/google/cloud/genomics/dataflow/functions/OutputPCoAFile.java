@@ -15,14 +15,11 @@
  */
 package com.google.cloud.genomics.dataflow.functions;
 
-import com.google.cloud.dataflow.sdk.coders.StringUtf8Coder;
 import com.google.cloud.dataflow.sdk.io.TextIO;
 import com.google.cloud.dataflow.sdk.transforms.Combine;
-import com.google.cloud.dataflow.sdk.transforms.Convert;
 import com.google.cloud.dataflow.sdk.transforms.DoFn;
 import com.google.cloud.dataflow.sdk.transforms.PTransform;
 import com.google.cloud.dataflow.sdk.transforms.ParDo;
-import com.google.cloud.dataflow.sdk.transforms.SerializableFunction;
 import com.google.cloud.dataflow.sdk.transforms.Sum;
 import com.google.cloud.dataflow.sdk.values.KV;
 import com.google.cloud.dataflow.sdk.values.PCollection;
@@ -43,25 +40,9 @@ public class OutputPCoAFile extends PTransform<PCollection<KV<KV<String, String>
 
   private static final Combine.CombineFn<KV<KV<String, String>, Long>,
       List<KV<KV<String, String>, Long>>, Iterable<KV<KV<String, String>, Long>>> TO_LIST =
-      toImmutableList();
+      toList();
 
-  private static final SerializableFunction<Object, String> TO_STRING =
-      new SerializableFunction<Object, String>() {
-        @Override public String apply(Object input) {
-          return input.toString();
-        }
-      };
-
-  private static <X, Y> DoFn<X, Y> fromSerializableFunction(
-      final SerializableFunction<? super X, ? extends Y> function) {
-    return new DoFn<X, Y>() {
-          @Override public void processElement(ProcessContext context) {
-            context.output(function.apply(context.element()));
-          }
-        };
-  }
-
-  private static <X> Combine.CombineFn<X, List<X>, Iterable<X>> toImmutableList() {
+  private static <X> Combine.CombineFn<X, List<X>, Iterable<X>> toList() {
     return new Combine.CombineFn<X, List<X>, Iterable<X>>() {
 
           @Override public void addInput(List<X> accumulator, X input) {
@@ -96,11 +77,19 @@ public class OutputPCoAFile extends PTransform<PCollection<KV<KV<String, String>
   @Override
   public PDone apply(PCollection<KV<KV<String, String>, Long>> similarPairs) {
     return similarPairs
-        .apply(Sum.<KV<String, String>>longsPerKey()).apply(Combine.globally(TO_LIST))
+        .apply(Sum.<KV<String, String>>longsPerKey())
+        .apply(Combine.globally(TO_LIST))
         .apply(ParDo.named("PCoAAnalysis").of(PCoAnalysis.of()))
-        .apply(Convert.<PCoAnalysis.GraphResult>fromIterables())
-        .apply(ParDo.named("FormatGraphData").of(fromSerializableFunction(TO_STRING)))
-        .setCoder(StringUtf8Coder.of())
+        .apply(ParDo.named("FormatGraphData")
+            .of(new DoFn<Iterable<PCoAnalysis.GraphResult>, String>() {
+              @Override
+              public void processElement(ProcessContext c) throws Exception {
+                Iterable<PCoAnalysis.GraphResult> graphResults = c.element();
+                for (PCoAnalysis.GraphResult result : graphResults) {
+                  c.output(result.toString());
+                }
+              }
+            }))
         .apply(TextIO.Write.named("WriteCounts").to(outputFile));
   }
 }

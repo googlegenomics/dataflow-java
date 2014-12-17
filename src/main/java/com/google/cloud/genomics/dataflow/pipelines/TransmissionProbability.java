@@ -18,7 +18,7 @@ package com.google.cloud.genomics.dataflow.pipelines;
 import com.google.api.services.genomics.model.SearchVariantsRequest;
 import com.google.cloud.dataflow.sdk.Pipeline;
 import com.google.cloud.dataflow.sdk.io.TextIO;
-import com.google.cloud.dataflow.sdk.options.CliPipelineOptionsFactory;
+import com.google.cloud.dataflow.sdk.options.PipelineOptionsFactory;
 import com.google.cloud.dataflow.sdk.transforms.DoFn;
 import com.google.cloud.dataflow.sdk.transforms.GroupByKey;
 import com.google.cloud.dataflow.sdk.transforms.ParDo;
@@ -45,8 +45,8 @@ public class TransmissionProbability {
       = "nextPageToken,variants(id,names,calls(info,callSetName))";
 
   public static void main(String[] args) throws IOException, GeneralSecurityException {
-    GenomicsDatasetOptions options = CliPipelineOptionsFactory.create(
-        GenomicsDatasetOptions.class, args);
+    GenomicsDatasetOptions options = PipelineOptionsFactory.fromArgs(args)
+        .withValidation().as(GenomicsDatasetOptions.class);
     GenomicsOptions.Methods.validateOptions(options);
 
     GenomicsFactory.OfflineAuth auth = GenomicsOptions.Methods.getGenomicsAuth(options);

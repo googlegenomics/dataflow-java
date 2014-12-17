@@ -18,7 +18,7 @@ package com.google.cloud.genomics.dataflow.pipelines;
 import com.google.api.services.genomics.model.SearchVariantsRequest;
 import com.google.cloud.dataflow.sdk.Pipeline;
 import com.google.cloud.dataflow.sdk.io.TextIO;
-import com.google.cloud.dataflow.sdk.options.CliPipelineOptionsFactory;
+import com.google.cloud.dataflow.sdk.options.PipelineOptionsFactory;
 import com.google.cloud.dataflow.sdk.transforms.Combine;
 import com.google.cloud.dataflow.sdk.transforms.ParDo;
 import com.google.cloud.dataflow.sdk.values.KV;
@@ -47,8 +47,8 @@ public class IdentityByState {
 
   public static void main(String[] args) throws IOException, GeneralSecurityException,
       InstantiationException, IllegalAccessException {
-    IdentityByStateOptions options =
-        CliPipelineOptionsFactory.create(IdentityByStateOptions.class, args);
+    IdentityByStateOptions options = PipelineOptionsFactory.fromArgs(args)
+        .withValidation().as(IdentityByStateOptions.class);
     GenomicsOptions.Methods.validateOptions(options);
 
     GenomicsFactory.OfflineAuth auth = GenomicsOptions.Methods.getGenomicsAuth(options);
