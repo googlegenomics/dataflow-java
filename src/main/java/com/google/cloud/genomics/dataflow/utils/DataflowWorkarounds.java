@@ -16,15 +16,9 @@
 package com.google.cloud.genomics.dataflow.utils;
 
 import com.google.api.client.json.GenericJson;
-import com.google.api.services.dataflow.model.Environment;
 import com.google.cloud.dataflow.sdk.Pipeline;
 import com.google.cloud.dataflow.sdk.coders.Coder;
 import com.google.cloud.dataflow.sdk.coders.CoderRegistry;
-import com.google.cloud.dataflow.sdk.options.PipelineOptions;
-import com.google.cloud.dataflow.sdk.runners.BlockingDataflowPipelineRunner;
-import com.google.cloud.dataflow.sdk.runners.DataflowPipelineRunner;
-import com.google.cloud.dataflow.sdk.runners.DataflowPipelineRunnerHooks;
-import com.google.cloud.dataflow.sdk.runners.PipelineRunner;
 import com.google.cloud.dataflow.sdk.transforms.Create;
 import com.google.cloud.dataflow.sdk.transforms.Flatten;
 import com.google.cloud.dataflow.sdk.values.PCollection;
@@ -44,7 +38,6 @@ import java.net.URL;
 import java.util.Collection;
 import java.util.LinkedList;
 import java.util.List;
-import java.util.Map;
 import java.util.logging.Logger;
 
 import static com.google.common.collect.Lists.newArrayList;
@@ -54,52 +47,7 @@ import static com.google.common.collect.Lists.newArrayList;
  */
 public class DataflowWorkarounds {
   private static final Logger LOG = Logger.getLogger(DataflowWorkarounds.class.getName());
-  
-  /**
-   * Hook for setting onHostMaintenance to terminate so workers can be launched on projects
-   * that use service bridges
-   */
-  public static final DataflowPipelineRunnerHooks makeMaintenanceHook(
-      final Map<String, Object> fields) {
-    return new DataflowPipelineRunnerHooks() {
 
-      @Override
-      public void modifyEnvironmentBeforeSubmission(Environment environment) {
-        super.modifyEnvironmentBeforeSubmission(environment);
-        if (fields != null) {
-          for (Map.Entry<String, Object> entry : fields.entrySet()) {
-            environment.set(entry.getKey(), entry.getValue());
-          }
-        }
-      }
-    };
-  }
-
-  public static final DataflowPipelineRunnerHooks makeMaintenanceHook() {
-    return makeMaintenanceHook(null);
-  }
-
-  /**
-   * Creates a runner from the given options and applies a hook to set migration policy to
-   * TERMINATE. Additional desired modifications can be passed in as a map.
-   */
-  @SuppressWarnings("rawtypes")
-  public static final PipelineRunner getRunner(
-      PipelineOptions options, Map<String, Object> fields) {
-    PipelineRunner runner = PipelineRunner.fromOptions(options);
-    if (runner instanceof DataflowPipelineRunner) {
-      ((DataflowPipelineRunner) runner).setHooks(makeMaintenanceHook(fields));
-    } else if (runner instanceof BlockingDataflowPipelineRunner) {
-      ((BlockingDataflowPipelineRunner) runner).setHooks(makeMaintenanceHook(fields));
-    }
-    return runner;
-  }
-
-  @SuppressWarnings("rawtypes")
-  public static final PipelineRunner getRunner(PipelineOptions options) {
-    return getRunner(options, null);
-  }
-  
   /**
    * Registers a coder for a given class so that we don't have to constantly call .setCoder
    */
