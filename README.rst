@@ -1,14 +1,11 @@
 dataflow-java
 =============
 
-**This project is confidential. Do not share with anyone not in the Dataflow TT program**
-
-
 Getting started
 ---------------
 
 * First, follow the Google Cloud Dataflow `getting started instructions
-  <https://cloud.google.com/dataflow/java-sdk/getting-started>`_ to set up your environment
+  <https://cloud.google.com/dataflow/getting-started>`_ to set up your environment
   for Dataflow. You will need your Project ID and Google Cloud Storage bucket in the following steps.
 
 * To use this code, build the client using `Apache Maven`_::
@@ -79,7 +76,7 @@ coders:
   can be used with any of the Java client library classes (like ``Read``, ``Variant``, etc)
   
 functions:
-  contains common ParDo and SeqDo functions that can be reused as part of any pipeline. 
+  contains common DoFns that can be reused as part of any pipeline.
   ``OutputPCoAFile`` is an example of a complex ``PTransform`` that provides a useful common analysis.
   
 pipelines:
@@ -115,10 +112,9 @@ Goals
 
 Current status
 ~~~~~~~~~~~~~~
-This code is in active development, it will be deployed to Maven once Dataflow is.
+This code is in active development, it will be deployed to Maven soon.
 
 * TODO: Explain all the possible command line args:``zone``, ``allContigs``, etc
-* TODO: clean up the pipeline warnings - especially the silly reflections ones
 * TODO: Setup Travis integration once this repo is public
 * TODO: Refine the transmission probability pipeline
 * TODO: Add more tests
