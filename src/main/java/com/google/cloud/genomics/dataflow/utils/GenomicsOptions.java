@@ -13,8 +13,8 @@
  */
 package com.google.cloud.genomics.dataflow.utils;
 
+import com.google.cloud.dataflow.sdk.options.DataflowPipelineOptions;
 import com.google.cloud.dataflow.sdk.options.Description;
-import com.google.cloud.dataflow.sdk.options.PipelineOptions;
 import com.google.cloud.genomics.utils.GenomicsFactory;
 
 import java.io.IOException;
@@ -26,7 +26,7 @@ import java.security.GeneralSecurityException;
  *  Note: All methods defined in this class will be called during command line parsing unless it is
  * annotated with a @JsonIgnore annotation.
  */
-public interface GenomicsOptions extends PipelineOptions {
+public interface GenomicsOptions extends DataflowPipelineOptions {
 
   public static class Methods {
     public static GenomicsFactory.OfflineAuth getGenomicsAuth(GenomicsOptions options)
