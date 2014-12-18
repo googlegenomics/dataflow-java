@@ -3,7 +3,7 @@
 
   <modelVersion>4.0.0</modelVersion>
 
-  <name>Genomics API dataflow-java</name>
+  <name>Google Genomics and Dataflow</name>
   <description>Common Java files for Google Genomics and Dataflow integrations.</description>
   <url>https://github.com/googlegenomics/utils-java</url>
   <groupId>com.google.cloud.genomics</groupId>
