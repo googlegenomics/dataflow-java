@@ -109,6 +109,29 @@ utils:
     line functionality
 
 
+Maven artifact
+--------------
+This code is also deployed as a Maven artifact through Sonatype. The 
+`utils-java readme <https://github.com/googlegenomics/utils-java#releasing-new-versions>`_ 
+has detailed instructions on how to deploy new versions.
+
+To depend on this code, add the following to your ``pom.xml`` file::
+
+  <project>
+    <dependencies>
+      <dependency>
+        <groupId>com.google.cloud.genomics</groupId>
+        <artifactId>google-genomics-dataflow</artifactId>
+        <version>v1beta2-0.1</version>
+      </dependency>
+    </dependencies>
+  </project>
+
+You can find the latest version in 
+`Maven's central repository <https://search.maven.org/#search%7Cga%7C1%7Ca%3A%22google-genomics-dataflow%22>`_
+
+We'll soon include an example pipeline that depends on this code in another GitHub repository.
+
 Project status
 --------------
 
