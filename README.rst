@@ -1,5 +1,12 @@
-dataflow-java
-=============
+==============
+dataflow-java |Build Status|_ |Build Coverage|_
+==============
+
+.. |Build Status| image:: http://img.shields.io/travis/googlegenomics/dataflow-java.svg?style=flat
+.. _Build Status: https://travis-ci.org/googlegenomics/dataflow-java
+
+.. |Build Coverage| image:: http://img.shields.io/coveralls/googlegenomics/dataflow-java.svg?style=flat
+.. _Build Coverage: https://coveralls.io/r/googlegenomics/dataflow-java?branch=master
 
 Getting started
 ---------------
