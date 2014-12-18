@@ -13,114 +13,47 @@
  */
 package com.google.cloud.genomics.dataflow.utils;
 
-import com.google.api.services.genomics.model.ReferenceBound;
+import com.google.api.services.genomics.Genomics;
 import com.google.api.services.genomics.model.SearchVariantsRequest;
-import com.google.api.services.genomics.model.VariantSet;
 import com.google.cloud.dataflow.sdk.options.Default;
 import com.google.cloud.dataflow.sdk.options.Description;
-import com.google.cloud.genomics.dataflow.model.Contig;
+import com.google.cloud.genomics.utils.Contig;
 import com.google.cloud.genomics.utils.GenomicsFactory;
-import com.google.common.base.Function;
-import com.google.common.base.Splitter;
-import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
 
 import java.io.IOException;
 import java.security.GeneralSecurityException;
-import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 import java.util.logging.Logger;
-
-import static com.google.common.collect.Lists.newArrayList;
 
 /**
  * A common options class for all pipelines that operate over a single dataset and write their
  * analysis to a file.
  */
 public interface GenomicsDatasetOptions extends GenomicsOptions {
-
-  // If not running all contigs, we default to BRCA1
-  // TODO: Look up the valid value for '17' from the referenceBounds call
-  public static final String DEFAULT_REFERNCES = "17:41196311:41277499";
-
-  public static final long DEFAULT_NUMBER_OF_BASES_PER_SHARD = 100000;
-
   public static class Methods {
 
     private static final Logger LOG = Logger.getLogger(GenomicsDatasetOptions.class.getName());
 
     // TODO: If needed, add getReadRequests method
-    private static List<SearchVariantsRequest> getShardedRequests(String variantSetId,
-        Contig contig, long numberOfBasesPerShard) {
-
-      double shards =
-          Math.ceil((contig.getEnd() - contig.getStart()) / (double) numberOfBasesPerShard);
-      List<SearchVariantsRequest> requests = Lists.newArrayList();
-      for (int i = 0; i < shards; i++) {
-        long shardStart = contig.getStart() + (i * numberOfBasesPerShard);
-        long shardEnd = Math.min(contig.getEnd(), shardStart + numberOfBasesPerShard);
-
-        LOG.info("Adding request with " + contig.getReferenceName() + " " + shardStart + " to "
-            + shardEnd);
-        requests.add(new SearchVariantsRequest()
-            .setVariantSetIds(Collections.singletonList(variantSetId))
-            .setReferenceName(contig.getReferenceName())
-            .setStart(shardStart)
-            .setEnd(shardEnd));
-      }
-      return requests;
-    }
-
-    private static List<SearchVariantsRequest> getShardedRequests(String variantSetId,
-        Iterable<Contig> contigs, long numberOfBasesPerShard) {
-      List<SearchVariantsRequest> requests = newArrayList();
-      for (Contig contig : contigs) {
-        requests.addAll(getShardedRequests(variantSetId, contig, numberOfBasesPerShard));
-      }
-      return requests;
-    }
-
     public static List<SearchVariantsRequest> getVariantRequests(GenomicsDatasetOptions options,
         GenomicsFactory.OfflineAuth auth) throws IOException, GeneralSecurityException {
       String datasetId = options.getDatasetId();
+      Genomics genomics = auth.getGenomics(auth.getDefaultFactory());
+
+      Iterable<Contig> contigs = options.isAllContigs()
+          ? Contig.getContigsInVariantSet(genomics, datasetId, true)
+          : Contig.parseContigsFromCommandLine(options.getReferences());
+
       List<SearchVariantsRequest> requests = Lists.newArrayList();
-
-      if (options.isAllContigs()) {
-        VariantSet variantSet =
-            auth.getGenomics(auth.getDefaultFactory()).variantsets().get(datasetId).execute();
-        for (ReferenceBound bound : variantSet.getReferenceBounds()) {
-          String contig = bound.getReferenceName().toLowerCase();
-          if (contig.contains("x") || contig.contains("y")) {
-            // X and Y skew analysis results
-            continue;
-          }
-
-          requests.addAll(getShardedRequests(variantSet.getId(),
-              new Contig(bound.getReferenceName(), 0, bound.getUpperBound()),
-              options.getNumberOfBasesPerShard()));
+      for (Contig contig : contigs) {
+        for (Contig shard : contig.getShards()) {
+          LOG.info("Adding request with " + shard.referenceName + " " + shard.start + " to "
+              + shard.end);
+          requests.add(shard.getVariantsRequest(datasetId));
         }
-
-      } else {
-        requests = getShardedRequests(datasetId, getContigs(options.getReferences()),
-            options.getNumberOfBasesPerShard());
       }
-
-      Collections.shuffle(requests); // Shuffle requests for better backend performance
       return requests;
-    }
-
-    static Iterable<Contig> getContigs(String contigs) {
-      return Iterables.transform(Splitter.on(",").split(contigs), new Function<String, Contig>() {
-
-        @Override
-        public Contig apply(String contigString) {
-          ArrayList<String> contigInfo = newArrayList(Splitter.on(":").split(contigString));
-          return new Contig(contigInfo.get(0), Long.valueOf(contigInfo.get(1)), Long
-              .valueOf(contigInfo.get(2)));
-        }
-
-      });
     }
   }
 
@@ -142,15 +75,9 @@ public interface GenomicsDatasetOptions extends GenomicsOptions {
 
   void setOutput(String output);
 
-  @Description("Comma separated tuples of reference:start:end,... Defaults to " + DEFAULT_REFERNCES)
-  @Default.String(DEFAULT_REFERNCES)
+  @Description("Comma separated tuples of reference:start:end,... Defaults to " + Contig.BRCA1)
+  @Default.String(Contig.BRCA1)
   String getReferences();
 
   void setReferences(String references);
-
-  @Description("Number of bases per shard Defaults to " + DEFAULT_NUMBER_OF_BASES_PER_SHARD)
-  @Default.Long(DEFAULT_NUMBER_OF_BASES_PER_SHARD)
-  long getNumberOfBasesPerShard();
-
-  void setNumberOfBasesPerShard(long numberOfBasesPerShard);
 }
