@@ -24,7 +24,7 @@ Getting started
   Project ID and Google Cloud Storage bucket you made in the first step.
   This command runs the VariantSimilarity pipeline (which runs PCoA on a dataset)::
 
-    java -cp target/googlegenomics-dataflow-java-v1beta2.jar \
+    java -cp target/google-genomics-dataflow-v1beta2-0.1-SNAPSHOT.jar \
       com.google.cloud.genomics.dataflow.pipelines.VariantSimilarity \
       --project=my-project-id \
       --output=gs://my-bucket/output/localtest.txt \
@@ -36,7 +36,7 @@ Getting started
 * To deploy your pipeline (which runs on Google Compute Engine), some additional 
   command line arguments are required::
 
-    java -cp target/googlegenomics-dataflow-java-v1beta2.jar \
+    java -cp target/google-genomics-dataflow-v1beta2-0.1-SNAPSHOT.jar \
       com.google.cloud.genomics.dataflow.pipelines.VariantSimilarity \
       --runner=BlockingDataflowPipelineRunner \
       --project=my-project-id \
@@ -58,7 +58,7 @@ Identity By State (IBS)
   first argument provided in the above command lines. For example, to run Identity by State
   change ``VariantSimilarity`` to ``IdentityByState``::
 
-    java -cp target/googlegenomics-dataflow-java-v1beta2.jar \
+    java -cp target/google-genomics-dataflow-v1beta2-0.1-SNAPSHOT.jar \
       com.google.cloud.genomics.dataflow.pipelines.IdentityByState \
       --project=my-project-id \
       --output=gs://my-bucket/localtest.txt \

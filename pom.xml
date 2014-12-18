@@ -4,10 +4,12 @@
   <modelVersion>4.0.0</modelVersion>
 
   <name>Genomics API dataflow-java</name>
+  <description>Common Java files for Google Genomics and Dataflow integrations.</description>
+  <url>https://github.com/googlegenomics/utils-java</url>
   <groupId>com.google.cloud.genomics</groupId>
-  <artifactId>googlegenomics-dataflow-java</artifactId>
+  <artifactId>google-genomics-dataflow</artifactId>
   <packaging>jar</packaging>
-  <version>v1beta2</version>
+  <version>v1beta2-0.1-SNAPSHOT</version>
 
   <organization>
     <name>Google</name>
@@ -31,6 +33,12 @@
       <timezone>-7</timezone>
     </developer>
     <developer>
+      <id>kwestbrooks</id>
+      <organization>Google</organization>
+      <organizationUrl>http://www.google.com</organizationUrl>
+      <timezone>-7</timezone>
+    </developer>
+    <developer>
       <id>xzhangpeijin</id>
       <name>Peijin Zhang</name>
       <organization>Google</organization>
@@ -39,7 +47,23 @@
     </developer>
   </developers>
 
-  <contributors/>
+  <scm>
+    <connection>scm:git:git@github.com:googlegenomics/dataflow-java.git</connection>
+    <developerConnection>scm:git:git@github.com:googlegenomics/dataflow-java.git</developerConnection>
+    <url>git@github.com:googlegenomics/dataflow-java.git</url>
+    <tag>HEAD</tag>
+  </scm>
+
+  <distributionManagement>
+    <snapshotRepository>
+      <id>ossrh</id>
+      <url>https://oss.sonatype.org/content/repositories/snapshots/</url>
+    </snapshotRepository>
+    <repository>
+      <id>ossrh</id>
+      <url>https://oss.sonatype.org/service/local/staging/deploy/maven2/</url>
+    </repository>
+  </distributionManagement>
 
   <dependencies>
     <!-- Dataflow SDK -->
@@ -169,6 +193,30 @@
     </dependency>
   </dependencies>
 
+  <profiles>
+    <profile>
+      <id>release</id>
+      <build>
+        <plugins>
+          <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-gpg-plugin</artifactId>
+            <version>1.5</version>
+            <executions>
+              <execution>
+                <id>sign-artifacts</id>
+                <phase>verify</phase>
+                <goals>
+                  <goal>sign</goal>
+                </goals>
+              </execution>
+            </executions>
+          </plugin>
+        </plugins>
+      </build>
+    </profile>
+  </profiles>
+
   <build>
     <plugins>
       <plugin>
@@ -179,6 +227,23 @@
           <source>${java.version}</source>
           <target>${java.version}</target>
         </configuration>
+      </plugin>
+
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-release-plugin</artifactId>
+        <version>2.5</version>
+        <configuration>
+          <autoVersionSubmodules>true</autoVersionSubmodules>
+          <releaseProfiles>release</releaseProfiles>
+          <goals>deploy</goals>
+        </configuration>
+      </plugin>
+
+      <plugin>
+        <groupId>org.eluder.coveralls</groupId>
+        <artifactId>coveralls-maven-plugin</artifactId>
+        <version>2.2.0</version>
       </plugin>
 
       <plugin>
