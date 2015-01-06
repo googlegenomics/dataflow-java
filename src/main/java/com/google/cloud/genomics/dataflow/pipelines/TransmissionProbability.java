@@ -51,7 +51,7 @@ public class TransmissionProbability {
 
     GenomicsFactory.OfflineAuth auth = GenomicsOptions.Methods.getGenomicsAuth(options);
     List<SearchVariantsRequest> requests = GenomicsDatasetOptions.Methods.getVariantRequests(
-        options, auth);
+        options, auth, true);
 
     Pipeline p = Pipeline.create(options);
     DataflowWorkarounds.registerGenomicsCoders(p);

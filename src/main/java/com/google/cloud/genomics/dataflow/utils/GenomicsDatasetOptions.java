@@ -37,12 +37,13 @@ public interface GenomicsDatasetOptions extends GenomicsOptions {
 
     // TODO: If needed, add getReadRequests method
     public static List<SearchVariantsRequest> getVariantRequests(GenomicsDatasetOptions options,
-        GenomicsFactory.OfflineAuth auth) throws IOException, GeneralSecurityException {
+        GenomicsFactory.OfflineAuth auth, boolean excludeXY)
+        throws IOException, GeneralSecurityException {
       String datasetId = options.getDatasetId();
       Genomics genomics = auth.getGenomics(auth.getDefaultFactory());
 
       Iterable<Contig> contigs = options.isAllContigs()
-          ? Contig.getContigsInVariantSet(genomics, datasetId, true)
+          ? Contig.getContigsInVariantSet(genomics, datasetId, excludeXY)
           : Contig.parseContigsFromCommandLine(options.getReferences());
 
       List<SearchVariantsRequest> requests = Lists.newArrayList();
