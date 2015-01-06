@@ -53,7 +53,7 @@ public class IdentityByState {
 
     GenomicsFactory.OfflineAuth auth = GenomicsOptions.Methods.getGenomicsAuth(options);
     List<SearchVariantsRequest> requests =
-        GenomicsDatasetOptions.Methods.getVariantRequests(options, auth);
+        GenomicsDatasetOptions.Methods.getVariantRequests(options, auth, true);
 
     Pipeline p = Pipeline.create(options);
     DataflowWorkarounds.registerGenomicsCoders(p);
