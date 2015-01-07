@@ -33,7 +33,7 @@ set](https://cloud.google.com/genomics/data/1000-genomes). Specifically, first
 configure and run the IBS DataFlow pipeline:
 
 ```sh
-    java -cp ../../../target/googlegenomics-dataflow-java-v1beta2.jar \
+    java -cp ../../../target/google-genomics-dataflow-v1beta2-0.2-SNAPSHOT.jar \
     com.google.cloud.genomics.dataflow.pipelines.IdentityByState \
     --runner=BlockingDataflowPipelineRunner \
     --project=my-project-id \
@@ -47,19 +47,21 @@ We used the following BigQuery command to compute the reference bounds in the
 above command:
 
 ```sql
-    select min(start) as start, max(end) as end
-    from [genomics-public-data:1000_genomes.variants]
-    where reference_name IN ("22")
-    limit 10;
-```
+SELECT
+  MIN(start) AS start,
+  MAX(end) AS end
+FROM
+  [genomics-public-data:1000_genomes.variants]
+WHERE
+  reference_name IN ("22")
+  ```
 
 Next, merge the generated
 [`1000genomes_chr22_ibs.tsv`](1000genomes_chr22_ibs.tsv) shards into a single
 file:
 
 ```sh
-    gsutil ls gs://my-bucket/output/ | sort | \
-    xargs -I {} gsutil cat {} >> 1000genomes_chr22_ibs.tsv
+    gsutil cat gs://my-bucket/output/is.tsv* | sort > 1000genomes_chr22_ibs.tsv
 ```
 
 Finally, run [`generate.R`](generate.R) to visualize
@@ -80,25 +82,7 @@ ibsFilename1="1000genomes_chr22_ibs.tsv"
 and each cell of the matrix contains the IBS score of a pair of individuals.
 
 ```{r message=FALSE, comment=NA}
-ibsURL2=
-  paste("https://raw.githubusercontent.com/deflaux/codelabs/qc-codelab/R",
-        "1000Genomes-BRCA1-analysis/data/plinkseqIBS/chr22",
-        "ALL.chr22.integrated_phase1_v3.20101123.snps_indels_svs.genotypes.ibs",
-        sep="/")
 ibsFilename2="1000genomes_phase1_chr22_plinkseq_ibs.tsv"
-download.file(ibsURL2, destfile=ibsFilename2, method="curl")
-```
-
-Check that the input files exist as expected.
-
-```{r message=FALSE, comment=NA}
-CheckFileExists <- function(filename) {
-  if (file.exists(filename) == FALSE) {
-    stop(paste(filename, "does not exist.", sep=" "))
-  }
-}
-CheckFileExists(ibsFilename1)
-CheckFileExists(ibsFilename2)
 ```
 
 ```{r message=FALSE, comment=NA}
@@ -210,3 +194,17 @@ model <- lm(ibsScore.y ~ ibsScore.x, mergedIBS)
 summary(model)
 ```
 
+Compare these results to the pedigree.
+```{r message=FALSE, comment=NA}
+pedigree <- read.delim("ftp://ftp.1000genomes.ebi.ac.uk/vol1/ftp/technical/working/20130606_sample_info/20130606_g1k.ped", as.is=TRUE)
+summary(pedigree)
+
+require(dplyr)
+ibs <- filter(ibsData1, sample1 != sample2)
+ibs_fam <- inner_join(ibs, select(pedigree, Individual.ID, Family.ID), by=c("sample1" = "Individual.ID"))
+ibs_fams <- inner_join(ibs_fam, select(pedigree, Individual.ID, Family.ID), by=c("sample2" = "Individual.ID"))
+```
+```{r ibs-boxplot, fig.align="center", fig.width=10, fig.height=10, message=FALSE, comment=NA}
+boxplot(ibsScore~Family.ID.x == Family.ID.y, data=ibs_fams, main="Identity By State Results compared to Pedigree", 
+    xlab="Individuals in Same Family", ylab="IBS Score")
+```
