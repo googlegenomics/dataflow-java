@@ -67,32 +67,34 @@ PLINK/SEQ](https://raw.githubusercontent.com/deflaux/codelabs/qc-codelab/R/1000G
 
 ## Loading IBS Data in R
 
-`ibsFilename1` contains an N^2 x 3 IBS matrix, where N is the size of the
+`ibsDataFlowFilename` contains an N^2 x 3 IBS matrix, where N is the size of the
 population and each row represents the IBS score for a pair of individuals.
 
 
 ```r
-ibsFilename1="1000genomes_chr22_ibs.tsv"
+ibsDataFlowFilename="1000genomes_chr22_ibs.tsv"
 ```
 
-`ibsFilename2` contains an NxN IBS matrix, where N is the size of the population
+`ibsPlinkSeqFilename` contains an NxN IBS matrix, where N is the size of the population
 and each cell of the matrix contains the IBS score of a pair of individuals.
 
 
 ```r
-ibsFilename2="1000genomes_phase1_chr22_plinkseq_ibs.tsv"
+ibsPlinkSeqFilename="1000genomes_phase1_chr22_plinkseq_ibs.tsv"
 ```
 
 
 ```r
-library(reshape2)
+require(reshape2)
+require(dplyr)
+
 ReadIBSFile <- function(ibsFilename, header=FALSE, rowNames=NULL) {
   ibsData <- read.table(file=ibsFilename, header=header,
                         row.names=rowNames, stringsAsFactors=FALSE)
   return (ibsData)
 }
-ibsData1 <- ReadIBSFile(ibsFilename1)
-ibsData2 <- ReadIBSFile(ibsFilename2, header=TRUE, rowNames=1)
+ibsDataflowData <- ReadIBSFile(ibsDataFlowFilename)
+ibsPlinkSeqData <- ReadIBSFile(ibsPlinkSeqFilename, header=TRUE, rowNames=1)
 ```
 
 Transform the NxN matrix into a N^2 x 3 matrix, where each row represents the
@@ -100,7 +102,7 @@ IBS score for a pair of individuals.
 
 
 ```r
-ibsData2 <- melt(data.matrix(ibsData2))
+ibsPlinkSeqData <- melt(data.matrix(ibsPlinkSeqData))
 ```
 
 Set the column names of the two sets of IBS data consistently.
@@ -110,8 +112,8 @@ Set the column names of the two sets of IBS data consistently.
 ColumnNames <- function(ibsData) {
   colnames(ibsData) <- c("sample1", "sample2", "ibsScore")
 }
-colnames(ibsData1) <- ColumnNames(ibsData1)
-colnames(ibsData2) <- ColumnNames(ibsData2)
+colnames(ibsDataflowData) <- ColumnNames(ibsDataflowData)
+colnames(ibsPlinkSeqData) <- ColumnNames(ibsPlinkSeqData)
 ```
 
 Make the IBS matrix symmetric.
@@ -124,7 +126,7 @@ MakeIBSDataSymmetric <- function(ibsData) {
                                  ibsScore=ibsData$ibsScore)
   ibsData <- rbind(ibsData, ibsPairsMirrored)
 }
-ibsData1 <- MakeIBSDataSymmetric(ibsData1)
+ibsDataflowData <- MakeIBSDataSymmetric(ibsDataflowData)
 ```
 
 ## IBS Heat Map
@@ -135,25 +137,24 @@ Exclude the IBS values for a genome and itself, because those values are always
 
 ```r
 ExcludeDiagonal <- function(ibsData) {
-  ibsData <- subset(ibsData, ibsData$sample1 != ibsData$sample2)
+  ibsData <- filter(ibsData, ibsData$sample1 != ibsData$sample2)
   return (ibsData)
 }
-ibsData2Sample <- ExcludeDiagonal(ibsData2)
+ibsPlinkSeqDataSample <- ExcludeDiagonal(ibsPlinkSeqData)
 ```
 
 Extract the IBS matrix for a random sample of the individuals.
 
 
 ```r
-SampleIBSMatrix <- function(ibsData) {
+SampleIBSMatrix <- function(ibsData, sampleSize=50) {
   individuals <- unique(ibsData$sample1)
-  sampleSize <- 50
   sample <- sample(individuals, sampleSize)
   ibsData <- subset(ibsData, ibsData$sample1 %in% sample)
   ibsData <- subset(ibsData, ibsData$sample2 %in% sample)
   return (ibsData)
 }
-ibsData2Sample <- SampleIBSMatrix(ibsData2Sample)
+ibsPlinkSeqDataSample <- SampleIBSMatrix(ibsPlinkSeqDataSample)
 ```
 
 Draw a heat map based on the sampled IBS scores.
@@ -171,7 +172,7 @@ DrawHeatMap <- function(ibsData) {
                  x="Sample", y="Sample"))
   p
 }
-DrawHeatMap(ibsData2Sample)
+DrawHeatMap(ibsPlinkSeqDataSample)
 ```
 
 <img src="figure/ibs-heat-map-1.png" title="plot of chunk ibs-heat-map" alt="plot of chunk ibs-heat-map" style="display: block; margin: auto;" />
@@ -184,10 +185,9 @@ and report the number of differences.
 
 
 ```r
-mergedIBS <- merge(ibsData1, ibsData2, by = c(colnames(ibsData1)[1:2]))
-diffIBS <- abs(mergedIBS$ibsScore.x - mergedIBS$ibsScore.y) < 1e-6
-mergedDiffIBS <- cbind(mergedIBS, diffIBS)
-colnames(mergedDiffIBS) <- c(colnames(mergedDiffIBS)[1:4], "almostEqualIBS")
+mergedIBS <- inner_join(ibsDataflowData, ibsPlinkSeqData, by = c(colnames(ibsDataflowData)[1:2]))
+mergedDiffIBS <- mutate(mergedIBS, 
+                        almostEqualIBS = abs(mergedIBS$ibsScore.x - mergedIBS$ibsScore.y) < 1e-6)
 nrow(mergedDiffIBS[mergedDiffIBS$almostEqualIBS == FALSE,])
 ```
 
@@ -231,7 +231,10 @@ Multiple R-squared:      1,	Adjusted R-squared:      1
 F-statistic: 1.53e+15 on 1 and 1193554 DF,  p-value: < 2.2e-16
 ```
 
-Compare these results to the pedigree.
+Comparison of IBS Results to Pedigree
+===================================================
+
+First we fetch the pedigree information from the 1,000 Genomes project.
 
 ```r
 pedigree <- read.delim("ftp://ftp.1000genomes.ebi.ac.uk/vol1/ftp/technical/working/20130606_sample_info/20130606_g1k.ped", as.is=TRUE)
@@ -269,16 +272,28 @@ summary(pedigree)
                                       
 ```
 
-```r
-require(dplyr)
-ibs <- filter(ibsData1, sample1 != sample2)
-ibs_fam <- inner_join(ibs, select(pedigree, Individual.ID, Family.ID), by=c("sample1" = "Individual.ID"))
-ibs_fams <- inner_join(ibs_fam, select(pedigree, Individual.ID, Family.ID), by=c("sample2" = "Individual.ID"))
-```
+We add the population and family identifiers to each individual in our pair.
 
 ```r
-boxplot(ibsScore~Family.ID.x == Family.ID.y, data=ibs_fams, main="Identity By State Results compared to Pedigree", 
-    xlab="Individuals in Same Family", ylab="IBS Score")
+ibs_sample1_ped <- inner_join(ExcludeDiagonal(ibsDataflowData),
+                              select(pedigree, Individual.ID, Family.ID, Population),
+                              by=c("sample1" = "Individual.ID"))
+ibs_both_ped <- inner_join(ibs_sample1_ped,
+                           select(pedigree, Individual.ID, Family.ID, Population),
+                           by=c("sample2" = "Individual.ID"))
+ibs_relationship <- mutate(ibs_both_ped,
+                           relationship=ifelse(Family.ID.x == Family.ID.y,
+                                               "Same Family",
+                                               ifelse(Population.x == Population.y,
+                                                      "Same Population",
+                                                      "None")))
+```
+
+And plot the scores for pairs by their relationship type:
+
+```r
+boxplot(ibsScore~relationship, data=ibs_relationship, main="Identity By State Results compared to Pedigree", 
+    xlab="Relationship Type Between the Pair of Individuals", ylab="Identity By State Score")
 ```
 
 <img src="figure/ibs-boxplot-1.png" title="plot of chunk ibs-boxplot" alt="plot of chunk ibs-boxplot" style="display: block; margin: auto;" />
