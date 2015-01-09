@@ -185,14 +185,16 @@ and report the number of differences.
 
 
 ```r
-mergedIBS <- inner_join(ibsDataflowData, ibsPlinkSeqData, by = c(colnames(ibsDataflowData)[1:2]))
+mergedIBS <- inner_join(ExcludeDiagonal(ibsDataflowData),
+                        ExcludeDiagonal(ibsPlinkSeqData),
+                        by = c(colnames(ibsDataflowData)[1:2]))
 mergedDiffIBS <- mutate(mergedIBS, 
-                        almostEqualIBS = abs(mergedIBS$ibsScore.x - mergedIBS$ibsScore.y) < 1e-6)
+                        almostEqualIBS = abs(mergedIBS$ibsScore.x - mergedIBS$ibsScore.y) < 1e-5)
 nrow(mergedDiffIBS[mergedDiffIBS$almostEqualIBS == FALSE,])
 ```
 
 ```
-[1] 557454
+[1] 1032
 ```
 
 Plot the two IBS matrices to show their linear relationship.
@@ -217,18 +219,18 @@ lm(formula = ibsScore.y ~ ibsScore.x, data = mergedIBS)
 
 Residuals:
        Min         1Q     Median         3Q        Max 
--1.907e-05 -9.786e-07 -6.081e-07  1.067e-06  4.186e-06 
+-1.908e-05 -9.064e-07 -8.521e-07  1.116e-06  1.207e-06 
 
 Coefficients:
-             Estimate Std. Error   t value Pr(>|t|)    
-(Intercept) 5.334e-07  1.427e-09 3.737e+02   <2e-16 ***
-ibsScore.x  1.000e+00  2.557e-08 3.911e+07   <2e-16 ***
+              Estimate Std. Error   t value Pr(>|t|)    
+(Intercept) -1.266e-06  8.181e-09    -154.8   <2e-16 ***
+ibsScore.x   1.000e+00  2.279e-07 4388578.9   <2e-16 ***
 ---
 Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
 
-Residual standard error: 1.158e-06 on 1193554 degrees of freedom
+Residual standard error: 1.136e-06 on 1191370 degrees of freedom
 Multiple R-squared:      1,	Adjusted R-squared:      1 
-F-statistic: 1.53e+15 on 1 and 1193554 DF,  p-value: < 2.2e-16
+F-statistic: 1.926e+13 on 1 and 1191370 DF,  p-value: < 2.2e-16
 ```
 
 Comparison of IBS Results to Pedigree

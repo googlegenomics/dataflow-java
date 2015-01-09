@@ -177,9 +177,11 @@ PLINK/SEQ](https://raw.githubusercontent.com/deflaux/codelabs/qc-codelab/R/1000G
 and report the number of differences.
 
 ```{r message=FALSE, comment=NA}
-mergedIBS <- inner_join(ibsDataflowData, ibsPlinkSeqData, by = c(colnames(ibsDataflowData)[1:2]))
+mergedIBS <- inner_join(ExcludeDiagonal(ibsDataflowData),
+                        ExcludeDiagonal(ibsPlinkSeqData),
+                        by = c(colnames(ibsDataflowData)[1:2]))
 mergedDiffIBS <- mutate(mergedIBS, 
-                        almostEqualIBS = abs(mergedIBS$ibsScore.x - mergedIBS$ibsScore.y) < 1e-6)
+                        almostEqualIBS = abs(mergedIBS$ibsScore.x - mergedIBS$ibsScore.y) < 1e-5)
 nrow(mergedDiffIBS[mergedDiffIBS$almostEqualIBS == FALSE,])
 ```
 
