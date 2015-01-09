@@ -29,7 +29,7 @@ set](https://cloud.google.com/genomics/data/1000-genomes). Specifically, first
 configure and run the IBS DataFlow pipeline:
 
 ```sh
-    java -cp ../../../target/googlegenomics-dataflow-java-v1beta2.jar \
+    java -cp ../../../target/google-genomics-dataflow-v1beta2-0.2-SNAPSHOT.jar \
     com.google.cloud.genomics.dataflow.pipelines.IdentityByState \
     --runner=BlockingDataflowPipelineRunner \
     --project=my-project-id \
@@ -43,19 +43,21 @@ We used the following BigQuery command to compute the reference bounds in the
 above command:
 
 ```sql
-    select min(start) as start, max(end) as end
-    from [genomics-public-data:1000_genomes.variants]
-    where reference_name IN ("22")
-    limit 10;
-```
+SELECT
+  MIN(start) AS start,
+  MAX(end) AS end
+FROM
+  [genomics-public-data:1000_genomes.variants]
+WHERE
+  reference_name IN ("22")
+  ```
 
 Next, merge the generated
 [`1000genomes_chr22_ibs.tsv`](1000genomes_chr22_ibs.tsv) shards into a single
 file:
 
 ```sh
-    gsutil ls gs://my-bucket/output/ | sort | \
-    xargs -I {} gsutil cat {} >> 1000genomes_chr22_ibs.tsv
+    gsutil cat gs://my-bucket/output/is.tsv* | sort > 1000genomes_chr22_ibs.tsv
 ```
 
 Finally, run [`generate.R`](generate.R) to visualize
@@ -65,51 +67,34 @@ PLINK/SEQ](https://raw.githubusercontent.com/deflaux/codelabs/qc-codelab/R/1000G
 
 ## Loading IBS Data in R
 
-`ibsFilename1` contains an N^2 x 3 IBS matrix, where N is the size of the
+`ibsDataFlowFilename` contains an N^2 x 3 IBS matrix, where N is the size of the
 population and each row represents the IBS score for a pair of individuals.
 
 
 ```r
-ibsFilename1="1000genomes_chr22_ibs.tsv"
+ibsDataFlowFilename="1000genomes_chr22_ibs.tsv"
 ```
 
-`ibsFilename2` contains an NxN IBS matrix, where N is the size of the population
+`ibsPlinkSeqFilename` contains an NxN IBS matrix, where N is the size of the population
 and each cell of the matrix contains the IBS score of a pair of individuals.
 
 
 ```r
-ibsURL2=
-  paste("https://raw.githubusercontent.com/deflaux/codelabs/qc-codelab/R",
-        "1000Genomes-BRCA1-analysis/data/plinkseqIBS/chr22",
-        "ALL.chr22.integrated_phase1_v3.20101123.snps_indels_svs.genotypes.ibs",
-        sep="/")
-ibsFilename2="1000genomes_phase1_chr22_plinkseq_ibs.tsv"
-download.file(ibsURL2, destfile=ibsFilename2, method="curl")
-```
-
-Check that the input files exist as expected.
-
-
-```r
-CheckFileExists <- function(filename) {
-  if (file.exists(filename) == FALSE) {
-    stop(paste(filename, "does not exist.", sep=" "))
-  }
-}
-CheckFileExists(ibsFilename1)
-CheckFileExists(ibsFilename2)
+ibsPlinkSeqFilename="1000genomes_phase1_chr22_plinkseq_ibs.tsv"
 ```
 
 
 ```r
-library(reshape2)
+require(reshape2)
+require(dplyr)
+
 ReadIBSFile <- function(ibsFilename, header=FALSE, rowNames=NULL) {
   ibsData <- read.table(file=ibsFilename, header=header,
                         row.names=rowNames, stringsAsFactors=FALSE)
   return (ibsData)
 }
-ibsData1 <- ReadIBSFile(ibsFilename1)
-ibsData2 <- ReadIBSFile(ibsFilename2, header=TRUE, rowNames=1)
+ibsDataflowData <- ReadIBSFile(ibsDataFlowFilename)
+ibsPlinkSeqData <- ReadIBSFile(ibsPlinkSeqFilename, header=TRUE, rowNames=1)
 ```
 
 Transform the NxN matrix into a N^2 x 3 matrix, where each row represents the
@@ -117,7 +102,7 @@ IBS score for a pair of individuals.
 
 
 ```r
-ibsData2 <- melt(data.matrix(ibsData2))
+ibsPlinkSeqData <- melt(data.matrix(ibsPlinkSeqData))
 ```
 
 Set the column names of the two sets of IBS data consistently.
@@ -127,8 +112,8 @@ Set the column names of the two sets of IBS data consistently.
 ColumnNames <- function(ibsData) {
   colnames(ibsData) <- c("sample1", "sample2", "ibsScore")
 }
-colnames(ibsData1) <- ColumnNames(ibsData1)
-colnames(ibsData2) <- ColumnNames(ibsData2)
+colnames(ibsDataflowData) <- ColumnNames(ibsDataflowData)
+colnames(ibsPlinkSeqData) <- ColumnNames(ibsPlinkSeqData)
 ```
 
 Make the IBS matrix symmetric.
@@ -141,7 +126,7 @@ MakeIBSDataSymmetric <- function(ibsData) {
                                  ibsScore=ibsData$ibsScore)
   ibsData <- rbind(ibsData, ibsPairsMirrored)
 }
-ibsData1 <- MakeIBSDataSymmetric(ibsData1)
+ibsDataflowData <- MakeIBSDataSymmetric(ibsDataflowData)
 ```
 
 ## IBS Heat Map
@@ -152,25 +137,24 @@ Exclude the IBS values for a genome and itself, because those values are always
 
 ```r
 ExcludeDiagonal <- function(ibsData) {
-  ibsData <- subset(ibsData, ibsData$sample1 != ibsData$sample2)
+  ibsData <- filter(ibsData, ibsData$sample1 != ibsData$sample2)
   return (ibsData)
 }
-ibsData2Sample <- ExcludeDiagonal(ibsData2)
+ibsPlinkSeqDataSample <- ExcludeDiagonal(ibsPlinkSeqData)
 ```
 
 Extract the IBS matrix for a random sample of the individuals.
 
 
 ```r
-SampleIBSMatrix <- function(ibsData) {
+SampleIBSMatrix <- function(ibsData, sampleSize=50) {
   individuals <- unique(ibsData$sample1)
-  sampleSize <- 50
   sample <- sample(individuals, sampleSize)
   ibsData <- subset(ibsData, ibsData$sample1 %in% sample)
   ibsData <- subset(ibsData, ibsData$sample2 %in% sample)
   return (ibsData)
 }
-ibsData2Sample <- SampleIBSMatrix(ibsData2Sample)
+ibsPlinkSeqDataSample <- SampleIBSMatrix(ibsPlinkSeqDataSample)
 ```
 
 Draw a heat map based on the sampled IBS scores.
@@ -188,7 +172,7 @@ DrawHeatMap <- function(ibsData) {
                  x="Sample", y="Sample"))
   p
 }
-DrawHeatMap(ibsData2Sample)
+DrawHeatMap(ibsPlinkSeqDataSample)
 ```
 
 <img src="figure/ibs-heat-map-1.png" title="plot of chunk ibs-heat-map" alt="plot of chunk ibs-heat-map" style="display: block; margin: auto;" />
@@ -201,15 +185,14 @@ and report the number of differences.
 
 
 ```r
-mergedIBS <- merge(ibsData1, ibsData2, by = c(colnames(ibsData1)[1:2]))
-diffIBS <- abs(mergedIBS$ibsScore.x - mergedIBS$ibsScore.y) < 1e-6
-mergedDiffIBS <- cbind(mergedIBS, diffIBS)
-colnames(mergedDiffIBS) <- c(colnames(mergedDiffIBS)[1:4], "almostEqualIBS")
+mergedIBS <- inner_join(ibsDataflowData, ibsPlinkSeqData, by = c(colnames(ibsDataflowData)[1:2]))
+mergedDiffIBS <- mutate(mergedIBS, 
+                        almostEqualIBS = abs(mergedIBS$ibsScore.x - mergedIBS$ibsScore.y) < 1e-6)
 nrow(mergedDiffIBS[mergedDiffIBS$almostEqualIBS == FALSE,])
 ```
 
 ```
-[1] 7340
+[1] 557454
 ```
 
 Plot the two IBS matrices to show their linear relationship.
@@ -234,17 +217,83 @@ lm(formula = ibsScore.y ~ ibsScore.x, data = mergedIBS)
 
 Residuals:
        Min         1Q     Median         3Q        Max 
--8.160e-06 -1.350e-08  1.720e-08  4.800e-08  5.301e-07 
+-1.907e-05 -9.786e-07 -6.081e-07  1.067e-06  4.186e-06 
 
 Coefficients:
              Estimate Std. Error   t value Pr(>|t|)    
-(Intercept) 2.734e-07  3.799e-10 7.198e+02   <2e-16 ***
-ibsScore.x  1.000e+00  6.805e-09 1.470e+08   <2e-16 ***
+(Intercept) 5.334e-07  1.427e-09 3.737e+02   <2e-16 ***
+ibsScore.x  1.000e+00  2.557e-08 3.911e+07   <2e-16 ***
 ---
 Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
 
-Residual standard error: 3.083e-07 on 1193554 degrees of freedom
+Residual standard error: 1.158e-06 on 1193554 degrees of freedom
 Multiple R-squared:      1,	Adjusted R-squared:      1 
-F-statistic: 2.16e+16 on 1 and 1193554 DF,  p-value: < 2.2e-16
+F-statistic: 1.53e+15 on 1 and 1193554 DF,  p-value: < 2.2e-16
 ```
 
+Comparison of IBS Results to Pedigree
+===================================================
+
+First we fetch the pedigree information from the 1,000 Genomes project.
+
+```r
+pedigree <- read.delim("ftp://ftp.1000genomes.ebi.ac.uk/vol1/ftp/technical/working/20130606_sample_info/20130606_g1k.ped", as.is=TRUE)
+summary(pedigree)
+```
+
+```
+  Family.ID         Individual.ID      Paternal.ID       
+ Length:3501        Length:3501        Length:3501       
+ Class :character   Class :character   Class :character  
+ Mode  :character   Mode  :character   Mode  :character  
+                                                         
+                                                         
+                                                         
+ Maternal.ID            Gender        Phenotype  Population       
+ Length:3501        Min.   :1.000   Min.   :0   Length:3501       
+ Class :character   1st Qu.:1.000   1st Qu.:0   Class :character  
+ Mode  :character   Median :2.000   Median :0   Mode  :character  
+                    Mean   :1.503   Mean   :0                     
+                    3rd Qu.:2.000   3rd Qu.:0                     
+                    Max.   :2.000   Max.   :0                     
+ Relationship         Siblings         Second.Order      
+ Length:3501        Length:3501        Length:3501       
+ Class :character   Class :character   Class :character  
+ Mode  :character   Mode  :character   Mode  :character  
+                                                         
+                                                         
+                                                         
+ Third.Order        Other.Comments    
+ Length:3501        Length:3501       
+ Class :character   Class :character  
+ Mode  :character   Mode  :character  
+                                      
+                                      
+                                      
+```
+
+We add the population and family identifiers to each individual in our pair.
+
+```r
+ibs_sample1_ped <- inner_join(ExcludeDiagonal(ibsDataflowData),
+                              select(pedigree, Individual.ID, Family.ID, Population),
+                              by=c("sample1" = "Individual.ID"))
+ibs_both_ped <- inner_join(ibs_sample1_ped,
+                           select(pedigree, Individual.ID, Family.ID, Population),
+                           by=c("sample2" = "Individual.ID"))
+ibs_relationship <- mutate(ibs_both_ped,
+                           relationship=ifelse(Family.ID.x == Family.ID.y,
+                                               "Same Family",
+                                               ifelse(Population.x == Population.y,
+                                                      "Same Population",
+                                                      "None")))
+```
+
+And plot the scores for pairs by their relationship type:
+
+```r
+boxplot(ibsScore~relationship, data=ibs_relationship, main="Identity By State Results compared to Pedigree", 
+    xlab="Relationship Type Between the Pair of Individuals", ylab="Identity By State Score")
+```
+
+<img src="figure/ibs-boxplot-1.png" title="plot of chunk ibs-boxplot" alt="plot of chunk ibs-boxplot" style="display: block; margin: auto;" />
