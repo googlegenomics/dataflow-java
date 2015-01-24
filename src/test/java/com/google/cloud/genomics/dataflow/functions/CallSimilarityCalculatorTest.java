@@ -62,10 +62,10 @@ public class CallSimilarityCalculatorTest {
     calls.add(DataUtils.makeCall(H2, 1, 0, 1));
     calls.add(DataUtils.makeCall(H3, 1, 0, 0));
 
-    variants.add(DataUtils.makeVariant(calls.get(0), calls.get(1), calls.get(2)));
-    variants.add(DataUtils.makeVariant(calls.get(0), calls.get(3), calls.get(4)));
-    variants.add(DataUtils.makeVariant(calls.get(0), calls.get(5), calls.get(6)));
-    variants.add(DataUtils.makeVariant(calls.get(0), calls.get(7), calls.get(8)));
+    variants.add(DataUtils.makeSimpleVariant(calls.get(0), calls.get(1), calls.get(2)));
+    variants.add(DataUtils.makeSimpleVariant(calls.get(0), calls.get(3), calls.get(4)));
+    variants.add(DataUtils.makeSimpleVariant(calls.get(0), calls.get(5), calls.get(6)));
+    variants.add(DataUtils.makeSimpleVariant(calls.get(0), calls.get(7), calls.get(8)));
   }
 
   @Test
