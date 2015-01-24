@@ -1,11 +1,11 @@
 /*
  * Copyright (C) 2014 Google Inc.
- *
+ * 
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
- *
+ * 
  * http://www.apache.org/licenses/LICENSE-2.0
- *
+ * 
  * Unless required by applicable law or agreed to in writing, software distributed under the License
  * is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express
  * or implied. See the License for the specific language governing permissions and limitations under
@@ -37,14 +37,14 @@ public interface GenomicsDatasetOptions extends GenomicsOptions {
 
     // TODO: If needed, add getReadRequests method
     public static List<SearchVariantsRequest> getVariantRequests(GenomicsDatasetOptions options,
-        GenomicsFactory.OfflineAuth auth, boolean excludeXY)
-        throws IOException, GeneralSecurityException {
+        GenomicsFactory.OfflineAuth auth, boolean excludeXY) throws IOException,
+        GeneralSecurityException {
       String datasetId = options.getDatasetId();
       Genomics genomics = auth.getGenomics(auth.getDefaultFactory());
 
-      Iterable<Contig> contigs = options.isAllContigs()
-          ? Contig.getContigsInVariantSet(genomics, datasetId, excludeXY)
-          : Contig.parseContigsFromCommandLine(options.getReferences());
+      Iterable<Contig> contigs =
+          options.isAllContigs() ? Contig.getContigsInVariantSet(genomics, datasetId, excludeXY)
+              : Contig.parseContigsFromCommandLine(options.getReferences());
 
       List<SearchVariantsRequest> requests = Lists.newArrayList();
       for (Contig contig : contigs) {
@@ -56,6 +56,14 @@ public interface GenomicsDatasetOptions extends GenomicsOptions {
       }
       return requests;
     }
+
+    public static void validateOptions(GenomicsDatasetOptions options) {
+      int binSize = options.getBinSize();
+      if (binSize <= 0) {
+        throw new IllegalArgumentException("binSize must be greater than zero");
+      }
+    }
+
   }
 
   @Description("The ID of the Google Genomics dataset this pipeline is working with. "
@@ -81,4 +89,18 @@ public interface GenomicsDatasetOptions extends GenomicsOptions {
   String getReferences();
 
   void setReferences(String references);
+
+  @Description("If querying a dataset in Genome VCF (gVCF) format, specify this "
+      + "flag so that the pipeline correctly takes into account reference-matching "
+      + "block records which overlap variants within the dataset.")
+  @Default.Boolean(false)
+  boolean getIsGvcf();
+
+  void setIsGvcf(boolean isGvcf);
+
+  @Description("Genomic window \"bin\" size to use for gVCF data when joining block-records with variants.")
+  @Default.Integer(1000)
+  int getBinSize();
+
+  void setBinSize(int binSize);
 }
