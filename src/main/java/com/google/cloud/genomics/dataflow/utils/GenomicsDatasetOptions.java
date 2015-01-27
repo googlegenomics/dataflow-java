@@ -19,6 +19,7 @@ import com.google.cloud.dataflow.sdk.options.Default;
 import com.google.cloud.dataflow.sdk.options.Description;
 import com.google.cloud.genomics.utils.Contig;
 import com.google.cloud.genomics.utils.GenomicsFactory;
+import com.google.common.base.Preconditions;
 import com.google.common.collect.Lists;
 
 import java.io.IOException;
@@ -58,10 +59,7 @@ public interface GenomicsDatasetOptions extends GenomicsOptions {
     }
 
     public static void validateOptions(GenomicsDatasetOptions options) {
-      int binSize = options.getBinSize();
-      if (binSize <= 0) {
-        throw new IllegalArgumentException("binSize must be greater than zero");
-      }
+      Preconditions.checkState(0 < options.getBinSize(), "binSize must be greater than zero");
     }
 
   }

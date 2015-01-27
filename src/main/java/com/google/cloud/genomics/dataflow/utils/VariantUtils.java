@@ -13,29 +13,31 @@
  */
 package com.google.cloud.genomics.dataflow.utils;
 
+import java.util.List;
+
 import com.google.api.services.genomics.model.Variant;
+import com.google.common.base.Function;
+import com.google.common.base.Predicate;
+import com.google.common.base.Predicates;
+import com.google.common.collect.Iterables;
 
 public class VariantUtils {
 
-  public static boolean isSnp(Variant variant) {
-    if (!isVariant(variant) || 1 != variant.getReferenceBases().length()) {
-      return false;
-    }
-    
-    for (String alt : variant.getAlternateBases()) {
-      if(1 != alt.length()) {
-        return false;
-      }
-    }
-    
-    return true;
-  }
-
   public static boolean isVariant(Variant variant) {
-    if (null == variant.getAlternateBases() || variant.getAlternateBases().isEmpty()) {
-      return false;
-    }
-    return true;
+    List<String> alternateBases = variant.getAlternateBases();
+    return !(null == alternateBases || alternateBases.isEmpty());
   }
 
+  public static boolean isSnp(Variant variant) {
+    return isVariant(variant) && LENGTH_IS_1.apply(variant.getReferenceBases())
+        && Iterables.all(variant.getAlternateBases(), LENGTH_IS_1);
+  }
+
+  private static final Predicate<String> LENGTH_IS_1 = Predicates.compose(Predicates.equalTo(1),
+      new Function<String, Integer>() {
+        @Override
+        public Integer apply(String string) {
+          return string.length();
+        }
+      });
 }
