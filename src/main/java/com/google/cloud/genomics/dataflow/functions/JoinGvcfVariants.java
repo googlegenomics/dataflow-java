@@ -13,38 +13,96 @@
  */
 package com.google.cloud.genomics.dataflow.functions;
 
-import java.util.ArrayList;
+import static com.google.common.collect.Lists.newArrayList;
+
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.Iterator;
+import java.util.LinkedList;
 import java.util.List;
 
 import com.google.api.client.util.Lists;
+import com.google.api.services.genomics.model.SearchVariantsRequest;
 import com.google.api.services.genomics.model.Variant;
 import com.google.cloud.dataflow.sdk.transforms.DoFn;
+import com.google.cloud.dataflow.sdk.transforms.GroupByKey;
+import com.google.cloud.dataflow.sdk.transforms.ParDo;
 import com.google.cloud.dataflow.sdk.values.KV;
+import com.google.cloud.dataflow.sdk.values.PCollection;
+import com.google.cloud.genomics.dataflow.readers.VariantReader;
 import com.google.cloud.genomics.dataflow.utils.GenomicsDatasetOptions;
 import com.google.cloud.genomics.dataflow.utils.VariantUtils;
+import com.google.cloud.genomics.utils.GenomicsFactory;
+import com.google.common.base.Preconditions;
 
 /**
  * The transforms in this class convert data in Genome VCF (gVCF) format to variant-only VCF data
- * with calls from block-records merged into the variants with which they overlap.  
+ * with calls from block-records merged into the variants with which they overlap.
  * 
- * This is currently done only for SNP variants.  Indels and structural variants are left as-is.
+ * This is currently done only for SNP variants. Indels and structural variants are left as-is.
  */
 public class JoinGvcfVariants {
 
-  @SuppressWarnings("serial")
-  public static class BinVariants extends DoFn<Variant, KV<KV<String, Integer>, Variant>> {
+  public static final String GVCF_VARIANT_FIELDS =
+      "nextPageToken,variants(referenceName,start,end,referenceBases,alternateBases,calls(genotype,callSetName))";
 
-    public int getStartBin(int binSize, Variant variant) {
+  private static final List<String> REQUIRED_FIELDS = newArrayList("nextPageToken",
+      "referenceName", "start", "end", "referenceBases", "alternateBases");
+
+  /**
+   * Use this PTransform for correct handling of gVCF data in DataFlow jobs that consider not only
+   * calls that have the variant but also those that match the reference at that variant position.
+   * 
+   * All variant fields will be returned.
+   * 
+   * @param input
+   * @param auth
+   * @return
+   */
+  public static PCollection<Variant> joinGvcfVariantsTransform(
+      PCollection<SearchVariantsRequest> input, GenomicsFactory.OfflineAuth auth) {
+    return joinGvcfVariants(input, auth, null);
+  }
+
+  /**
+   * Use this PTransform for correct handling of gVCF data in DataFlow jobs that consider not only
+   * calls that have the variant but also those that match the reference at that variant position.
+   * 
+   * @param input
+   * @param auth
+   * @param fields Fields to be returned by the partial response.
+   * @return
+   */
+  public static PCollection<Variant> joinGvcfVariantsTransform(
+      PCollection<SearchVariantsRequest> input, GenomicsFactory.OfflineAuth auth, String fields) {
+    for (String field : REQUIRED_FIELDS) {
+      Preconditions.checkState(fields.contains(field), "Required field missing: " + field
+          + "Add this field to the list of Variants fields returned in the partial response.");
+    }
+    return joinGvcfVariants(input, auth, fields);
+  }
+
+  private static PCollection<Variant> joinGvcfVariants(PCollection<SearchVariantsRequest> input,
+      GenomicsFactory.OfflineAuth auth, String fields) {
+    return input
+        .apply(ParDo.named(VariantReader.class.getSimpleName()).of(new VariantReader(auth, fields)))
+        .apply(ParDo.of(new JoinGvcfVariants.BinVariants()))
+        // TODO check that windowing function is not splitting these groups
+        .apply(GroupByKey.<KV<String, Long>, Variant>create())
+        .apply(ParDo.of(new JoinGvcfVariants.MergeVariants()));
+  }
+
+  @SuppressWarnings("serial")
+  public static class BinVariants extends DoFn<Variant, KV<KV<String, Long>, Variant>> {
+
+    public long getStartBin(int binSize, Variant variant) {
       // Round down to the nearest integer
-      return (int) (variant.getStart() / binSize);
+      return Math.round(Math.floor(variant.getStart() / binSize));
     }
 
-    public int getEndBin(int binSize, Variant variant) {
+    public long getEndBin(int binSize, Variant variant) {
       // Round down to the nearest integer
-      return (int) (variant.getEnd() / binSize);
+      return Math.round(Math.floor(variant.getEnd() / binSize));
     }
 
     @Override
@@ -52,25 +110,23 @@ public class JoinGvcfVariants {
       GenomicsDatasetOptions options =
           context.getPipelineOptions().as(GenomicsDatasetOptions.class);
       Variant variant = context.element();
-      int startBin = getStartBin(options.getBinSize(), variant);
-      int endBin =
-          VariantUtils.isVariant(variant) ? startBin : getEndBin(options.getBinSize(), variant);
-      for (int bin = startBin; bin <= endBin; bin++) {
+      for (long startBin = getStartBin(options.getBinSize(), variant), endBin =
+          VariantUtils.isVariant(variant) ? startBin : getEndBin(options.getBinSize(), variant), bin =
+          startBin; bin <= endBin; bin++) {
         context.output(KV.of(KV.of(variant.getReferenceName(), bin), variant));
       }
     }
   }
 
   @SuppressWarnings("serial")
-  public static class MergeVariants extends
-      DoFn<KV<KV<String, Integer>, Iterable<Variant>>, Variant> {
+  public static class MergeVariants extends DoFn<KV<KV<String, Long>, Iterable<Variant>>, Variant> {
 
     @Override
     public void processElement(ProcessContext context) {
 
       // The upper bound on number of variants in the iterable is dependent upon the binSize
       // used in the prior step to construct the key.
-      KV<KV<String, Integer>, Iterable<Variant>> kv = context.element();
+      KV<KV<String, Long>, Iterable<Variant>> kv = context.element();
 
       // Sort by start position descending and ensure that if a variant
       // and a ref-matching block are at the same position, the
@@ -80,7 +136,7 @@ public class JoinGvcfVariants {
 
       // The upper bound on potential overlaps is the sample size plus the number of
       // block records that occur between actual variants.
-      List<Variant> blockRecords = new ArrayList<Variant>();
+      List<Variant> blockRecords = new LinkedList<Variant>();
 
       for (Variant record : records) {
         if (VariantUtils.isVariant(record)) {
@@ -127,10 +183,7 @@ public class JoinGvcfVariants {
   }
 
   public static boolean isOverlapping(Variant blockRecord, Variant variant) {
-    if (blockRecord.getStart() <= variant.getStart()
-        && blockRecord.getEnd() >= variant.getStart() + 1) {
-      return true;
-    }
-    return false;
+    return (blockRecord.getStart() <= variant.getStart() && blockRecord.getEnd() >= variant
+        .getStart() + 1);
   }
 }

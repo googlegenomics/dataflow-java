@@ -33,12 +33,9 @@ public class DataUtils {
 
   public static Variant makeVariant(String referenceName, long start, long end,
       String referenceBases, List<String> alternateBases, Call... calls) {
-    Variant variant = new Variant();
-    variant.setReferenceName(referenceName);
-    variant.setStart(start);
-    variant.setEnd(end);
-    variant.setReferenceBases(referenceBases);
-    variant.setAlternateBases(alternateBases);
+    Variant variant =
+        new Variant().setReferenceName(referenceName).setStart(start).setEnd(end)
+            .setReferenceBases(referenceBases).setAlternateBases(alternateBases);
     if (null != calls) {
       variant.setCalls(newArrayList(calls));
     }
