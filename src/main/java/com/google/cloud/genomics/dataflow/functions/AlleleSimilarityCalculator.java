@@ -58,7 +58,7 @@ public class AlleleSimilarityCalculator extends
     CallSimilarityCalculator callSimilarityCalculator =
         callSimilarityCalculatorFactory.get(isReferenceMajor(variant));
     FluentIterable<KV<Call, Call>> pairs =
-        PairGenerator.<Call, ImmutableList<Call>>allPairs(getSamplesWithVariant(variant));
+        PairGenerator.<Call, ImmutableList<Call>>allPairs(getSamplesWithVariant(variant), false);
     for (KV<Call, Call> pair : pairs) {
       accumulateCallSimilarity(callSimilarityCalculator, pair.getKey(), pair.getValue());
     }
@@ -97,7 +97,7 @@ public class AlleleSimilarityCalculator extends
       for (Integer i : call.getGenotype()) {
         if (i == 0) {
           ++referenceAlleles;
-        } else {
+        } else if (i > 0) {
           ++alternateAlleles;
         }
       }

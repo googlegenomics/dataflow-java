@@ -123,16 +123,10 @@ public class CallSimilarityCalculatorTest {
     Map<KV<String, String>, KV<Double, Integer>> fnOutputMap =
         calculatorOutputAsMap(new SharedAllelesRatioCalculatorFactory());
 
-    assertEquals(fnOutputMap.get(KV.of(H1, H1)).getKey(), 4.0, DELTA);
-    assertEquals(fnOutputMap.get(KV.of(H2, H2)).getKey(), 4.0, DELTA);
-    assertEquals(fnOutputMap.get(KV.of(H3, H3)).getKey(), 4.0, DELTA);
     assertEquals(fnOutputMap.get(KV.of(H1, H2)).getKey(), 0.5 + 1.0 / 3.0, DELTA);
     assertEquals(fnOutputMap.get(KV.of(H1, H3)).getKey(), 1.0 + 1.0 / 3.0, DELTA);
     assertEquals(fnOutputMap.get(KV.of(H2, H3)).getKey(), 1.0 + 2.0 / 3.0, DELTA);
 
-    assertEquals(4, fnOutputMap.get(KV.of(H1, H1)).getValue().intValue());
-    assertEquals(4, fnOutputMap.get(KV.of(H2, H2)).getValue().intValue());
-    assertEquals(4, fnOutputMap.get(KV.of(H3, H3)).getValue().intValue());
     assertEquals(4, fnOutputMap.get(KV.of(H1, H2)).getValue().intValue());
     assertEquals(4, fnOutputMap.get(KV.of(H1, H3)).getValue().intValue());
     assertEquals(4, fnOutputMap.get(KV.of(H2, H3)).getValue().intValue());
@@ -143,16 +137,10 @@ public class CallSimilarityCalculatorTest {
     Map<KV<String, String>, KV<Double, Integer>> fnOutputMap =
         calculatorOutputAsMap(new SharedMinorAllelesCalculatorFactory());
 
-    assertEquals(4.0, fnOutputMap.get(KV.of(H1, H1)).getKey(), DELTA);
-    assertEquals(4.0, fnOutputMap.get(KV.of(H2, H2)).getKey(), DELTA);
-    assertEquals(4.0, fnOutputMap.get(KV.of(H3, H3)).getKey(), DELTA);
     assertEquals(0.0, fnOutputMap.get(KV.of(H1, H2)).getKey(), DELTA);
     assertEquals(0.0, fnOutputMap.get(KV.of(H1, H3)).getKey(), DELTA);
     assertEquals(2.0, fnOutputMap.get(KV.of(H2, H3)).getKey(), DELTA);
 
-    assertEquals(4, fnOutputMap.get(KV.of(H1, H1)).getValue().intValue());
-    assertEquals(4, fnOutputMap.get(KV.of(H2, H2)).getValue().intValue());
-    assertEquals(4, fnOutputMap.get(KV.of(H3, H3)).getValue().intValue());
     assertEquals(4, fnOutputMap.get(KV.of(H1, H2)).getValue().intValue());
     assertEquals(4, fnOutputMap.get(KV.of(H1, H3)).getValue().intValue());
     assertEquals(4, fnOutputMap.get(KV.of(H2, H3)).getValue().intValue());
