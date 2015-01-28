@@ -31,6 +31,9 @@ import org.junit.runners.JUnit4;
 import com.google.api.services.genomics.model.Call;
 import com.google.api.services.genomics.model.Variant;
 import com.google.cloud.dataflow.sdk.Pipeline;
+import com.google.cloud.dataflow.sdk.coders.BigEndianLongCoder;
+import com.google.cloud.dataflow.sdk.coders.KvCoder;
+import com.google.cloud.dataflow.sdk.coders.StringUtf8Coder;
 import com.google.cloud.dataflow.sdk.testing.DataflowAssert;
 import com.google.cloud.dataflow.sdk.testing.TestPipeline;
 import com.google.cloud.dataflow.sdk.transforms.Create;
@@ -40,6 +43,7 @@ import com.google.cloud.dataflow.sdk.transforms.ParDo;
 import com.google.cloud.dataflow.sdk.transforms.SerializableFunction;
 import com.google.cloud.dataflow.sdk.values.KV;
 import com.google.cloud.dataflow.sdk.values.PCollection;
+import com.google.cloud.genomics.dataflow.coders.GenericJsonCoder;
 import com.google.cloud.genomics.dataflow.functions.JoinGvcfVariants.VariantComparator;
 import com.google.cloud.genomics.dataflow.utils.DataUtils;
 import com.google.cloud.genomics.dataflow.utils.DataflowWorkarounds;
@@ -142,17 +146,21 @@ public class JoinGvcfVariantsTest {
     Pipeline p = TestPipeline.create();
     DataflowWorkarounds.registerGenomicsCoders(p);
 
-    PCollection<Variant> inputVariants = p.apply(Create.of(input));
+    PCollection<Variant> inputVariants =
+        p.apply(Create.of(input)).setCoder(GenericJsonCoder.of(Variant.class));
 
     PCollection<KV<KV<String, Long>, Variant>> binnedVariants =
-        inputVariants.apply(ParDo.of(new JoinGvcfVariants.BinVariants()));
+        inputVariants.apply(ParDo.of(new JoinGvcfVariants.BinVariants())).setCoder(
+            KvCoder.of(KvCoder.of(StringUtf8Coder.of(), BigEndianLongCoder.of()),
+                GenericJsonCoder.of(Variant.class)));
 
     // TODO check that windowing function is not splitting these groups across different windows
     PCollection<KV<KV<String, Long>, Iterable<Variant>>> groupedBinnedVariants =
         binnedVariants.apply(GroupByKey.<KV<String, Long>, Variant>create());
 
     PCollection<Variant> mergedVariants =
-        groupedBinnedVariants.apply(ParDo.of(new JoinGvcfVariants.MergeVariants()));
+        groupedBinnedVariants.apply(ParDo.of(new JoinGvcfVariants.MergeVariants())).setCoder(
+            GenericJsonCoder.of(Variant.class));
 
     DataflowAssert.that(mergedVariants).satisfies(
         new AssertThatHasExpectedContentsForTestJoinGvcf());
