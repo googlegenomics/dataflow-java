@@ -43,7 +43,7 @@ public class ExtractSimilarCallsets extends DoFn<Variant, KV<KV<String, String>,
   @Override
   public void processElement(ProcessContext context) {
     for (KV<String, String> pair : PairGenerator.<String, ImmutableList<String>>allPairs(
-        getSamplesWithVariant(context.element()))) {
+        getSamplesWithVariant(context.element()), true)) {
       accumulator.add(pair);
     }
   }

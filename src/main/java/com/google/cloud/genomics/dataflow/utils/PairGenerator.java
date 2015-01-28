@@ -27,10 +27,14 @@ import com.google.common.collect.FluentIterable;
 import com.google.common.collect.Iterators;
 import com.google.common.collect.Range;
 
+/**
+ * Generates all pairs of the elements in the iterable with or without replacement.
+ *
+ */
 public class PairGenerator {
 
   public static <X, L extends List<? extends X> & RandomAccess> FluentIterable<KV<X, X>> allPairs(
-      final L list) {
+      final L list, final boolean withReplacement) {
     return FluentIterable.from(
         ContiguousSet.create(Range.closedOpen(0, list.size()), DiscreteDomain.integers()))
         .transformAndConcat(new Function<Integer, Iterable<KV<X, X>>>() {
@@ -39,7 +43,11 @@ public class PairGenerator {
             return new Iterable<KV<X, X>>() {
               @Override
               public Iterator<KV<X, X>> iterator() {
-                return Iterators.transform(list.listIterator(i), new Function<X, KV<X, X>>() {
+                Integer iteratorIndex = i;
+                if(!withReplacement) {
+                  iteratorIndex++;
+                }
+                return Iterators.transform(list.listIterator(iteratorIndex), new Function<X, KV<X, X>>() {
 
                   private final X key = list.get(i);
 
