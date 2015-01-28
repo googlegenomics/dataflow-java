@@ -16,6 +16,9 @@
 package com.google.cloud.genomics.dataflow.functions;
 
 import java.util.HashMap;
+import java.util.Iterator;
+import java.util.Map;
+import java.util.Map.Entry;
 
 import com.google.api.services.genomics.model.Call;
 import com.google.api.services.genomics.model.Variant;
@@ -38,10 +41,8 @@ public class AlleleSimilarityCalculator extends
 
   private CallSimilarityCalculatorFactory callSimilarityCalculatorFactory;
   
-  private int numberOfVariants = 0;
-
-  // HashMap<KV<callsetname1, callsetname2>, sum of call similarity scores>
-  private HashMap<KV<String, String>, Double> accumulator;
+  // HashMap<KV<callsetname1, callsetname2>, <sum of call similarity scores, count of scores>
+  private HashMap<KV<String, String>, KV<Double, Integer>> accumulator;
 
   public AlleleSimilarityCalculator(CallSimilarityCalculatorFactory callSimilarityCalculatorFactory) {
     this.callSimilarityCalculatorFactory = callSimilarityCalculatorFactory;
@@ -62,27 +63,25 @@ public class AlleleSimilarityCalculator extends
     for (KV<Call, Call> pair : pairs) {
       accumulateCallSimilarity(callSimilarityCalculator, pair.getKey(), pair.getValue());
     }
-    ++numberOfVariants;
   }
 
   private void accumulateCallSimilarity(CallSimilarityCalculator callSimilarityCalculator,
       Call call1, Call call2) {
     KV<String, String> callPair = KV.of(call1.getCallSetName(), call2.getCallSetName());
     if (!accumulator.containsKey(callPair)) {
-      accumulator.put(callPair, 0.0);
+      accumulator.put(callPair, KV.of(0.0, 0));
     }
     accumulator.put(callPair,
-        accumulator.get(callPair) + callSimilarityCalculator.similarity(call1, call2));
+        KV.of(accumulator.get(callPair).getKey() + callSimilarityCalculator.similarity(call1, call2),
+            accumulator.get(callPair).getValue() + 1));
   }
 
   @Override
   public void finishBundle(Context context) {
-    for (KV<String, String> entry : accumulator.keySet()) {
-      String call1 = entry.getKey();
-      String call2 = entry.getValue();
-      KV<String, String> call12 = KV.of(call1, call2);
-      double sumOfRatios = accumulator.get(call12);
-      context.output(KV.of(call12, KV.of(sumOfRatios, numberOfVariants)));
+    Iterator<Entry<KV<String, String>, KV<Double, Integer>>> it = accumulator.entrySet().iterator();
+    while (it.hasNext()) {
+      Map.Entry<KV<String, String>, KV<Double, Integer>> entry = it.next();
+      context.output(KV.of(entry.getKey(), entry.getValue()));
     }
   }
 

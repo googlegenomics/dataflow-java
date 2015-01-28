@@ -31,6 +31,6 @@ public final class FormatIBSData extends DoFn<KV<KV<String, String>, KV<Double, 
     String call2 = result.getKey().getValue();
     Double sumOfRatios = result.getValue().getKey();
     int numberOfRatios = result.getValue().getValue();
-    c.output(call1 + "\t" + call2 + "\t" + sumOfRatios / numberOfRatios);
+    c.output(call1 + "\t" + call2 + "\t" + sumOfRatios / numberOfRatios + "\t" + sumOfRatios + "\t" + numberOfRatios);
   }
 }
