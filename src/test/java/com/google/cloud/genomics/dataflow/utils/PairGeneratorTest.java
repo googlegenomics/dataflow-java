@@ -16,21 +16,21 @@ public class PairGeneratorTest {
   public void testAllPairsWithReplacement() {
     FluentIterable<KV<String, String>> pairs =
         PairGenerator.<String, ImmutableList<String>>allPairs(
-            ImmutableList.of("one", "two", "three"), true);
+            ImmutableList.of("one", "two", "three"), true, String.CASE_INSENSITIVE_ORDER);
     assertEquals(6, pairs.size());
     Assert.assertThat(
         pairs,
         CoreMatchers.hasItems(KV.of("one", "one"), KV.of("one", "two"), KV.of("one", "three"),
-            KV.of("two", "two"), KV.of("two", "three"), KV.of("three", "three")));
+            KV.of("two", "two"), KV.of("three", "two"), KV.of("three", "three")));
   }
 
   @Test
   public void testAllPairsWithoutReplacement() {
     FluentIterable<KV<String, String>> pairs =
         PairGenerator.<String, ImmutableList<String>>allPairs(
-            ImmutableList.of("one", "two", "three"), false);
+            ImmutableList.of("one", "two", "three"), false, String.CASE_INSENSITIVE_ORDER);
     assertEquals(3, pairs.size());
     Assert.assertThat(pairs,
-        CoreMatchers.hasItems(KV.of("one", "two"), KV.of("one", "three"), KV.of("two", "three")));
+        CoreMatchers.hasItems(KV.of("one", "two"), KV.of("one", "three"), KV.of("three", "two")));
   }
 }

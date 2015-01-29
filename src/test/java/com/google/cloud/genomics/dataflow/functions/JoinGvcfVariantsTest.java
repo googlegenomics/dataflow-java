@@ -97,6 +97,7 @@ public class JoinGvcfVariantsTest {
   public void testVariantComparator() {
     assertEquals(-1, new VariantComparator().compare(blockRecord1, snp1));
     assertEquals(1, new VariantComparator().compare(blockRecord2, snp1));
+    assertEquals(-1, new VariantComparator().compare(snp1, snp2));
 
     // Two variants at the same location
     assertEquals(0, new VariantComparator().compare(
