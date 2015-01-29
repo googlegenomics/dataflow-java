@@ -13,8 +13,10 @@
  */
 package com.google.cloud.genomics.dataflow.utils;
 
+import java.util.Comparator;
 import java.util.List;
 
+import com.google.api.services.genomics.model.Call;
 import com.google.api.services.genomics.model.Variant;
 import com.google.common.base.Function;
 import com.google.common.base.Predicate;
@@ -40,4 +42,16 @@ public class VariantUtils {
           return string.length();
         }
       });
+
+  /**
+   * Comparator for sorting calls by call set name.
+   */
+  public static class CallComparator implements Comparator<Call> {
+    @Override
+    public int compare(Call c1, Call c2) {
+      return c1.getCallSetName().compareTo(c2.getCallSetName());
+    }
+  }
+
+
 }

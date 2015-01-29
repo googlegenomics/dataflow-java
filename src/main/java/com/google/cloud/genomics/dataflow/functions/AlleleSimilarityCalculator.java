@@ -1,16 +1,14 @@
 /*
  * Copyright (C) 2014 Google Inc.
- *
- * Licensed under the Apache License, Version 2.0 (the "License"); you may not
- * use this file except in compliance with the License. You may obtain a copy of
- * the License at
- *
+ * 
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
+ * in compliance with the License. You may obtain a copy of the License at
+ * 
  * http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
- * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
- * License for the specific language governing permissions and limitations under
+ * 
+ * Unless required by applicable law or agreed to in writing, software distributed under the License
+ * is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express
+ * or implied. See the License for the specific language governing permissions and limitations under
  * the License.
  */
 package com.google.cloud.genomics.dataflow.functions;
@@ -26,6 +24,7 @@ import com.google.cloud.dataflow.sdk.transforms.DoFn;
 import com.google.cloud.dataflow.sdk.values.KV;
 import com.google.cloud.genomics.dataflow.utils.CallFilters;
 import com.google.cloud.genomics.dataflow.utils.PairGenerator;
+import com.google.cloud.genomics.dataflow.utils.VariantUtils;
 import com.google.common.collect.FluentIterable;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Maps;
@@ -40,7 +39,7 @@ public class AlleleSimilarityCalculator extends
     DoFn<Variant, KV<KV<String, String>, KV<Double, Integer>>> {
 
   private CallSimilarityCalculatorFactory callSimilarityCalculatorFactory;
-  
+
   // HashMap<KV<callsetname1, callsetname2>, <sum of call similarity scores, count of scores>
   private HashMap<KV<String, String>, KV<Double, Integer>> accumulator;
 
@@ -59,7 +58,8 @@ public class AlleleSimilarityCalculator extends
     CallSimilarityCalculator callSimilarityCalculator =
         callSimilarityCalculatorFactory.get(isReferenceMajor(variant));
     FluentIterable<KV<Call, Call>> pairs =
-        PairGenerator.<Call, ImmutableList<Call>>allPairs(getSamplesWithVariant(variant), false);
+        PairGenerator.<Call, ImmutableList<Call>>allPairs(getSamplesWithVariant(variant), false,
+            new VariantUtils.CallComparator());
     for (KV<Call, Call> pair : pairs) {
       accumulateCallSimilarity(callSimilarityCalculator, pair.getKey(), pair.getValue());
     }
@@ -68,12 +68,14 @@ public class AlleleSimilarityCalculator extends
   private void accumulateCallSimilarity(CallSimilarityCalculator callSimilarityCalculator,
       Call call1, Call call2) {
     KV<String, String> callPair = KV.of(call1.getCallSetName(), call2.getCallSetName());
-    if (!accumulator.containsKey(callPair)) {
-      accumulator.put(callPair, KV.of(0.0, 0));
+    KV<Double, Integer> callPairAccumulation = accumulator.get(callPair);
+    if (callPairAccumulation == null) {
+      callPairAccumulation = KV.of(0.0, 0);
+      accumulator.put(callPair, callPairAccumulation);
     }
-    accumulator.put(callPair,
-        KV.of(accumulator.get(callPair).getKey() + callSimilarityCalculator.similarity(call1, call2),
-            accumulator.get(callPair).getValue() + 1));
+    accumulator.put(callPair, KV.of(
+        callPairAccumulation.getKey() + callSimilarityCalculator.similarity(call1, call2),
+        callPairAccumulation.getValue() + 1));
   }
 
   @Override
@@ -88,7 +90,7 @@ public class AlleleSimilarityCalculator extends
   static ImmutableList<Call> getSamplesWithVariant(Variant variant) {
     return CallFilters.getSamplesWithVariantOfMinGenotype(variant, 0);
   }
-  
+
   static boolean isReferenceMajor(Variant variant) {
     int referenceAlleles = 0;
     int alternateAlleles = 0;

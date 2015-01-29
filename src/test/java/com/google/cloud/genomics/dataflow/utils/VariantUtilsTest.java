@@ -34,7 +34,7 @@ public class VariantUtilsTest {
   @Test
   public void testIsVariant() {
     assertTrue(VariantUtils.isVariant(DataUtils.makeVariant("chr7", 200000, 200001, "A",
-        newArrayList(Arrays.asList("C")), (Call[]) null)));
+        newArrayList("C"), (Call[]) null)));
     // Block Records
     assertFalse(VariantUtils.isVariant(DataUtils.makeVariant("chr7", 200000, 200001, "A", emptyAlt,
         (Call[]) null)));
@@ -45,17 +45,17 @@ public class VariantUtilsTest {
   @Test
   public void testIsSNP() {
     assertTrue(VariantUtils.isSnp(DataUtils.makeVariant("chr7", 200000, 200001, "A",
-        newArrayList(Arrays.asList("C")), (Call[]) null)));
+        newArrayList("C"), (Call[]) null)));
     // Deletion
     assertFalse(VariantUtils.isSnp(DataUtils.makeVariant("chr7", 200000, 200001, "CA",
-        newArrayList(Arrays.asList("C")), (Call[]) null)));
+        newArrayList("C"), (Call[]) null)));
     // Insertion
     assertFalse(VariantUtils.isSnp(DataUtils.makeVariant("chr7", 200000, 200001, "C",
-        newArrayList(Arrays.asList("CA")), (Call[]) null)));
+        newArrayList("CA"), (Call[]) null)));
 
     // SNP and Insertion
     assertFalse(VariantUtils.isSnp(DataUtils.makeVariant("chr7", 200000, 200001, "C",
-        newArrayList(Arrays.asList("A", "CA")), (Call[]) null)));
+        newArrayList("A", "CA"), (Call[]) null)));
 
     // Block Records
     assertFalse(VariantUtils.isSnp(DataUtils.makeVariant("chr7", 200000, 200001, "A", emptyAlt,

@@ -20,15 +20,14 @@ import com.google.cloud.genomics.dataflow.utils.DataUtils;
 
 public class AlleleSimilarityCalculatorTest {
 
-  static final Variant snp1 = DataUtils.makeVariant("chr7", 200019, 200020, "T",
-      newArrayList(Arrays.asList("G")), DataUtils.makeCall("het-alt sample", 1, 0),
-      DataUtils.makeCall("hom-alt sample", 1, 1), DataUtils.makeCall("hom-ref sample", 0, 0),
-      DataUtils.makeCall("hom-nocall sample", -1, -1),
+  static final Variant snp1 = DataUtils.makeVariant("chr7", 200019, 200020, "T", newArrayList("G"),
+      DataUtils.makeCall("het-alt sample", 1, 0), DataUtils.makeCall("hom-alt sample", 1, 1),
+      DataUtils.makeCall("hom-ref sample", 0, 0), DataUtils.makeCall("hom-nocall sample", -1, -1),
       DataUtils.makeCall("ref-nocall sample", -1, 0));
 
-  static final Variant snp2 = DataUtils.makeVariant("chr7", 200020, 200021, "C",
-      newArrayList(Arrays.asList("A")), DataUtils.makeCall("hom-alt sample", 1, 1),
-      DataUtils.makeCall("het-alt sample", 0, 1), DataUtils.makeCall("ref-nocall sample", 0, -1));
+  static final Variant snp2 = DataUtils.makeVariant("chr7", 200020, 200021, "C", newArrayList("A"),
+      DataUtils.makeCall("hom-alt sample", 1, 1), DataUtils.makeCall("het-alt sample", 0, 1),
+      DataUtils.makeCall("ref-nocall sample", 0, -1));
 
   @Before
   public void setUp() throws Exception {}
@@ -52,9 +51,9 @@ public class AlleleSimilarityCalculatorTest {
     DoFnTester<Variant, KV<KV<String, String>, KV<Double, Integer>>> simFn =
         DoFnTester.of(new AlleleSimilarityCalculator(fac));
 
-    List<KV<KV<String, String>, KV<Double, Integer>>> output = simFn.processBatch(snp1);
-    assertEquals(6, output.size());
-    Assert.assertThat(output, CoreMatchers.hasItems(
+    List<KV<KV<String, String>, KV<Double, Integer>>> outputSnp1 = simFn.processBatch(snp1);
+    assertEquals(6, outputSnp1.size());
+    Assert.assertThat(outputSnp1, CoreMatchers.hasItems(
         KV.of(KV.of("het-alt sample", "ref-nocall sample"), KV.of(0.0, 1)),
         KV.of(KV.of("het-alt sample", "hom-ref sample"), KV.of(0.0, 1)),
         KV.of(KV.of("het-alt sample", "hom-alt sample"), KV.of(1.0, 1)),
@@ -62,12 +61,24 @@ public class AlleleSimilarityCalculatorTest {
         KV.of(KV.of("hom-alt sample", "ref-nocall sample"), KV.of(0.0, 1)),
         KV.of(KV.of("hom-alt sample", "hom-ref sample"), KV.of(0.0, 1))));
 
-    output = simFn.processBatch(snp2);
-    assertEquals(3, output.size());
+    List<KV<KV<String, String>, KV<Double, Integer>>> outputSnp2 = simFn.processBatch(snp2);
+    assertEquals(3, outputSnp2.size());
     Assert.assertThat(
-        output,
-        CoreMatchers.hasItems(KV.of(KV.of("hom-alt sample", "het-alt sample"), KV.of(0.0, 1)),
+        outputSnp2,
+        CoreMatchers.hasItems(KV.of(KV.of("het-alt sample", "hom-alt sample"), KV.of(0.0, 1)),
             KV.of(KV.of("het-alt sample", "ref-nocall sample"), KV.of(1.0, 1)),
             KV.of(KV.of("hom-alt sample", "ref-nocall sample"), KV.of(0.0, 1))));
+
+    Variant[] input = new Variant[] {snp1, snp2};
+    List<KV<KV<String, String>, KV<Double, Integer>>> outputBoth = simFn.processBatch(input);
+    assertEquals(6, outputBoth.size());
+    Assert.assertThat(outputBoth, CoreMatchers.hasItems(
+        KV.of(KV.of("het-alt sample", "ref-nocall sample"), KV.of(1.0, 2)),
+        KV.of(KV.of("het-alt sample", "hom-ref sample"), KV.of(0.0, 1)),
+        KV.of(KV.of("het-alt sample", "hom-alt sample"), KV.of(1.0, 2)),
+        KV.of(KV.of("hom-ref sample", "ref-nocall sample"), KV.of(0.0, 1)),
+        KV.of(KV.of("hom-alt sample", "ref-nocall sample"), KV.of(0.0, 2)),
+        KV.of(KV.of("hom-alt sample", "hom-ref sample"), KV.of(0.0, 1))));
+
   }
 }

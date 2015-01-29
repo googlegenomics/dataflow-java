@@ -21,6 +21,7 @@ import com.google.cloud.dataflow.sdk.transforms.DoFn;
 import com.google.cloud.dataflow.sdk.values.KV;
 import com.google.cloud.genomics.dataflow.utils.CallFilters;
 import com.google.cloud.genomics.dataflow.utils.PairGenerator;
+import com.google.cloud.genomics.dataflow.utils.VariantUtils;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Function;
 import com.google.common.collect.ImmutableList;
@@ -43,7 +44,7 @@ public class ExtractSimilarCallsets extends DoFn<Variant, KV<KV<String, String>,
   @Override
   public void processElement(ProcessContext context) {
     for (KV<String, String> pair : PairGenerator.<String, ImmutableList<String>>allPairs(
-        getSamplesWithVariant(context.element()), true)) {
+        getSamplesWithVariant(context.element()), true, String.CASE_INSENSITIVE_ORDER)) {
       accumulator.add(pair);
     }
   }
