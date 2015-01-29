@@ -49,7 +49,7 @@ public interface GenomicsDatasetOptions extends GenomicsOptions {
 
       List<SearchVariantsRequest> requests = Lists.newArrayList();
       for (Contig contig : contigs) {
-        for (Contig shard : contig.getShards()) {
+        for (Contig shard : contig.getShards(options.getBasesPerShard())) {
           LOG.info("Adding request with " + shard.referenceName + " " + shard.start + " to "
               + shard.end);
           requests.add(shard.getVariantsRequest(datasetId));
@@ -87,6 +87,12 @@ public interface GenomicsDatasetOptions extends GenomicsOptions {
   String getReferences();
 
   void setReferences(String references);
+
+  @Description("The maximum number of bases per shard.")
+  @Default.Long(Contig.DEFAULT_NUMBER_OF_BASES_PER_SHARD)
+  long getBasesPerShard();
+
+  void setBasesPerShard(long basesPerShard);
 
   @Description("If querying a dataset in Genome VCF (gVCF) format, specify this "
       + "flag so that the pipeline correctly takes into account reference-matching "
