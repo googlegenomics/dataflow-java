@@ -8,7 +8,7 @@
   <groupId>com.google.cloud.genomics</groupId>
   <artifactId>google-genomics-dataflow</artifactId>
   <packaging>jar</packaging>
-  <version>v1beta2-0.2-SNAPSHOT</version>
+  <version>v1beta2-0.20-SNAPSHOT</version>
 
   <organization>
     <name>Google</name>
