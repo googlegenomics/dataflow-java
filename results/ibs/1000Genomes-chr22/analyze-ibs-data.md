@@ -109,8 +109,12 @@ Set the column names of the two sets of IBS data consistently.
 
 
 ```r
-ColumnNames <- function(ibsData) {
-  colnames(ibsData) <- c("sample1", "sample2", "ibsScore")
+ColumnNames <- function(ibsData) { 
+  if(3 == ncol(ibsData)) {
+    colnames(ibsData) <- c("sample1", "sample2", "ibsScore")
+  } else {
+    colnames(ibsData) <- c("sample1", "sample2", "ibsScore", "similar", "observed")
+  }
 }
 colnames(ibsDataflowData) <- ColumnNames(ibsDataflowData)
 colnames(ibsPlinkSeqData) <- ColumnNames(ibsPlinkSeqData)
@@ -124,7 +128,7 @@ MakeIBSDataSymmetric <- function(ibsData) {
   ibsPairsMirrored <- data.frame(sample1=ibsData$sample2,
                                  sample2=ibsData$sample1,
                                  ibsScore=ibsData$ibsScore)
-  ibsData <- rbind(ibsData, ibsPairsMirrored)
+  ibsData <- rbind(ibsData[,1:3], ibsPairsMirrored)
 }
 ibsDataflowData <- MakeIBSDataSymmetric(ibsDataflowData)
 ```
