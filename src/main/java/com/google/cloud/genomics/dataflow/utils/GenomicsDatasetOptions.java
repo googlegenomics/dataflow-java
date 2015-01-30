@@ -1,11 +1,11 @@
 /*
  * Copyright (C) 2014 Google Inc.
- *
+ * 
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
- *
+ * 
  * http://www.apache.org/licenses/LICENSE-2.0
- *
+ * 
  * Unless required by applicable law or agreed to in writing, software distributed under the License
  * is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express
  * or implied. See the License for the specific language governing permissions and limitations under
@@ -13,18 +13,19 @@
  */
 package com.google.cloud.genomics.dataflow.utils;
 
+import java.io.IOException;
+import java.security.GeneralSecurityException;
+import java.util.List;
+import java.util.logging.Logger;
+
 import com.google.api.services.genomics.Genomics;
 import com.google.api.services.genomics.model.SearchVariantsRequest;
 import com.google.cloud.dataflow.sdk.options.Default;
 import com.google.cloud.dataflow.sdk.options.Description;
 import com.google.cloud.genomics.utils.Contig;
 import com.google.cloud.genomics.utils.GenomicsFactory;
+import com.google.common.base.Preconditions;
 import com.google.common.collect.Lists;
-
-import java.io.IOException;
-import java.security.GeneralSecurityException;
-import java.util.List;
-import java.util.logging.Logger;
 
 /**
  * A common options class for all pipelines that operate over a single dataset and write their
@@ -37,18 +38,18 @@ public interface GenomicsDatasetOptions extends GenomicsOptions {
 
     // TODO: If needed, add getReadRequests method
     public static List<SearchVariantsRequest> getVariantRequests(GenomicsDatasetOptions options,
-        GenomicsFactory.OfflineAuth auth, boolean excludeXY)
-        throws IOException, GeneralSecurityException {
+        GenomicsFactory.OfflineAuth auth, boolean excludeXY) throws IOException,
+        GeneralSecurityException {
       String datasetId = options.getDatasetId();
       Genomics genomics = auth.getGenomics(auth.getDefaultFactory());
 
-      Iterable<Contig> contigs = options.isAllContigs()
-          ? Contig.getContigsInVariantSet(genomics, datasetId, excludeXY)
-          : Contig.parseContigsFromCommandLine(options.getReferences());
+      Iterable<Contig> contigs =
+          options.isAllContigs() ? Contig.getContigsInVariantSet(genomics, datasetId, excludeXY)
+              : Contig.parseContigsFromCommandLine(options.getReferences());
 
       List<SearchVariantsRequest> requests = Lists.newArrayList();
       for (Contig contig : contigs) {
-        for (Contig shard : contig.getShards()) {
+        for (Contig shard : contig.getShards(options.getBasesPerShard())) {
           LOG.info("Adding request with " + shard.referenceName + " " + shard.start + " to "
               + shard.end);
           requests.add(shard.getVariantsRequest(datasetId));
@@ -56,6 +57,12 @@ public interface GenomicsDatasetOptions extends GenomicsOptions {
       }
       return requests;
     }
+
+    public static void validateOptions(GenomicsDatasetOptions options) {
+      Preconditions.checkArgument(0 < options.getBinSize(), "binSize must be greater than zero");
+      GenomicsOptions.Methods.validateOptions(options);
+    }
+
   }
 
   @Description("The ID of the Google Genomics dataset this pipeline is working with. "
@@ -81,4 +88,24 @@ public interface GenomicsDatasetOptions extends GenomicsOptions {
   String getReferences();
 
   void setReferences(String references);
+
+  @Description("The maximum number of bases per shard.")
+  @Default.Long(Contig.DEFAULT_NUMBER_OF_BASES_PER_SHARD)
+  long getBasesPerShard();
+
+  void setBasesPerShard(long basesPerShard);
+
+  @Description("If querying a dataset in Genome VCF (gVCF) format, specify this "
+      + "flag so that the pipeline correctly takes into account reference-matching "
+      + "block records which overlap variants within the dataset.")
+  @Default.Boolean(false)
+  boolean getIsGvcf();
+
+  void setIsGvcf(boolean isGvcf);
+
+  @Description("Genomic window \"bin\" size to use for gVCF data when joining block-records with variants.")
+  @Default.Integer(1000)
+  int getBinSize();
+
+  void setBinSize(int binSize);
 }
