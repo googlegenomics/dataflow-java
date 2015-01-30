@@ -99,7 +99,7 @@ public class JoinGvcfVariantsTest {
     assertEquals(-1, JoinGvcfVariants.GVCF_VARIANT_COMPARATOR.compare(snp1, snp2));
 
     // Two variants at the same location
-    assertEquals(0, JoinGvcfVariants.GVCF_VARIANT_COMPARATOR.compare(
+    assertTrue(0 > JoinGvcfVariants.GVCF_VARIANT_COMPARATOR.compare(
         DataUtils.makeVariant("chr7", 200010, 200011, "A", Arrays.asList("C"), (Call[]) null),
         DataUtils.makeVariant("chr7", 200010, 200011, "A", Arrays.asList("T"), (Call[]) null)));
 
