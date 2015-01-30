@@ -13,16 +13,16 @@
  */
 package com.google.cloud.genomics.dataflow.functions;
 
-import static com.google.common.collect.Lists.newArrayList;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertThat;
 import static org.junit.Assert.assertTrue;
 
+import java.util.Arrays;
 import java.util.List;
 
 import org.hamcrest.CoreMatchers;
 import org.hamcrest.collection.IsIterableWithSize;
-import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -44,7 +44,6 @@ import com.google.cloud.dataflow.sdk.transforms.SerializableFunction;
 import com.google.cloud.dataflow.sdk.values.KV;
 import com.google.cloud.dataflow.sdk.values.PCollection;
 import com.google.cloud.genomics.dataflow.coders.GenericJsonCoder;
-import com.google.cloud.genomics.dataflow.functions.JoinGvcfVariants.VariantComparator;
 import com.google.cloud.genomics.dataflow.utils.DataUtils;
 import com.google.cloud.genomics.dataflow.utils.DataflowWorkarounds;
 
@@ -61,15 +60,15 @@ public class JoinGvcfVariantsTest {
       "hom no-call sample", -1, 0)};
 
   private static final Variant expectedSnp1 = DataUtils.makeVariant("chr7", 200010, 200011, "A",
-      newArrayList("C"), variantCalls[0], variantCalls[1], blockRecord1Calls[0],
+      Arrays.asList("C"), variantCalls[0], variantCalls[1], blockRecord1Calls[0],
       blockRecord1Calls[1]);
 
   private static final Variant expectedSnp2 = DataUtils.makeVariant("chr7", 200019, 200020, "T",
-      newArrayList("G"), variantCalls[0], variantCalls[1], blockRecord1Calls[0],
+      Arrays.asList("G"), variantCalls[0], variantCalls[1], blockRecord1Calls[0],
       blockRecord1Calls[1], blockRecord2Calls[0]);
 
   private static final Variant expectedInsert = DataUtils.makeVariant("chr7", 200010, 200011, "A",
-      newArrayList("AC"), variantCalls);
+      Arrays.asList("AC"), variantCalls);
 
   private Variant snp1;
   private Variant snp2;
@@ -80,11 +79,11 @@ public class JoinGvcfVariantsTest {
 
   @Before
   public void setUp() {
-    snp1 = DataUtils.makeVariant("chr7", 200010, 200011, "A", newArrayList("C"), variantCalls);
+    snp1 = DataUtils.makeVariant("chr7", 200010, 200011, "A", Arrays.asList("C"), variantCalls);
 
-    snp2 = DataUtils.makeVariant("chr7", 200019, 200020, "T", newArrayList("G"), variantCalls);
+    snp2 = DataUtils.makeVariant("chr7", 200019, 200020, "T", Arrays.asList("G"), variantCalls);
 
-    insert = DataUtils.makeVariant("chr7", 200010, 200011, "A", newArrayList("AC"), variantCalls);
+    insert = DataUtils.makeVariant("chr7", 200010, 200011, "A", Arrays.asList("AC"), variantCalls);
 
     blockRecord1 = DataUtils.makeVariant("chr7", 199005, 202050, "A", null, blockRecord1Calls);
 
@@ -94,19 +93,19 @@ public class JoinGvcfVariantsTest {
   }
 
   @Test
-  public void testVariantComparator() {
-    assertEquals(-1, new VariantComparator().compare(blockRecord1, snp1));
-    assertEquals(1, new VariantComparator().compare(blockRecord2, snp1));
-    assertEquals(-1, new VariantComparator().compare(snp1, snp2));
+  public void testVariantVariantComparator() {
+    assertEquals(-1, JoinGvcfVariants.GVCF_VARIANT_COMPARATOR.compare(blockRecord1, snp1));
+    assertEquals(1, JoinGvcfVariants.GVCF_VARIANT_COMPARATOR.compare(blockRecord2, snp1));
+    assertEquals(-1, JoinGvcfVariants.GVCF_VARIANT_COMPARATOR.compare(snp1, snp2));
 
     // Two variants at the same location
-    assertEquals(0, new VariantComparator().compare(
-        DataUtils.makeVariant("chr7", 200010, 200011, "A", newArrayList("C"), (Call[]) null),
-        DataUtils.makeVariant("chr7", 200010, 200011, "A", newArrayList("T"), (Call[]) null)));
+    assertEquals(0, JoinGvcfVariants.GVCF_VARIANT_COMPARATOR.compare(
+        DataUtils.makeVariant("chr7", 200010, 200011, "A", Arrays.asList("C"), (Call[]) null),
+        DataUtils.makeVariant("chr7", 200010, 200011, "A", Arrays.asList("T"), (Call[]) null)));
 
     // Block record and variant at the same location
-    assertEquals(1, new VariantComparator().compare(
-        DataUtils.makeVariant("chr7", 200010, 200011, "A", newArrayList("C"), (Call[]) null),
+    assertEquals(1, JoinGvcfVariants.GVCF_VARIANT_COMPARATOR.compare(
+        DataUtils.makeVariant("chr7", 200010, 200011, "A", Arrays.asList("C"), (Call[]) null),
         DataUtils.makeVariant("chr7", 200010, 200011, "A", null, (Call[]) null)));
   }
 
@@ -125,18 +124,18 @@ public class JoinGvcfVariantsTest {
         DoFnTester.of(new JoinGvcfVariants.BinVariants());
 
     List<KV<KV<String, Long>, Variant>> binVariantsOutput = binVariantsFn.processBatch(input);
-    Assert.assertThat(binVariantsOutput, CoreMatchers.hasItem(KV.of(KV.of("chr7", 200L), snp1)));
-    Assert.assertThat(binVariantsOutput, CoreMatchers.hasItem(KV.of(KV.of("chr7", 200L), snp2)));
-    Assert.assertThat(binVariantsOutput, CoreMatchers.hasItem(KV.of(KV.of("chr7", 200L), insert)));
-    Assert.assertThat(binVariantsOutput,
+    assertThat(binVariantsOutput, CoreMatchers.hasItem(KV.of(KV.of("chr7", 200L), snp1)));
+    assertThat(binVariantsOutput, CoreMatchers.hasItem(KV.of(KV.of("chr7", 200L), snp2)));
+    assertThat(binVariantsOutput, CoreMatchers.hasItem(KV.of(KV.of("chr7", 200L), insert)));
+    assertThat(binVariantsOutput,
         CoreMatchers.hasItem(KV.of(KV.of("chr7", 199L), blockRecord1)));
-    Assert.assertThat(binVariantsOutput,
+    assertThat(binVariantsOutput,
         CoreMatchers.hasItem(KV.of(KV.of("chr7", 200L), blockRecord1)));
-    Assert.assertThat(binVariantsOutput,
+    assertThat(binVariantsOutput,
         CoreMatchers.hasItem(KV.of(KV.of("chr7", 201L), blockRecord1)));
-    Assert.assertThat(binVariantsOutput,
+    assertThat(binVariantsOutput,
         CoreMatchers.hasItem(KV.of(KV.of("chr7", 202L), blockRecord1)));
-    Assert.assertThat(binVariantsOutput,
+    assertThat(binVariantsOutput,
         CoreMatchers.hasItem(KV.of(KV.of("chr7", 200L), blockRecord2)));
     assertEquals(8, binVariantsOutput.size());
   }
@@ -169,16 +168,15 @@ public class JoinGvcfVariantsTest {
     p.run();
   }
 
-  @SuppressWarnings("serial")
   static class AssertThatHasExpectedContentsForTestJoinGvcf implements
       SerializableFunction<Iterable<Variant>, Void> {
 
     @Override
     public Void apply(Iterable<Variant> actual) {
-      Assert.assertThat(actual, CoreMatchers.hasItem(expectedSnp1));
-      Assert.assertThat(actual, CoreMatchers.hasItem(expectedSnp2));
-      Assert.assertThat(actual, CoreMatchers.hasItem(expectedInsert));
-      Assert.assertThat(actual, IsIterableWithSize.<Variant>iterableWithSize(3));
+      assertThat(actual, CoreMatchers.hasItem(expectedSnp1));
+      assertThat(actual, CoreMatchers.hasItem(expectedSnp2));
+      assertThat(actual, CoreMatchers.hasItem(expectedInsert));
+      assertThat(actual, IsIterableWithSize.<Variant>iterableWithSize(3));
 
       return null;
     }

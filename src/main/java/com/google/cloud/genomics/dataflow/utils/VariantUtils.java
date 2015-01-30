@@ -22,6 +22,7 @@ import com.google.common.base.Function;
 import com.google.common.base.Predicate;
 import com.google.common.base.Predicates;
 import com.google.common.collect.Iterables;
+import com.google.common.collect.Ordering;
 
 public class VariantUtils {
 
@@ -46,12 +47,11 @@ public class VariantUtils {
   /**
    * Comparator for sorting calls by call set name.
    */
-  public static class CallComparator implements Comparator<Call> {
-    @Override
-    public int compare(Call c1, Call c2) {
-      return c1.getCallSetName().compareTo(c2.getCallSetName());
-    }
-  }
-
-
+  public static final Comparator<Call> CALL_COMPARATOR = Ordering.natural().onResultOf(
+      new Function<Call, String>() {
+        @Override
+        public String apply(Call call) {
+          return call.getCallSetName();
+        }
+      });
 }

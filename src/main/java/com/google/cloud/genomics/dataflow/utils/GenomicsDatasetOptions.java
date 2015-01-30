@@ -13,6 +13,11 @@
  */
 package com.google.cloud.genomics.dataflow.utils;
 
+import java.io.IOException;
+import java.security.GeneralSecurityException;
+import java.util.List;
+import java.util.logging.Logger;
+
 import com.google.api.services.genomics.Genomics;
 import com.google.api.services.genomics.model.SearchVariantsRequest;
 import com.google.cloud.dataflow.sdk.options.Default;
@@ -21,11 +26,6 @@ import com.google.cloud.genomics.utils.Contig;
 import com.google.cloud.genomics.utils.GenomicsFactory;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Lists;
-
-import java.io.IOException;
-import java.security.GeneralSecurityException;
-import java.util.List;
-import java.util.logging.Logger;
 
 /**
  * A common options class for all pipelines that operate over a single dataset and write their
@@ -59,7 +59,8 @@ public interface GenomicsDatasetOptions extends GenomicsOptions {
     }
 
     public static void validateOptions(GenomicsDatasetOptions options) {
-      Preconditions.checkState(0 < options.getBinSize(), "binSize must be greater than zero");
+      Preconditions.checkArgument(0 < options.getBinSize(), "binSize must be greater than zero");
+      GenomicsOptions.Methods.validateOptions(options);
     }
 
   }

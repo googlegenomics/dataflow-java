@@ -14,9 +14,7 @@
 package com.google.cloud.genomics.dataflow.functions;
 
 import java.util.HashMap;
-import java.util.Iterator;
 import java.util.Map;
-import java.util.Map.Entry;
 
 import com.google.api.services.genomics.model.Call;
 import com.google.api.services.genomics.model.Variant;
@@ -25,7 +23,6 @@ import com.google.cloud.dataflow.sdk.values.KV;
 import com.google.cloud.genomics.dataflow.utils.CallFilters;
 import com.google.cloud.genomics.dataflow.utils.PairGenerator;
 import com.google.cloud.genomics.dataflow.utils.VariantUtils;
-import com.google.common.collect.FluentIterable;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Maps;
 
@@ -42,6 +39,7 @@ public class AlleleSimilarityCalculator extends
 
   // HashMap<KV<callsetname1, callsetname2>, <sum of call similarity scores, count of scores>
   private HashMap<KV<String, String>, KV<Double, Integer>> accumulator;
+  // TODO consider using guava MultiSet instead
 
   public AlleleSimilarityCalculator(CallSimilarityCalculatorFactory callSimilarityCalculatorFactory) {
     this.callSimilarityCalculatorFactory = callSimilarityCalculatorFactory;
@@ -57,10 +55,8 @@ public class AlleleSimilarityCalculator extends
     Variant variant = context.element();
     CallSimilarityCalculator callSimilarityCalculator =
         callSimilarityCalculatorFactory.get(isReferenceMajor(variant));
-    FluentIterable<KV<Call, Call>> pairs =
-        PairGenerator.<Call, ImmutableList<Call>>allPairs(getSamplesWithVariant(variant), false,
-            new VariantUtils.CallComparator());
-    for (KV<Call, Call> pair : pairs) {
+    for (KV<Call, Call> pair : PairGenerator.WITHOUT_REPLACEMENT.allPairs(
+        getSamplesWithVariant(variant), VariantUtils.CALL_COMPARATOR)) {
       accumulateCallSimilarity(callSimilarityCalculator, pair.getKey(), pair.getValue());
     }
   }
@@ -80,11 +76,7 @@ public class AlleleSimilarityCalculator extends
 
   @Override
   public void finishBundle(Context context) {
-    Iterator<Entry<KV<String, String>, KV<Double, Integer>>> it = accumulator.entrySet().iterator();
-    while (it.hasNext()) {
-      Map.Entry<KV<String, String>, KV<Double, Integer>> entry = it.next();
-      context.output(KV.of(entry.getKey(), entry.getValue()));
-    }
+    output(context, accumulator);
   }
 
   static ImmutableList<Call> getSamplesWithVariant(Variant variant) {
@@ -104,6 +96,12 @@ public class AlleleSimilarityCalculator extends
       }
     }
     return referenceAlleles >= alternateAlleles;
+  }
+
+  static <K, V> void output(DoFn<?, KV<K, V>>.Context context, Map<? extends K, ? extends V> map) {
+    for (Map.Entry<? extends K, ? extends V> entry : map.entrySet()) {
+      context.output(KV.<K, V>of(entry.getKey(), entry.getValue()));
+    }
   }
 
 }

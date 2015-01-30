@@ -13,7 +13,6 @@
  */
 package com.google.cloud.genomics.dataflow.utils;
 
-import static com.google.common.collect.Lists.newArrayList;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
@@ -29,12 +28,12 @@ import com.google.api.services.genomics.model.Call;
 @RunWith(JUnit4.class)
 public class VariantUtilsTest {
 
-  private List<String> emptyAlt = newArrayList();
+  private List<String> emptyAlt = Arrays.asList();
 
   @Test
   public void testIsVariant() {
     assertTrue(VariantUtils.isVariant(DataUtils.makeVariant("chr7", 200000, 200001, "A",
-        newArrayList("C"), (Call[]) null)));
+        Arrays.asList("C"), (Call[]) null)));
     // Block Records
     assertFalse(VariantUtils.isVariant(DataUtils.makeVariant("chr7", 200000, 200001, "A", emptyAlt,
         (Call[]) null)));
@@ -45,17 +44,17 @@ public class VariantUtilsTest {
   @Test
   public void testIsSNP() {
     assertTrue(VariantUtils.isSnp(DataUtils.makeVariant("chr7", 200000, 200001, "A",
-        newArrayList("C"), (Call[]) null)));
+        Arrays.asList("C"), (Call[]) null)));
     // Deletion
     assertFalse(VariantUtils.isSnp(DataUtils.makeVariant("chr7", 200000, 200001, "CA",
-        newArrayList("C"), (Call[]) null)));
+        Arrays.asList("C"), (Call[]) null)));
     // Insertion
     assertFalse(VariantUtils.isSnp(DataUtils.makeVariant("chr7", 200000, 200001, "C",
-        newArrayList("CA"), (Call[]) null)));
+        Arrays.asList("CA"), (Call[]) null)));
 
     // SNP and Insertion
     assertFalse(VariantUtils.isSnp(DataUtils.makeVariant("chr7", 200000, 200001, "C",
-        newArrayList("A", "CA"), (Call[]) null)));
+        Arrays.asList("A", "CA"), (Call[]) null)));
 
     // Block Records
     assertFalse(VariantUtils.isSnp(DataUtils.makeVariant("chr7", 200000, 200001, "A", emptyAlt,
