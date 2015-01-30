@@ -28,24 +28,32 @@ import com.google.common.collect.Range;
 
 /**
  * Generates all combinations (not permutations) of pairs of the elements in the iterable.
- *
+ * 
+ * WITHOUT_REPLACEMENT - generate Nchoose2 combinations WITH_REPLACEMENT- generate Nchoose2
+ * combinations plus an additional N pairs (one for each element in the list)
  */
-public class PairGenerator {
+public enum PairGenerator {
+
+  WITH_REPLACEMENT(true), WITHOUT_REPLACEMENT(false);
+
+  private final boolean withReplacement;
+
+  private PairGenerator(boolean withReplacement) {
+    this.withReplacement = withReplacement;
+  }
 
   /**
-   * Generates all combinations (not permutations) of pairs of the elements in the iterable.
+   * * Generates all combinations (not permutations) of pairs of the elements in the iterable.
    * 
    * The pairs are often used as keys for results in many n^2 analyses where we end up with
    * (n*(n-1))/2 or ((n*(n-1))/2)+n results.
    * 
    * @param list
-   * @param withReplacement - When true an additional N pairs will be generated (one for each
-   *        element in the list) in addition to the Nchoose2 pairs.
    * @param comparator - used to enforce an order upon the elements within each pair
-   * @return
+   * @return the pairs
    */
-  public static <X, L extends List<? extends X> & RandomAccess> FluentIterable<KV<X, X>> allPairs(
-      final L list, final boolean withReplacement, final Comparator<X> comparator) {
+  public <X, L extends List<? extends X> & RandomAccess> FluentIterable<KV<X, X>> allPairs(
+      final L list, final Comparator<? super X> comparator) {
     return FluentIterable.from(
         ContiguousSet.create(Range.closedOpen(0, list.size()), DiscreteDomain.integers()))
         .transformAndConcat(new Function<Integer, Iterable<KV<X, X>>>() {
@@ -54,7 +62,7 @@ public class PairGenerator {
             return new Iterable<KV<X, X>>() {
               @Override
               public Iterator<KV<X, X>> iterator() {
-                Integer iteratorIndex = i;
+                int iteratorIndex = i;
                 if (!withReplacement) {
                   iteratorIndex++;
                 }
@@ -65,10 +73,8 @@ public class PairGenerator {
 
                       @Override
                       public KV<X, X> apply(X value) {
-                        if (0 < comparator.compare(key, value)) {
-                          return KV.of(value, key);
-                        }
-                        return KV.of(key, value);
+                        boolean swap = 0 < comparator.compare(key, value);
+                        return KV.of(swap ? value : key, swap ? key : value);
                       }
                     });
               }
@@ -76,5 +82,4 @@ public class PairGenerator {
           }
         });
   }
-
 }

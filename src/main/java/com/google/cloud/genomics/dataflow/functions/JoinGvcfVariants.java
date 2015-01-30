@@ -13,14 +13,14 @@
  */
 package com.google.cloud.genomics.dataflow.functions;
 
-import static com.google.common.collect.Lists.newArrayList;
-
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 
+import com.google.api.client.repackaged.com.google.common.annotations.VisibleForTesting;
 import com.google.api.client.util.Lists;
 import com.google.api.services.genomics.model.SearchVariantsRequest;
 import com.google.api.services.genomics.model.Variant;
@@ -34,6 +34,7 @@ import com.google.cloud.genomics.dataflow.utils.GenomicsDatasetOptions;
 import com.google.cloud.genomics.dataflow.utils.VariantUtils;
 import com.google.cloud.genomics.utils.GenomicsFactory;
 import com.google.common.base.Preconditions;
+import com.google.common.collect.Ordering;
 
 /**
  * The transforms in this class convert data in Genome VCF (gVCF) format to variant-only VCF data
@@ -46,7 +47,7 @@ public class JoinGvcfVariants {
   public static final String GVCF_VARIANT_FIELDS =
       "nextPageToken,variants(referenceName,start,end,referenceBases,alternateBases,calls(genotype,callSetName))";
 
-  private static final List<String> REQUIRED_FIELDS = newArrayList("nextPageToken",
+  private static final List<String> REQUIRED_FIELDS = Arrays.asList("nextPageToken",
       "referenceName", "start", "end", "referenceBases", "alternateBases");
 
   /**
@@ -76,8 +77,11 @@ public class JoinGvcfVariants {
   public static PCollection<Variant> joinGvcfVariantsTransform(
       PCollection<SearchVariantsRequest> input, GenomicsFactory.OfflineAuth auth, String fields) {
     for (String field : REQUIRED_FIELDS) {
-      Preconditions.checkState(fields.contains(field), "Required field missing: " + field
-          + "Add this field to the list of Variants fields returned in the partial response.");
+      Preconditions
+          .checkState(
+              fields.contains(field),
+              "Required field missing: %s Add this field to the list of Variants fields returned in the partial response.",
+              field);
     }
     return joinGvcfVariants(input, auth, fields);
   }
@@ -92,15 +96,39 @@ public class JoinGvcfVariants {
         .apply(ParDo.of(new JoinGvcfVariants.MergeVariants()));
   }
 
-  @SuppressWarnings("serial")
-  public static class BinVariants extends DoFn<Variant, KV<KV<String, Long>, Variant>> {
+  private static final Ordering<Variant> BY_START = new Ordering<Variant>() {
+    @Override
+    public int compare(Variant v1, Variant v2) {
+      return v1.getStart().compareTo(v2.getStart());
+    }
+  };
 
-    public long getStartBin(int binSize, Variant variant) {
+  private static final Ordering<Variant> BY_ALTERNATE_BASES = new Ordering<Variant>() {
+    @Override
+    public int compare(Variant v1, Variant v2) {
+      if (null == v1.getAlternateBases()) {
+        return -1;
+      } else if (null == v2.getAlternateBases()) {
+        return 1;
+      }
+      return 0;
+    }
+  };
+
+  // Special-purpose comparator for use in dealing with GVCF data. Sort by start position ascending
+  // and ensure that if a variant and a ref-matching block are at the same position, the
+  // ref-matching block comes first.
+  @VisibleForTesting
+  static final Comparator<Variant> GVCF_VARIANT_COMPARATOR = BY_START.compound(BY_ALTERNATE_BASES);
+
+  public static final class BinVariants extends DoFn<Variant, KV<KV<String, Long>, Variant>> {
+
+    public static final long getStartBin(int binSize, Variant variant) {
       // Round down to the nearest integer
       return Math.round(Math.floor(variant.getStart() / binSize));
     }
 
-    public long getEndBin(int binSize, Variant variant) {
+    public static final long getEndBin(int binSize, Variant variant) {
       // Round down to the nearest integer
       return Math.round(Math.floor(variant.getEnd() / binSize));
     }
@@ -118,8 +146,8 @@ public class JoinGvcfVariants {
     }
   }
 
-  @SuppressWarnings("serial")
-  public static class MergeVariants extends DoFn<KV<KV<String, Long>, Iterable<Variant>>, Variant> {
+  public static final class MergeVariants extends
+      DoFn<KV<KV<String, Long>, Iterable<Variant>>, Variant> {
 
     @Override
     public void processElement(ProcessContext context) {
@@ -128,11 +156,10 @@ public class JoinGvcfVariants {
       // used in the prior step to construct the key.
       KV<KV<String, Long>, Iterable<Variant>> kv = context.element();
 
-      // Sort by start position descending and ensure that if a variant
-      // and a ref-matching block are at the same position, the
-      // ref-matching block comes first.
       List<Variant> records = Lists.newArrayList(kv.getValue());
-      Collections.sort(records, new JoinGvcfVariants.VariantComparator());
+      // The sort order is critical here so that candidate overlapping reference matching blocks
+      // occur prior to any variants they may overlap.
+      Collections.sort(records, GVCF_VARIANT_COMPARATOR);
 
       // The upper bound on potential overlaps is the sample size plus the number of
       // block records that occur between actual variants.
@@ -161,29 +188,8 @@ public class JoinGvcfVariants {
     }
   }
 
-  /**
-   * Comparator for sorting variants by genomic position and alternateBases
-   */
-  public static class VariantComparator implements Comparator<Variant> {
-    @Override
-    public int compare(Variant v1, Variant v2) {
-
-      int startComparison = v1.getStart().compareTo(v2.getStart());
-      if (0 != startComparison) {
-        return startComparison;
-      }
-
-      if (null == v1.getAlternateBases()) {
-        return -1;
-      } else if (null == v2.getAlternateBases()) {
-        return 1;
-      }
-      return 0;
-    }
-  }
-
   public static boolean isOverlapping(Variant blockRecord, Variant variant) {
-    return (blockRecord.getStart() <= variant.getStart() && blockRecord.getEnd() >= variant
-        .getStart() + 1);
+    return blockRecord.getStart() <= variant.getStart()
+        && blockRecord.getEnd() >= variant.getStart() + 1;
   }
 }

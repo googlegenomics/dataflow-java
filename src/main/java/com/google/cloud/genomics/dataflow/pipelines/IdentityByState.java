@@ -52,7 +52,6 @@ public class IdentityByState {
       InstantiationException, IllegalAccessException {
     IdentityByStateOptions options =
         PipelineOptionsFactory.fromArgs(args).withValidation().as(IdentityByStateOptions.class);
-    GenomicsOptions.Methods.validateOptions(options);
     GenomicsDatasetOptions.Methods.validateOptions(options);
 
     GenomicsFactory.OfflineAuth auth = GenomicsOptions.Methods.getGenomicsAuth(options);
@@ -64,19 +63,14 @@ public class IdentityByState {
     PCollection<SearchVariantsRequest> input =
         DataflowWorkarounds.getPCollection(requests, p, options.getNumWorkers());
 
-    PCollection<Variant> variants;
-    if (options.getIsGvcf()) {
-      // Special handling is needed for data in gVCF format since IBS must take into account
-      // reference-matches in addition to the variants (unlike
-      // other analyses such as PCA).
-      variants =
-          JoinGvcfVariants.joinGvcfVariantsTransform(input, auth,
-              JoinGvcfVariants.GVCF_VARIANT_FIELDS);
-    } else {
-      variants =
-          input.apply(ParDo.named(VariantReader.class.getSimpleName()).of(
-              new VariantReader(auth, VARIANT_FIELDS)));
-    }
+    PCollection<Variant> variants =
+        options.getIsGvcf()
+        // Special handling is needed for data in gVCF format since IBS must take into account
+        // reference-matches in addition to the variants (unlike
+        // other analyses such as PCA).
+        ? JoinGvcfVariants.joinGvcfVariantsTransform(input, auth,
+            JoinGvcfVariants.GVCF_VARIANT_FIELDS) : input.apply(ParDo.named(
+            VariantReader.class.getSimpleName()).of(new VariantReader(auth, VARIANT_FIELDS)));
 
     variants
         .apply(

@@ -13,8 +13,6 @@
  */
 package com.google.cloud.genomics.dataflow.utils;
 
-import static com.google.common.collect.Lists.newArrayList;
-
 import java.util.Arrays;
 import java.util.List;
 
@@ -28,7 +26,7 @@ public class DataUtils {
   }
 
   public static Variant makeSimpleVariant(Call... calls) {
-    return new Variant().setCalls(newArrayList(calls));
+    return new Variant().setCalls(Arrays.asList(calls));
   }
 
   public static Variant makeVariant(String referenceName, long start, long end,
@@ -37,7 +35,7 @@ public class DataUtils {
         new Variant().setReferenceName(referenceName).setStart(start).setEnd(end)
             .setReferenceBases(referenceBases).setAlternateBases(alternateBases);
     if (null != calls) {
-      variant.setCalls(newArrayList(calls));
+      variant.setCalls(Arrays.asList(calls));
     }
     return variant;
   }
