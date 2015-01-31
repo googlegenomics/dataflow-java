@@ -33,6 +33,7 @@ import com.google.cloud.genomics.dataflow.readers.VariantReader;
 import com.google.cloud.genomics.dataflow.utils.GenomicsDatasetOptions;
 import com.google.cloud.genomics.dataflow.utils.VariantUtils;
 import com.google.cloud.genomics.utils.GenomicsFactory;
+import com.google.common.base.Function;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Ordering;
 
@@ -96,30 +97,31 @@ public class JoinGvcfVariants {
         .apply(ParDo.of(new JoinGvcfVariants.MergeVariants()));
   }
 
-  private static final Ordering<Variant> BY_START = new Ordering<Variant>() {
-    @Override
-    public int compare(Variant v1, Variant v2) {
-      return v1.getStart().compareTo(v2.getStart());
-    }
-  };
+  private static final Ordering<Variant> BY_START = Ordering.natural().onResultOf(
+      new Function<Variant, Long>() {
+        @Override
+        public Long apply(Variant variant) {
+          return variant.getStart();
+        }
+      });
 
-  private static final Ordering<Variant> BY_ALTERNATE_BASES = new Ordering<Variant>() {
-    @Override
-    public int compare(Variant v1, Variant v2) {
-      if (null == v1.getAlternateBases()) {
-        return -1;
-      } else if (null == v2.getAlternateBases()) {
-        return 1;
-      }
-      return 0;
-    }
-  };
+  private static final Ordering<Variant> BY_FIRST_OF_ALTERNATE_BASES = Ordering.natural()
+      .nullsFirst().onResultOf(new Function<Variant, String>() {
+        @Override
+        public String apply(Variant variant) {
+          if (null == variant.getAlternateBases() || variant.getAlternateBases().isEmpty()) {
+            return null;
+          }
+          return variant.getAlternateBases().get(0);
+        }
+      });
 
   // Special-purpose comparator for use in dealing with GVCF data. Sort by start position ascending
   // and ensure that if a variant and a ref-matching block are at the same position, the
   // ref-matching block comes first.
   @VisibleForTesting
-  static final Comparator<Variant> GVCF_VARIANT_COMPARATOR = BY_START.compound(BY_ALTERNATE_BASES);
+  static final Comparator<Variant> GVCF_VARIANT_COMPARATOR = BY_START
+      .compound(BY_FIRST_OF_ALTERNATE_BASES);
 
   public static final class BinVariants extends DoFn<Variant, KV<KV<String, Long>, Variant>> {
 

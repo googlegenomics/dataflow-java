@@ -13,12 +13,14 @@
  */
 package com.google.cloud.genomics.dataflow.functions;
 
+import static com.google.common.collect.Lists.newArrayList;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertThat;
 import static org.junit.Assert.assertTrue;
 
 import java.util.Arrays;
+import java.util.Comparator;
 import java.util.List;
 
 import org.hamcrest.CoreMatchers;
@@ -94,19 +96,35 @@ public class JoinGvcfVariantsTest {
 
   @Test
   public void testVariantVariantComparator() {
-    assertEquals(-1, JoinGvcfVariants.GVCF_VARIANT_COMPARATOR.compare(blockRecord1, snp1));
-    assertEquals(1, JoinGvcfVariants.GVCF_VARIANT_COMPARATOR.compare(blockRecord2, snp1));
-    assertEquals(-1, JoinGvcfVariants.GVCF_VARIANT_COMPARATOR.compare(snp1, snp2));
+    Comparator<Variant> comparator = JoinGvcfVariants.GVCF_VARIANT_COMPARATOR;
+
+    assertEquals(-1, comparator.compare(blockRecord1, snp1));
+    assertEquals(1, comparator.compare(blockRecord2, snp1));
+    assertEquals(-1, comparator.compare(snp1, snp2));
 
     // Two variants at the same location
-    assertEquals(0, JoinGvcfVariants.GVCF_VARIANT_COMPARATOR.compare(
-        DataUtils.makeVariant("chr7", 200010, 200011, "A", Arrays.asList("C"), (Call[]) null),
-        DataUtils.makeVariant("chr7", 200010, 200011, "A", Arrays.asList("T"), (Call[]) null)));
+    Variant snp1DifferentAlt =
+        DataUtils.makeVariant(snp1.getReferenceName(), snp1.getStart(), snp1.getEnd(),
+            snp1.getReferenceBases(), Arrays.asList("G"), (Call[]) null);
+    assertTrue(0 > comparator.compare(snp1, snp1DifferentAlt));
 
     // Block record and variant at the same location
-    assertEquals(1, JoinGvcfVariants.GVCF_VARIANT_COMPARATOR.compare(
-        DataUtils.makeVariant("chr7", 200010, 200011, "A", Arrays.asList("C"), (Call[]) null),
-        DataUtils.makeVariant("chr7", 200010, 200011, "A", null, (Call[]) null)));
+    Variant blockRecordForSnp1 =
+        DataUtils.makeVariant(snp1.getReferenceName(), snp1.getStart(), snp1.getEnd(),
+            snp1.getReferenceBases(), null, (Call[]) null);
+    assertEquals(1, comparator.compare(snp1, blockRecordForSnp1));
+
+    List<Variant> variants = newArrayList(input);
+    variants.add(snp1DifferentAlt);
+    variants.add(blockRecordForSnp1);
+
+    // Check all permutations
+    for (Variant v1 : variants) {
+      for (Variant v2 : variants) {
+        assertTrue(Integer.signum(comparator.compare(v1, v2)) == -Integer.signum(comparator
+            .compare(v2, v1)));
+      }
+    }
   }
 
   @Test
@@ -127,16 +145,11 @@ public class JoinGvcfVariantsTest {
     assertThat(binVariantsOutput, CoreMatchers.hasItem(KV.of(KV.of("chr7", 200L), snp1)));
     assertThat(binVariantsOutput, CoreMatchers.hasItem(KV.of(KV.of("chr7", 200L), snp2)));
     assertThat(binVariantsOutput, CoreMatchers.hasItem(KV.of(KV.of("chr7", 200L), insert)));
-    assertThat(binVariantsOutput,
-        CoreMatchers.hasItem(KV.of(KV.of("chr7", 199L), blockRecord1)));
-    assertThat(binVariantsOutput,
-        CoreMatchers.hasItem(KV.of(KV.of("chr7", 200L), blockRecord1)));
-    assertThat(binVariantsOutput,
-        CoreMatchers.hasItem(KV.of(KV.of("chr7", 201L), blockRecord1)));
-    assertThat(binVariantsOutput,
-        CoreMatchers.hasItem(KV.of(KV.of("chr7", 202L), blockRecord1)));
-    assertThat(binVariantsOutput,
-        CoreMatchers.hasItem(KV.of(KV.of("chr7", 200L), blockRecord2)));
+    assertThat(binVariantsOutput, CoreMatchers.hasItem(KV.of(KV.of("chr7", 199L), blockRecord1)));
+    assertThat(binVariantsOutput, CoreMatchers.hasItem(KV.of(KV.of("chr7", 200L), blockRecord1)));
+    assertThat(binVariantsOutput, CoreMatchers.hasItem(KV.of(KV.of("chr7", 201L), blockRecord1)));
+    assertThat(binVariantsOutput, CoreMatchers.hasItem(KV.of(KV.of("chr7", 202L), blockRecord1)));
+    assertThat(binVariantsOutput, CoreMatchers.hasItem(KV.of(KV.of("chr7", 200L), blockRecord2)));
     assertEquals(8, binVariantsOutput.size());
   }
 
