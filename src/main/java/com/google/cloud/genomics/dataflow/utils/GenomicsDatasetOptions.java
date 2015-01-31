@@ -99,9 +99,9 @@ public interface GenomicsDatasetOptions extends GenomicsOptions {
       + "flag so that the pipeline correctly takes into account reference-matching "
       + "block records which overlap variants within the dataset.")
   @Default.Boolean(false)
-  boolean getIsGvcf();
+  boolean isGvcf();
 
-  void setIsGvcf(boolean isGvcf);
+  void setGvcf(boolean isGvcf);
 
   @Description("Genomic window \"bin\" size to use for gVCF data when joining block-records with variants.")
   @Default.Integer(1000)

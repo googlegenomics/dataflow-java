@@ -64,7 +64,7 @@ public class IdentityByState {
         DataflowWorkarounds.getPCollection(requests, p, options.getNumWorkers());
 
     PCollection<Variant> variants =
-        options.getIsGvcf()
+        options.isGvcf()
         // Special handling is needed for data in gVCF format since IBS must take into account
         // reference-matches in addition to the variants (unlike
         // other analyses such as PCA).
