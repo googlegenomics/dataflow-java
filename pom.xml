@@ -69,7 +69,7 @@
     <dependency>
       <groupId>com.google.cloud.dataflow</groupId>
       <artifactId>google-cloud-dataflow-java-sdk-all</artifactId>
-      <version>0.3.141216</version>
+      <version>0.3.150109</version>
     </dependency>
 
     <!-- Google client dependencies -->
@@ -127,7 +127,7 @@
     <dependency>
       <groupId>com.google.apis</groupId>
       <artifactId>google-api-services-dataflow</artifactId>
-      <version>v1beta3-rev3-1.19.0</version>
+      <version>v1b4-rev1-1.19.1</version>
       <exclusions>
         <!-- Exclude an old version of guava which is being pulled
              in by a transitive dependency google-api-client 1.19.0 -->
