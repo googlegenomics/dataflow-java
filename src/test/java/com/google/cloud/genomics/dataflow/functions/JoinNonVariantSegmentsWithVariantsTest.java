@@ -50,7 +50,7 @@ import com.google.cloud.genomics.dataflow.utils.DataUtils;
 import com.google.cloud.genomics.dataflow.utils.DataflowWorkarounds;
 
 @RunWith(JUnit4.class)
-public class JoinGvcfVariantsTest {
+public class JoinNonVariantSegmentsWithVariantsTest {
 
   private static final Call[] variantCalls = new Call[] {
       DataUtils.makeCall("het-alt sample", 1, 0), DataUtils.makeCall("hom-alt sample", 1, 1)};
@@ -96,7 +96,7 @@ public class JoinGvcfVariantsTest {
 
   @Test
   public void testVariantVariantComparator() {
-    Comparator<Variant> comparator = JoinGvcfVariants.GVCF_VARIANT_COMPARATOR;
+    Comparator<Variant> comparator = JoinNonVariantSegmentsWithVariants.NON_VARIANT_SEGMENT_COMPARATOR;
 
     assertEquals(-1, comparator.compare(blockRecord1, snp1));
     assertEquals(1, comparator.compare(blockRecord2, snp1));
@@ -129,17 +129,17 @@ public class JoinGvcfVariantsTest {
 
   @Test
   public void testIsOverlapping() {
-    assertTrue(JoinGvcfVariants.isOverlapping(blockRecord1, snp1));
-    assertTrue(JoinGvcfVariants.isOverlapping(blockRecord1, snp2));
-    assertFalse(JoinGvcfVariants.isOverlapping(blockRecord2, snp1));
-    assertTrue(JoinGvcfVariants.isOverlapping(blockRecord2, snp2));
+    assertTrue(JoinNonVariantSegmentsWithVariants.isOverlapping(blockRecord1, snp1));
+    assertTrue(JoinNonVariantSegmentsWithVariants.isOverlapping(blockRecord1, snp2));
+    assertFalse(JoinNonVariantSegmentsWithVariants.isOverlapping(blockRecord2, snp1));
+    assertTrue(JoinNonVariantSegmentsWithVariants.isOverlapping(blockRecord2, snp2));
   }
 
   @Test
   public void testBinVariantsFn() {
 
     DoFnTester<Variant, KV<KV<String, Long>, Variant>> binVariantsFn =
-        DoFnTester.of(new JoinGvcfVariants.BinVariants());
+        DoFnTester.of(new JoinNonVariantSegmentsWithVariants.BinVariants());
 
     List<KV<KV<String, Long>, Variant>> binVariantsOutput = binVariantsFn.processBatch(input);
     assertThat(binVariantsOutput, CoreMatchers.hasItem(KV.of(KV.of("chr7", 200L), snp1)));
@@ -154,7 +154,7 @@ public class JoinGvcfVariantsTest {
   }
 
   @Test
-  public void testJoinGvcfPipeline() {
+  public void testJoinVariantsPipeline() {
 
     Pipeline p = TestPipeline.create();
     DataflowWorkarounds.registerGenomicsCoders(p);
@@ -163,25 +163,24 @@ public class JoinGvcfVariantsTest {
         p.apply(Create.of(input)).setCoder(GenericJsonCoder.of(Variant.class));
 
     PCollection<KV<KV<String, Long>, Variant>> binnedVariants =
-        inputVariants.apply(ParDo.of(new JoinGvcfVariants.BinVariants())).setCoder(
+        inputVariants.apply(ParDo.of(new JoinNonVariantSegmentsWithVariants.BinVariants())).setCoder(
             KvCoder.of(KvCoder.of(StringUtf8Coder.of(), BigEndianLongCoder.of()),
                 GenericJsonCoder.of(Variant.class)));
 
-    // TODO check that windowing function is not splitting these groups across different windows
     PCollection<KV<KV<String, Long>, Iterable<Variant>>> groupedBinnedVariants =
         binnedVariants.apply(GroupByKey.<KV<String, Long>, Variant>create());
 
     PCollection<Variant> mergedVariants =
-        groupedBinnedVariants.apply(ParDo.of(new JoinGvcfVariants.MergeVariants())).setCoder(
+        groupedBinnedVariants.apply(ParDo.of(new JoinNonVariantSegmentsWithVariants.MergeVariants())).setCoder(
             GenericJsonCoder.of(Variant.class));
 
     DataflowAssert.that(mergedVariants).satisfies(
-        new AssertThatHasExpectedContentsForTestJoinGvcf());
+        new AssertThatHasExpectedContentsForTestJoinVariants());
 
     p.run();
   }
 
-  static class AssertThatHasExpectedContentsForTestJoinGvcf implements
+  static class AssertThatHasExpectedContentsForTestJoinVariants implements
       SerializableFunction<Iterable<Variant>, Void> {
 
     @Override
