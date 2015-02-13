@@ -30,7 +30,7 @@ import com.google.cloud.genomics.dataflow.functions.AlleleSimilarityCalculator;
 import com.google.cloud.genomics.dataflow.functions.CallSimilarityCalculatorFactory;
 import com.google.cloud.genomics.dataflow.functions.FormatIBSData;
 import com.google.cloud.genomics.dataflow.functions.IBSCalculator;
-import com.google.cloud.genomics.dataflow.functions.JoinGvcfVariants;
+import com.google.cloud.genomics.dataflow.functions.JoinNonVariantSegmentsWithVariants;
 import com.google.cloud.genomics.dataflow.readers.VariantReader;
 import com.google.cloud.genomics.dataflow.utils.DataflowWorkarounds;
 import com.google.cloud.genomics.dataflow.utils.GenomicsDatasetOptions;
@@ -64,12 +64,12 @@ public class IdentityByState {
         DataflowWorkarounds.getPCollection(requests, p, options.getNumWorkers());
 
     PCollection<Variant> variants =
-        options.isGvcf()
-        // Special handling is needed for data in gVCF format since IBS must take into account
-        // reference-matches in addition to the variants (unlike
+        options.getHasNonVariantSegments()
+        // Special handling is needed for data with non-variant segment records since IBS must
+        // take into account reference-matches in addition to the variants (unlike
         // other analyses such as PCA).
-        ? JoinGvcfVariants.joinGvcfVariantsTransform(input, auth,
-            JoinGvcfVariants.GVCF_VARIANT_FIELDS) : input.apply(ParDo.named(
+        ? JoinNonVariantSegmentsWithVariants.joinVariantsTransform(input, auth,
+            JoinNonVariantSegmentsWithVariants.VARIANT_JOIN_FIELDS) : input.apply(ParDo.named(
             VariantReader.class.getSimpleName()).of(new VariantReader(auth, VARIANT_FIELDS)));
 
     variants
