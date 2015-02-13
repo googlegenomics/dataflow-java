@@ -38,22 +38,29 @@ import com.google.common.base.Preconditions;
 import com.google.common.collect.Ordering;
 
 /**
- * The transforms in this class convert data in Genome VCF (gVCF) format to variant-only VCF data
- * with calls from block-records merged into the variants with which they overlap.
+ * The transforms in this class convert data with non-variant segments (such as data that was in
+ * source format Genome VCF (gVCF) or Complete Genomics) to variant-only data with calls from
+ * non-variant-segments merged into the variants with which they overlap.
  * 
  * This is currently done only for SNP variants. Indels and structural variants are left as-is.
+ * 
+ * SCALING: For a large cohort with many, many more rare variants we may wish to instead modify the
+ * logic here to summarize the number of calls that match the reference for each variant instead of
+ * adding those individual calls to the record.
+ * 
  */
-public class JoinGvcfVariants {
+public class JoinNonVariantSegmentsWithVariants {
 
-  public static final String GVCF_VARIANT_FIELDS =
+  public static final String VARIANT_JOIN_FIELDS =
       "nextPageToken,variants(referenceName,start,end,referenceBases,alternateBases,calls(genotype,callSetName))";
 
   private static final List<String> REQUIRED_FIELDS = Arrays.asList("nextPageToken",
       "referenceName", "start", "end", "referenceBases", "alternateBases");
 
   /**
-   * Use this PTransform for correct handling of gVCF data in DataFlow jobs that consider not only
-   * calls that have the variant but also those that match the reference at that variant position.
+   * Use this transform for correct handling of data with non-variant segments in DataFlow jobs that
+   * consider not only calls that have the variant but also those that match the reference at that
+   * variant position.
    * 
    * All variant fields will be returned.
    * 
@@ -61,21 +68,22 @@ public class JoinGvcfVariants {
    * @param auth
    * @return
    */
-  public static PCollection<Variant> joinGvcfVariantsTransform(
+  public static PCollection<Variant> joinVariantsTransform(
       PCollection<SearchVariantsRequest> input, GenomicsFactory.OfflineAuth auth) {
-    return joinGvcfVariants(input, auth, null);
+    return joinVariants(input, auth, null);
   }
 
   /**
-   * Use this PTransform for correct handling of gVCF data in DataFlow jobs that consider not only
-   * calls that have the variant but also those that match the reference at that variant position.
+   * Use this transform for correct handling of data with non-variant segments in DataFlow jobs that
+   * consider not only calls that have the variant but also those that match the reference at that
+   * variant position.
    * 
    * @param input
    * @param auth
    * @param fields Fields to be returned by the partial response.
    * @return
    */
-  public static PCollection<Variant> joinGvcfVariantsTransform(
+  public static PCollection<Variant> joinVariantsTransform(
       PCollection<SearchVariantsRequest> input, GenomicsFactory.OfflineAuth auth, String fields) {
     for (String field : REQUIRED_FIELDS) {
       Preconditions
@@ -84,17 +92,17 @@ public class JoinGvcfVariants {
               "Required field missing: %s Add this field to the list of Variants fields returned in the partial response.",
               field);
     }
-    return joinGvcfVariants(input, auth, fields);
+    return joinVariants(input, auth, fields);
   }
 
-  private static PCollection<Variant> joinGvcfVariants(PCollection<SearchVariantsRequest> input,
+  private static PCollection<Variant> joinVariants(PCollection<SearchVariantsRequest> input,
       GenomicsFactory.OfflineAuth auth, String fields) {
     return input
         .apply(ParDo.named(VariantReader.class.getSimpleName()).of(new VariantReader(auth, fields)))
-        .apply(ParDo.of(new JoinGvcfVariants.BinVariants()))
+        .apply(ParDo.of(new JoinNonVariantSegmentsWithVariants.BinVariants()))
         // TODO check that windowing function is not splitting these groups
         .apply(GroupByKey.<KV<String, Long>, Variant>create())
-        .apply(ParDo.of(new JoinGvcfVariants.MergeVariants()));
+        .apply(ParDo.of(new JoinNonVariantSegmentsWithVariants.MergeVariants()));
   }
 
   private static final Ordering<Variant> BY_START = Ordering.natural().onResultOf(
@@ -116,11 +124,11 @@ public class JoinGvcfVariants {
         }
       });
 
-  // Special-purpose comparator for use in dealing with GVCF data. Sort by start position ascending
-  // and ensure that if a variant and a ref-matching block are at the same position, the
-  // ref-matching block comes first.
+  // Special-purpose comparator for use in dealing with both variant and non-variant segment data.
+  // Sort by start position ascending and ensure that if a variant and a ref-matching block are at
+  // the same position, the non-variant segment record comes first.
   @VisibleForTesting
-  static final Comparator<Variant> GVCF_VARIANT_COMPARATOR = BY_START
+  static final Comparator<Variant> NON_VARIANT_SEGMENT_COMPARATOR = BY_START
       .compound(BY_FIRST_OF_ALTERNATE_BASES);
 
   public static final class BinVariants extends DoFn<Variant, KV<KV<String, Long>, Variant>> {
@@ -161,11 +169,11 @@ public class JoinGvcfVariants {
       List<Variant> records = Lists.newArrayList(kv.getValue());
       // The sort order is critical here so that candidate overlapping reference matching blocks
       // occur prior to any variants they may overlap.
-      Collections.sort(records, GVCF_VARIANT_COMPARATOR);
+      Collections.sort(records, NON_VARIANT_SEGMENT_COMPARATOR);
 
       // The upper bound on potential overlaps is the sample size plus the number of
       // block records that occur between actual variants.
-      List<Variant> blockRecords = new LinkedList<Variant>();
+      List<Variant> blockRecords = new LinkedList<>();
 
       for (Variant record : records) {
         if (VariantUtils.isVariant(record)) {
@@ -173,7 +181,7 @@ public class JoinGvcfVariants {
           if (VariantUtils.isSnp(record)) {
             for (Iterator<Variant> iterator = blockRecords.iterator(); iterator.hasNext();) {
               Variant blockRecord = iterator.next();
-              if (JoinGvcfVariants.isOverlapping(blockRecord, record)) {
+              if (JoinNonVariantSegmentsWithVariants.isOverlapping(blockRecord, record)) {
                 record.getCalls().addAll(blockRecord.getCalls());
               } else {
                 // Remove the current element from the iterator and the list since it is

@@ -44,7 +44,7 @@ public interface GenomicsDatasetOptions extends GenomicsOptions {
       Genomics genomics = auth.getGenomics(auth.getDefaultFactory());
 
       Iterable<Contig> contigs =
-          options.isAllContigs() ? Contig.getContigsInVariantSet(genomics, datasetId, excludeXY)
+          options.isAllReferences() ? Contig.getContigsInVariantSet(genomics, datasetId, excludeXY)
               : Contig.parseContigsFromCommandLine(options.getReferences());
 
       List<SearchVariantsRequest> requests = Lists.newArrayList();
@@ -74,10 +74,10 @@ public interface GenomicsDatasetOptions extends GenomicsOptions {
   String getOutput();
 
   @Description("By default, PCA will be run on BRCA1, pass this flag to run on all "
-      + "non X and Y contigs present in the dataset")
-  boolean isAllContigs();
+      + "non X and Y references present in the dataset")
+  boolean isAllReferences();
 
-  void setAllContigs(boolean allContigs);
+  void setAllReferences(boolean allReferences);
 
   void setDatasetId(String datasetId);
 
@@ -95,15 +95,16 @@ public interface GenomicsDatasetOptions extends GenomicsOptions {
 
   void setBasesPerShard(long basesPerShard);
 
-  @Description("If querying a dataset in Genome VCF (gVCF) format, specify this "
-      + "flag so that the pipeline correctly takes into account reference-matching "
-      + "block records which overlap variants within the dataset.")
+  @Description("If querying a dataset with non-variant segments (such as Complete Genomics data "
+      + "or data in Genome VCF (gVCF) format), specify this flag so that the pipeline correctly "
+      + "takes into account non-variant segment records that overlap variants within the dataset.")
   @Default.Boolean(false)
-  boolean isGvcf();
+  boolean getHasNonVariantSegments();
 
-  void setGvcf(boolean isGvcf);
+  void setHasNonVariantSegments(boolean hasNonVariantSegments);
 
-  @Description("Genomic window \"bin\" size to use for gVCF data when joining block-records with variants.")
+  @Description("Genomic window \"bin\" size to use for data containing non-variant segments when "
+      + "joining those non-variant segment records with variant records.")
   @Default.Integer(1000)
   int getBinSize();
 

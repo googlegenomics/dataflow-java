@@ -33,16 +33,19 @@ import com.google.cloud.dataflow.sdk.options.Validation;
 import com.google.cloud.dataflow.sdk.transforms.DoFn;
 import com.google.cloud.dataflow.sdk.transforms.ParDo;
 import com.google.cloud.dataflow.sdk.values.PCollection;
-import com.google.cloud.genomics.dataflow.functions.JoinGvcfVariants;
+import com.google.cloud.genomics.dataflow.functions.JoinNonVariantSegmentsWithVariants;
 import com.google.cloud.genomics.dataflow.utils.DataflowWorkarounds;
 import com.google.cloud.genomics.dataflow.utils.GenomicsDatasetOptions;
 import com.google.cloud.genomics.dataflow.utils.GenomicsOptions;
 import com.google.cloud.genomics.utils.GenomicsFactory;
 
 /**
- * Sample pipeline that converts data in Genome VCF (gVCF) format to variant-only VCF data with
- * calls from block-records merged into the variants with which they overlap. The resultant data is
+ * Sample pipeline that converts data with non-variant segments (such as data that was in source
+ * format Genome VCF (gVCF) or Complete Genomics) to variant-only data with calls from
+ * non-variant-segments merged into the variants with which they overlap. The resultant data is
  * emitted to a BigQuery table.
+ * 
+ * This is currently done only for SNP variants. Indels and structural variants are left as-is.
  * <p>
  * The sample could be expanded upon to:
  * <ol>
@@ -50,10 +53,10 @@ import com.google.cloud.genomics.utils.GenomicsFactory;
  * <li>perform additional data munging
  * </ol>
  */
-public class ConvertGvcfToVcf {
+public class ConvertNonVariantSegmentsToVariants {
 
   /**
-   * Options supported by {@link ConvertGvcfToVcf}.
+   * Options supported by {@link ConvertNonVariantSegmentsToVariants}.
    * <p>
    * Inherits standard configuration options for Genomics pipelines and datasets.
    */
@@ -84,6 +87,7 @@ public class ConvertGvcfToVcf {
         .setMode("REPEATED"));
 
     List<TableFieldSchema> fields = new ArrayList<>();
+    fields.add(new TableFieldSchema().setName("variant_id").setType("STRING"));
     fields.add(new TableFieldSchema().setName("reference_name").setType("STRING"));
     fields.add(new TableFieldSchema().setName("start").setType("INTEGER"));
     fields.add(new TableFieldSchema().setName("end").setType("INTEGER"));
@@ -113,8 +117,9 @@ public class ConvertGvcfToVcf {
       }
 
       TableRow row =
-          new TableRow().set("reference_name", v.getReferenceName()).set("start", v.getStart())
-              .set("end", v.getEnd()).set("reference_bases", v.getReferenceBases())
+          new TableRow().set("variant_id", v.getId()).set("reference_name", v.getReferenceName())
+              .set("start", v.getStart()).set("end", v.getEnd())
+              .set("reference_bases", v.getReferenceBases())
               .set("alternate_bases", v.getAlternateBases()).set("call", calls);
       c.output(row);
     }
@@ -124,8 +129,9 @@ public class ConvertGvcfToVcf {
     Options options = PipelineOptionsFactory.fromArgs(args).withValidation().as(Options.class);
     GenomicsDatasetOptions.Methods.validateOptions(options);
 
-    Preconditions.checkState(options.isGvcf(),
-        "This job is only valid for gVCF data.  Set the --gvcf command line option accordingly.");
+    Preconditions.checkState(options.getHasNonVariantSegments(),
+        "This job is only valid for data containing non-variant segments. "
+            + "Set the --hasNonVariantSegments command line option accordingly.");
 
     GenomicsFactory.OfflineAuth auth = GenomicsOptions.Methods.getGenomicsAuth(options);
     List<SearchVariantsRequest> requests =
@@ -138,8 +144,8 @@ public class ConvertGvcfToVcf {
         DataflowWorkarounds.getPCollection(requests, p, options.getNumWorkers());
 
     PCollection<Variant> variants =
-        JoinGvcfVariants.joinGvcfVariantsTransform(input, auth,
-            JoinGvcfVariants.GVCF_VARIANT_FIELDS);
+        JoinNonVariantSegmentsWithVariants.joinVariantsTransform(input, auth,
+            JoinNonVariantSegmentsWithVariants.VARIANT_JOIN_FIELDS);
 
     variants.apply(ParDo.of(new FormatVariantsFn())).apply(
         BigQueryIO.Write.to(options.getOutput()).withSchema(getTableSchema())
