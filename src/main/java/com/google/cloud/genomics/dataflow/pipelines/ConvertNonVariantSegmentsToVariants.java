@@ -111,9 +111,15 @@ public class ConvertNonVariantSegmentsToVariants {
 
       List<TableRow> calls = new ArrayList<>();
       for (Call call : v.getCalls()) {
-        calls.add(new TableRow().set("call_set_name", call.getCallSetName())
-            .set("phaseset", call.getPhaseset()).set("genotype", call.getGenotype())
-            .set("genotype_likelihood", call.getGenotypeLikelihood()));
+        calls.add(new TableRow()
+            .set("call_set_name", call.getCallSetName())
+            .set("phaseset", call.getPhaseset())
+            .set("genotype", call.getGenotype())
+            .set(
+                "genotype_likelihood",
+                (call.getGenotypeLikelihood() == null) ? new ArrayList<Double>() : 
+                  call.getGenotypeLikelihood()
+                  ));
       }
 
       TableRow row =
@@ -135,7 +141,7 @@ public class ConvertNonVariantSegmentsToVariants {
 
     GenomicsFactory.OfflineAuth auth = GenomicsOptions.Methods.getGenomicsAuth(options);
     List<SearchVariantsRequest> requests =
-        GenomicsDatasetOptions.Methods.getVariantRequests(options, auth, true);
+        GenomicsDatasetOptions.Methods.getVariantRequests(options, auth, false);
 
     Pipeline p = Pipeline.create(options);
     DataflowWorkarounds.registerGenomicsCoders(p);
