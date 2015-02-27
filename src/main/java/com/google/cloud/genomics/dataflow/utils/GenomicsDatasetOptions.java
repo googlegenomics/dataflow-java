@@ -23,6 +23,7 @@ import com.google.api.services.genomics.model.SearchVariantsRequest;
 import com.google.cloud.dataflow.sdk.options.Default;
 import com.google.cloud.dataflow.sdk.options.Description;
 import com.google.cloud.genomics.utils.Contig;
+import com.google.cloud.genomics.utils.Contig.SexChromosomeFilter;
 import com.google.cloud.genomics.utils.GenomicsFactory;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Lists;
@@ -38,13 +39,13 @@ public interface GenomicsDatasetOptions extends GenomicsOptions {
 
     // TODO: If needed, add getReadRequests method
     public static List<SearchVariantsRequest> getVariantRequests(GenomicsDatasetOptions options,
-        GenomicsFactory.OfflineAuth auth, boolean excludeXY) throws IOException,
+        GenomicsFactory.OfflineAuth auth, SexChromosomeFilter sexChromosomeFilter) throws IOException,
         GeneralSecurityException {
       String datasetId = options.getDatasetId();
       Genomics genomics = auth.getGenomics(auth.getDefaultFactory());
 
       Iterable<Contig> contigs =
-          options.isAllReferences() ? Contig.getContigsInVariantSet(genomics, datasetId, excludeXY)
+          options.isAllReferences() ? Contig.getContigsInVariantSet(genomics, datasetId, sexChromosomeFilter)
               : Contig.parseContigsFromCommandLine(options.getReferences());
 
       List<SearchVariantsRequest> requests = Lists.newArrayList();

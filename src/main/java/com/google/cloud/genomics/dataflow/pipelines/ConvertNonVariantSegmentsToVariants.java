@@ -37,6 +37,7 @@ import com.google.cloud.genomics.dataflow.functions.JoinNonVariantSegmentsWithVa
 import com.google.cloud.genomics.dataflow.utils.DataflowWorkarounds;
 import com.google.cloud.genomics.dataflow.utils.GenomicsDatasetOptions;
 import com.google.cloud.genomics.dataflow.utils.GenomicsOptions;
+import com.google.cloud.genomics.utils.Contig.SexChromosomeFilter;
 import com.google.cloud.genomics.utils.GenomicsFactory;
 
 /**
@@ -141,7 +142,8 @@ public class ConvertNonVariantSegmentsToVariants {
 
     GenomicsFactory.OfflineAuth auth = GenomicsOptions.Methods.getGenomicsAuth(options);
     List<SearchVariantsRequest> requests =
-        GenomicsDatasetOptions.Methods.getVariantRequests(options, auth, false);
+        GenomicsDatasetOptions.Methods.getVariantRequests(options, auth,
+            SexChromosomeFilter.INCLUDE_XY);
 
     Pipeline p = Pipeline.create(options);
     DataflowWorkarounds.registerGenomicsCoders(p);

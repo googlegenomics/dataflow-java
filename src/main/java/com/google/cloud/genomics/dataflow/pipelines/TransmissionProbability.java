@@ -30,7 +30,9 @@ import com.google.cloud.genomics.dataflow.readers.VariantReader;
 import com.google.cloud.genomics.dataflow.utils.DataflowWorkarounds;
 import com.google.cloud.genomics.dataflow.utils.GenomicsDatasetOptions;
 import com.google.cloud.genomics.dataflow.utils.GenomicsOptions;
+import com.google.cloud.genomics.utils.Contig.SexChromosomeFilter;
 import com.google.cloud.genomics.utils.GenomicsFactory;
+import com.google.cloud.genomics.utils.Paginator.ShardBoundary;
 
 import java.io.IOException;
 import java.security.GeneralSecurityException;
@@ -51,7 +53,7 @@ public class TransmissionProbability {
 
     GenomicsFactory.OfflineAuth auth = GenomicsOptions.Methods.getGenomicsAuth(options);
     List<SearchVariantsRequest> requests = GenomicsDatasetOptions.Methods.getVariantRequests(
-        options, auth, true);
+        options, auth, SexChromosomeFilter.EXCLUDE_XY);
 
     Pipeline p = Pipeline.create(options);
     DataflowWorkarounds.registerGenomicsCoders(p);
@@ -65,7 +67,7 @@ public class TransmissionProbability {
     //    - Print calculated values to a file.
     DataflowWorkarounds.getPCollection(requests, p, options.getNumWorkers())
         .apply(ParDo.named("VariantReader")
-            .of(new VariantReader(auth, VARIANT_FIELDS)))
+            .of(new VariantReader(auth, ShardBoundary.STRICT, VARIANT_FIELDS)))
         .apply(ParDo.named("ExtractFamilyVariantStatus")
             .of(new ExtractAlleleTransmissionStatus()))
         .apply(GroupByKey.<Allele, Boolean>create())

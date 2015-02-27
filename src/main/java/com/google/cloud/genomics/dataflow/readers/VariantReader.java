@@ -20,12 +20,14 @@ import com.google.api.services.genomics.model.SearchVariantsRequest;
 import com.google.api.services.genomics.model.Variant;
 import com.google.cloud.genomics.utils.GenomicsFactory;
 import com.google.cloud.genomics.utils.Paginator;
+import com.google.cloud.genomics.utils.Paginator.ShardBoundary;
 
 import java.io.IOException;
 import java.util.logging.Logger;
 
 public class VariantReader extends GenomicsApiReader<SearchVariantsRequest, Variant> {
   private static final Logger LOG = Logger.getLogger(VariantReader.class.getName());
+  private final ShardBoundary shardBoundary;
 
   /**
    * Create a VariantReader using a auth and fields parameter. All fields not specified under 
@@ -34,16 +36,17 @@ public class VariantReader extends GenomicsApiReader<SearchVariantsRequest, Vari
    * @param auth Auth class containing credentials.
    * @param variantFields Fields to return in responses.
    */
-  public VariantReader(GenomicsFactory.OfflineAuth auth, String variantFields) {
+  public VariantReader(GenomicsFactory.OfflineAuth auth, ShardBoundary shardBoundary, String variantFields) {
     super(auth, variantFields);
+    this.shardBoundary = shardBoundary;
   }
 
   /**
    * Create a VariantReader with no fields parameter, all information will be returned.
    * @param auth Auth class containing credentials.
    */
-  public VariantReader(GenomicsFactory.OfflineAuth auth) {
-    this(auth, null);
+  public VariantReader(GenomicsFactory.OfflineAuth auth, ShardBoundary shardBoundary) {
+    this(auth, shardBoundary, null);
   }
 
   @Override
@@ -52,7 +55,7 @@ public class VariantReader extends GenomicsApiReader<SearchVariantsRequest, Vari
     LOG.info("Starting Variants read loop");
 
     int numberOfVariants = 0;
-    for (Variant variant : Paginator.Variants.create(genomics).search(request, fields)) {
+    for (Variant variant : Paginator.Variants.create(genomics, shardBoundary).search(request, fields)) {
       c.output(variant);
       ++numberOfVariants;
     }

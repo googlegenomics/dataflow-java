@@ -25,7 +25,9 @@ import com.google.cloud.genomics.dataflow.readers.VariantReader;
 import com.google.cloud.genomics.dataflow.utils.DataflowWorkarounds;
 import com.google.cloud.genomics.dataflow.utils.GenomicsDatasetOptions;
 import com.google.cloud.genomics.dataflow.utils.GenomicsOptions;
+import com.google.cloud.genomics.utils.Contig.SexChromosomeFilter;
 import com.google.cloud.genomics.utils.GenomicsFactory;
+import com.google.cloud.genomics.utils.Paginator.ShardBoundary;
 
 import java.io.IOException;
 import java.security.GeneralSecurityException;
@@ -45,13 +47,17 @@ public class VariantSimilarity {
     GenomicsOptions.Methods.validateOptions(options);
 
     GenomicsFactory.OfflineAuth auth = GenomicsOptions.Methods.getGenomicsAuth(options);
-    List<SearchVariantsRequest> requests = GenomicsDatasetOptions.Methods.getVariantRequests(
-        options, auth, true);
+    List<SearchVariantsRequest> requests =
+        GenomicsDatasetOptions.Methods.getVariantRequests(options, auth,
+            SexChromosomeFilter.EXCLUDE_XY);
 
     Pipeline p = Pipeline.create(options);
     DataflowWorkarounds.registerGenomicsCoders(p);
-    DataflowWorkarounds.getPCollection(requests, p, options.getNumWorkers())
-        .apply(ParDo.named("VariantReader").of(new VariantReader(auth, VARIANT_FIELDS)))
+    DataflowWorkarounds
+        .getPCollection(requests, p, options.getNumWorkers())
+        .apply(
+            ParDo.named("VariantReader").of(
+                new VariantReader(auth, ShardBoundary.STRICT, VARIANT_FIELDS)))
         .apply(ParDo.named("ExtractSimilarCallsets").of(new ExtractSimilarCallsets()))
         .apply(new OutputPCoAFile(options.getOutput()));
 
