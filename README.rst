@@ -36,11 +36,11 @@ Getting started
       --project=my-project-id \
       --output=gs://my-bucket/output/localtest.txt \
       --genomicsSecretsFile=client_secrets.json
-    
+
   Note: when running locally, you may run into memory issues depending on the
   capacity of your local machine.
-  
-* To deploy your pipeline (which runs on Google Compute Engine), some additional 
+
+* To deploy your pipeline (which runs on Google Compute Engine), some additional
   command line arguments are required::
 
     java -cp target/google-genomics-dataflow-v1beta2-0.2-SNAPSHOT.jar \
@@ -52,7 +52,7 @@ Getting started
       --genomicsSecretsFile=client_secrets.json \
       --numWorkers=10
 
-  Note: By default, the max workers you can have without requesting more GCE quota 
+  Note: By default, the max workers you can have without requesting more GCE quota
   is 16. (That's the default limit on VMs)
 
 .. _Apache Maven: http://maven.apache.org/download.cgi
@@ -78,17 +78,17 @@ Code layout
 The `Main code directory </src/main/java/com/google/cloud/genomics/dataflow>`_
 contains several useful utilities:
 
-coders: 
-  includes ``Coder`` classes that are useful for Genomics pipelines. ``GenericJsonCoder`` 
+coders:
+  includes ``Coder`` classes that are useful for Genomics pipelines. ``GenericJsonCoder``
   can be used with any of the Java client library classes (like ``Read``, ``Variant``, etc)
-  
+
 functions:
   contains common DoFns that can be reused as part of any pipeline.
   ``OutputPCoAFile`` is an example of a complex ``PTransform`` that provides a useful common analysis.
-  
+
 pipelines:
   contains example pipelines which demonstrate how Google Cloud Dataflow can work with Google Genomics
-  
+
   * ``VariantSimilarity`` runs a principal coordinates analysis over a dataset containing variants, and
     writes a file of graph results that can be easily displayed by Google Sheets.
 
@@ -98,9 +98,9 @@ pipelines:
 readers:
   contains functions that perform API calls to read data from the genomics API
 
-utils: 
+utils:
   contains utilities for running dataflow workflows against the genomics API
-  
+
   * ``DataflowWorkarounds``
     contains workarounds needed to use the Google Cloud Dataflow APIs.
 
@@ -111,8 +111,8 @@ utils:
 
 Maven artifact
 --------------
-This code is also deployed as a Maven artifact through Sonatype. The 
-`utils-java readme <https://github.com/googlegenomics/utils-java#releasing-new-versions>`_ 
+This code is also deployed as a Maven artifact through Sonatype. The
+`utils-java readme <https://github.com/googlegenomics/utils-java#releasing-new-versions>`_
 has detailed instructions on how to deploy new versions.
 
 To depend on this code, add the following to your ``pom.xml`` file::
@@ -122,12 +122,12 @@ To depend on this code, add the following to your ``pom.xml`` file::
       <dependency>
         <groupId>com.google.cloud.genomics</groupId>
         <artifactId>google-genomics-dataflow</artifactId>
-        <version>v1beta2-0.1</version>
+        <version>v1beta2-0.2</version>
       </dependency>
     </dependencies>
   </project>
 
-You can find the latest version in 
+You can find the latest version in
 `Maven's central repository <https://search.maven.org/#search%7Cga%7C1%7Ca%3A%22google-genomics-dataflow%22>`_
 
 We'll soon include an example pipeline that depends on this code in another GitHub repository.
@@ -142,9 +142,8 @@ Goals
 
 Current status
 ~~~~~~~~~~~~~~
-This code is in active development, it will be deployed to Maven soon.
+This code is in active development:
 
 * TODO: Explain all the possible command line args:``zone``, ``allContigs``, etc
-* TODO: Setup Travis integration once this repo is public
 * TODO: Refine the transmission probability pipeline
 * TODO: Add more tests
