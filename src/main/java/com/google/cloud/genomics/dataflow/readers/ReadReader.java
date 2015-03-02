@@ -21,12 +21,14 @@ import com.google.api.services.genomics.model.Read;
 import com.google.api.services.genomics.model.SearchReadsRequest;
 import com.google.cloud.genomics.utils.GenomicsFactory;
 import com.google.cloud.genomics.utils.Paginator;
+import com.google.cloud.genomics.utils.Paginator.ShardBoundary;
 
 import java.io.IOException;
 import java.util.logging.Logger;
 
 public class ReadReader extends GenomicsApiReader<SearchReadsRequest, Read> {
   private static final Logger LOG = Logger.getLogger(ReadReader.class.getName());
+  private final ShardBoundary shardBoundary;
 
   /**
    * Create a ReadReader using a auth and fields parameter. All fields not specified under 
@@ -35,16 +37,17 @@ public class ReadReader extends GenomicsApiReader<SearchReadsRequest, Read> {
    * @param auth Auth class containing credentials.
    * @param readFields Fields to return in responses.
    */
-  public ReadReader(GenomicsFactory.OfflineAuth auth, String readFields) {
+  public ReadReader(GenomicsFactory.OfflineAuth auth, ShardBoundary shardBoundary, String readFields) {
     super(auth, readFields);
+    this.shardBoundary = shardBoundary;
   }
 
   /**
    * Create a ReadReader with no fields parameter, all information will be returned.
    * @param auth Auth class containing credentials.
    */
-  public ReadReader(GenomicsFactory.OfflineAuth auth) {
-    this(auth, null);
+  public ReadReader(GenomicsFactory.OfflineAuth auth, ShardBoundary shardBoundary) {
+    this(auth, shardBoundary, null);
   }
 
   @Override
@@ -52,7 +55,7 @@ public class ReadReader extends GenomicsApiReader<SearchReadsRequest, Read> {
       throws IOException {
     LOG.info("Starting Reads read loop");
 
-    for (Read read : Paginator.Reads.create(genomics).search(request, fields)) {
+    for (Read read : Paginator.Reads.create(genomics, shardBoundary).search(request, fields)) {
       c.output(read);
     }
   }

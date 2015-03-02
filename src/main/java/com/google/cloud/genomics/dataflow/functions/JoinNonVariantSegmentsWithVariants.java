@@ -33,6 +33,7 @@ import com.google.cloud.genomics.dataflow.readers.VariantReader;
 import com.google.cloud.genomics.dataflow.utils.GenomicsDatasetOptions;
 import com.google.cloud.genomics.dataflow.utils.VariantUtils;
 import com.google.cloud.genomics.utils.GenomicsFactory;
+import com.google.cloud.genomics.utils.Paginator.ShardBoundary;
 import com.google.common.base.Function;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Ordering;
@@ -98,7 +99,9 @@ public class JoinNonVariantSegmentsWithVariants {
   private static PCollection<Variant> joinVariants(PCollection<SearchVariantsRequest> input,
       GenomicsFactory.OfflineAuth auth, String fields) {
     return input
-        .apply(ParDo.named(VariantReader.class.getSimpleName()).of(new VariantReader(auth, fields)))
+        .apply(
+            ParDo.named(VariantReader.class.getSimpleName()).of(
+                new VariantReader(auth, ShardBoundary.STRICT, fields)))
         .apply(ParDo.of(new JoinNonVariantSegmentsWithVariants.BinVariants()))
         // TODO check that windowing function is not splitting these groups
         .apply(GroupByKey.<KV<String, Long>, Variant>create())
