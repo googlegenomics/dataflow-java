@@ -53,7 +53,14 @@ public interface GenomicsDatasetOptions extends GenomicsOptions {
         for (Contig shard : contig.getShards(options.getBasesPerShard())) {
           LOG.info("Adding request with " + shard.referenceName + " " + shard.start + " to "
               + shard.end);
-          requests.add(shard.getVariantsRequest(datasetId));
+          SearchVariantsRequest request = shard.getVariantsRequest(datasetId);
+          if (options.getPageSize() > 0) {
+            request.setPageSize(options.getPageSize());
+          }
+          if (options.getMaxCalls() > 0) {
+            request.setMaxCalls(options.getMaxCalls());
+          }
+          requests.add(request);
         }
       }
       return requests;
@@ -66,23 +73,24 @@ public interface GenomicsDatasetOptions extends GenomicsOptions {
 
   }
 
-  @Description("The ID of the Google Genomics dataset this pipeline is working with. "
+  @Description("The ID of the Google Genomics dataset this pipeline is accessing. "
       + "Defaults to 1000 Genomes.")
   @Default.String("10473108253681171589")
   String getDatasetId();
 
-  @Description("Path of the file to write to")
+  void setDatasetId(String datasetId);
+
+  @Description("Path of the file to which to write.")
   String getOutput();
 
-  @Description("By default, PCA will be run on BRCA1, pass this flag to run on all "
-      + "non X and Y references present in the dataset")
+  void setOutput(String output);
+
+  @Description("By default, variants analyses will be run on BRCA1.  Pass this flag to run on all "
+      + "references present in the dataset.  Note that certain jobs such as PCA and IBS "
+      + "will automatically exclude X and Y chromosomes when this option is true.")
   boolean isAllReferences();
 
   void setAllReferences(boolean allReferences);
-
-  void setDatasetId(String datasetId);
-
-  void setOutput(String output);
 
   @Description("Comma separated tuples of reference:start:end,... Defaults to " + Contig.BRCA1)
   @Default.String(Contig.BRCA1)
@@ -95,6 +103,14 @@ public interface GenomicsDatasetOptions extends GenomicsOptions {
   long getBasesPerShard();
 
   void setBasesPerShard(long basesPerShard);
+
+  @Description("The maximum number of calls to return. However, at least one variant will always "
+      + "be returned, even if it has more calls than this limit.  By default the response will be as "
+      + "large as the Genomics API will allow.  Use this option only to reduce response sizes.")
+  @Default.Integer(0)
+  int getMaxCalls();
+
+  void setMaxCalls(int maxCalls);
 
   @Description("If querying a dataset with non-variant segments (such as Complete Genomics data "
       + "or data in Genome VCF (gVCF) format), specify this flag so that the pipeline correctly "

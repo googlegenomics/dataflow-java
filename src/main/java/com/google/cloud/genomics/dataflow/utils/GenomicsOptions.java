@@ -14,6 +14,7 @@
 package com.google.cloud.genomics.dataflow.utils;
 
 import com.google.cloud.dataflow.sdk.options.DataflowPipelineOptions;
+import com.google.cloud.dataflow.sdk.options.Default;
 import com.google.cloud.dataflow.sdk.options.Description;
 import com.google.cloud.genomics.utils.GenomicsFactory;
 
@@ -56,4 +57,12 @@ public interface GenomicsOptions extends DataflowPipelineOptions {
   String getGenomicsSecretsFile();
 
   void setGenomicsSecretsFile(String genomicsSecretsFile);
+
+  @Description("Specifies number of results to return in a single page of results.  By "
+      + "default the response will be as large as the Genomics API will allow.  Use this "
+      + "option only to reduce response sizes.")
+  @Default.Integer(0)
+  int getPageSize();
+
+  void setPageSize(int pageSize);
 }
