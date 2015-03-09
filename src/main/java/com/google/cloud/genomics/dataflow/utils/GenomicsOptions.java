@@ -33,7 +33,7 @@ public interface GenomicsOptions extends DataflowPipelineOptions {
     public static GenomicsFactory.OfflineAuth getGenomicsAuth(GenomicsOptions options)
         throws IOException, GeneralSecurityException {
       String apiKey = options.getApiKey(), appName = options.getAppName();
-      return GenomicsFactory.builder(appName).build()
+      return GenomicsFactory.builder(appName).setNumberOfRetries(options.getNumberOfRetries()).build()
           .getOfflineAuth(apiKey, options.getGenomicsSecretsFile());
     }
 
@@ -57,6 +57,12 @@ public interface GenomicsOptions extends DataflowPipelineOptions {
   String getGenomicsSecretsFile();
 
   void setGenomicsSecretsFile(String genomicsSecretsFile);
+
+  @Description("Specifies the maximum number of retries to attempt (if needed) for requests to the Genomics API.")
+  @Default.Integer(10)
+  int getNumberOfRetries();
+
+  void setNumberOfRetries(int numOfRetries);
 
   @Description("Specifies number of results to return in a single page of results.  By "
       + "default the response will be as large as the Genomics API will allow.  Use this "
