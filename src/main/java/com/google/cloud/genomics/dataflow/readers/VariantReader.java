@@ -52,12 +52,13 @@ public class VariantReader extends GenomicsApiReader<SearchVariantsRequest, Vari
   @Override
   protected void processApiCall(Genomics genomics, ProcessContext c, SearchVariantsRequest request)
       throws IOException {
-    LOG.info("Starting Variants read loop");
+    LOG.info("Starting Variants read loop: " + request);
 
     int numberOfVariants = 0;
     for (Variant variant : Paginator.Variants.create(genomics, shardBoundary).search(request, fields)) {
       c.output(variant);
       ++numberOfVariants;
+      itemCount.addValue(1L);
     }
 
     LOG.info("Read " + numberOfVariants + " variants at: " + request.getReferenceName() + "-" + "["
