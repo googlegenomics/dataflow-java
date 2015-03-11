@@ -45,9 +45,9 @@ public abstract class GenomicsApiReader<I extends GenericJson, O extends Generic
 
   @Override
   public void startBundle(Context c) {
-    initializedRequestsCount = c.createAggregator("Initialized Genomics API Request Count", new Sum.SumIntegerFn());
-    unsuccessfulResponsesCount = c.createAggregator("Unsuccessful Genomics API Response Count", new Sum.SumIntegerFn());
-    ioExceptionsCount = c.createAggregator("Genomics API IO Exceptions Count", new Sum.SumIntegerFn());
+    initializedRequestsCount = c.createAggregator("Genomics API Initialized Request Count", new Sum.SumIntegerFn());
+    unsuccessfulResponsesCount = c.createAggregator("Genomics API Unsuccessful Response Count", new Sum.SumIntegerFn());
+    ioExceptionsCount = c.createAggregator("Genomics API IOException Response Count", new Sum.SumIntegerFn());
     itemCount = c.createAggregator("Genomics API Item Count", new Sum.SumLongFn());
   }
   
