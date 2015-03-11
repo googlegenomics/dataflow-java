@@ -149,7 +149,7 @@ public class ConvertNonVariantSegmentsToVariants {
     DataflowWorkarounds.registerGenomicsCoders(p);
 
     PCollection<SearchVariantsRequest> input =
-        DataflowWorkarounds.getPCollection(requests, p, options.getNumWorkers());
+        DataflowWorkarounds.getPCollection(requests, p);
 
     PCollection<Variant> variants =
         JoinNonVariantSegmentsWithVariants.joinVariantsTransform(input, auth,

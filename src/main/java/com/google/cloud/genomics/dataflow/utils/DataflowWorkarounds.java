@@ -19,14 +19,20 @@ import com.google.api.client.json.GenericJson;
 import com.google.cloud.dataflow.sdk.Pipeline;
 import com.google.cloud.dataflow.sdk.coders.Coder;
 import com.google.cloud.dataflow.sdk.coders.CoderRegistry;
+import com.google.cloud.dataflow.sdk.options.DataflowPipelineOptions;
+import com.google.cloud.dataflow.sdk.options.PipelineOptions;
+import com.google.cloud.dataflow.sdk.runners.DataflowPipelineRegistrar.Options;
 import com.google.cloud.dataflow.sdk.transforms.Create;
 import com.google.cloud.dataflow.sdk.transforms.Flatten;
 import com.google.cloud.dataflow.sdk.values.PCollection;
 import com.google.cloud.dataflow.sdk.values.PCollectionList;
 import com.google.cloud.genomics.dataflow.coders.GenericJsonCoder;
 import com.google.common.base.Predicate;
+import com.google.common.base.Splitter;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
+import com.google.common.primitives.UnsignedInts;
+
 import org.reflections.Reflections;
 import org.reflections.scanners.ResourcesScanner;
 import org.reflections.scanners.SubTypesScanner;
@@ -107,14 +113,29 @@ public class DataflowWorkarounds {
    * multiple workers. In the future, this shouldn't be necessary.
    */
   public static <T> PCollection<T> getPCollection(List<T> shardOptions, Coder<T> coder,
-      Pipeline p, double numWorkers) {
-
+      Pipeline p) {
+    
+    DataflowPipelineOptions options = (GenomicsOptions) p.getOptions();
+    int numWorkers = options.getNumWorkers();
+    
+    String [] machineNameParts = Iterables.toArray(Splitter.on('-').split(options.getMachineType()), String.class);
+    if(3 == machineNameParts.length) {
+      try {
+        int numCores = UnsignedInts.parseUnsignedInt(machineNameParts[2]);
+        numWorkers *= numCores;
+      }
+      catch(Exception e) {
+        LOG.warning("Assuming one core per worker: " + e);
+      }
+    }
+    
     LOG.info("Turning " + shardOptions.size() + " options into " + numWorkers + " workers");
     numWorkers = Math.min(shardOptions.size(), numWorkers);
 
     int optionsPerWorker = (int) Math.ceil(shardOptions.size() / numWorkers);
     List<PCollection<T>> pCollections = Lists.newArrayList();
 
+    
     for (int i = 0; i < numWorkers; i++) {
       int start = i * optionsPerWorker;
       int end = Math.min(shardOptions.size(), start + optionsPerWorker);
@@ -137,7 +158,7 @@ public class DataflowWorkarounds {
   }
   
   public static <T> PCollection<T> getPCollection(
-      List<T> shardOptions, Pipeline p, double numWorkers) {
-    return getPCollection(shardOptions, null, p, numWorkers);
+      List<T> shardOptions, Pipeline p) {
+    return getPCollection(shardOptions, null, p);
   }
 }

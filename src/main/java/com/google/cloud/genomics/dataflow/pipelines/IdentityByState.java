@@ -64,7 +64,7 @@ public class IdentityByState {
     Pipeline p = Pipeline.create(options);
     DataflowWorkarounds.registerGenomicsCoders(p);
     PCollection<SearchVariantsRequest> input =
-        DataflowWorkarounds.getPCollection(requests, p, options.getNumWorkers());
+        DataflowWorkarounds.getPCollection(requests, p);
 
     PCollection<Variant> variants =
         options.getHasNonVariantSegments()
