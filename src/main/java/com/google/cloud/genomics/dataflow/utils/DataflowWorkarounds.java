@@ -117,18 +117,21 @@ public class DataflowWorkarounds {
     
     DataflowPipelineOptions options = (GenomicsOptions) p.getOptions();
     int numWorkers = options.getNumWorkers();
+    String machineType = options.getMachineType();
     
-    String [] machineNameParts = Iterables.toArray(Splitter.on('-').split(options.getMachineType()), String.class);
-    if(3 == machineNameParts.length) {
-      try {
-        int numCores = UnsignedInts.parseUnsignedInt(machineNameParts[2]);
-        numWorkers *= numCores;
-      }
-      catch(Exception e) {
-        LOG.warning("Assuming one core per worker: " + e);
+    if (machineType != null) {
+      String[] machineNameParts =
+          Iterables.toArray(Splitter.on('-').split(machineType), String.class);
+      if (3 == machineNameParts.length) {
+        try {
+          int numCores = UnsignedInts.parseUnsignedInt(machineNameParts[2]);
+          numWorkers *= numCores;
+        } catch (Exception e) {
+          LOG.warning("Assuming one core per worker: " + e);
+        }
       }
     }
-    
+
     LOG.info("Turning " + shardOptions.size() + " options into " + numWorkers + " workers");
     numWorkers = Math.min(shardOptions.size(), numWorkers);
 
