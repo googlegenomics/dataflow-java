@@ -31,7 +31,7 @@ public class VariantReader extends GenomicsApiReader<SearchVariantsRequest, Vari
 
   /**
    * Create a VariantReader using a auth and fields parameter. All fields not specified under 
-   * readFields will not be returned in the API response.
+   * variantFields will not be returned in the API response.
    * 
    * @param auth Auth class containing credentials.
    * @param variantFields Fields to return in responses.
@@ -52,12 +52,13 @@ public class VariantReader extends GenomicsApiReader<SearchVariantsRequest, Vari
   @Override
   protected void processApiCall(Genomics genomics, ProcessContext c, SearchVariantsRequest request)
       throws IOException {
-    LOG.info("Starting Variants read loop");
+    LOG.info("Starting Variants read loop: " + request);
 
     int numberOfVariants = 0;
     for (Variant variant : Paginator.Variants.create(genomics, shardBoundary).search(request, fields)) {
       c.output(variant);
       ++numberOfVariants;
+      itemCount.addValue(1L);
     }
 
     LOG.info("Read " + numberOfVariants + " variants at: " + request.getReferenceName() + "-" + "["

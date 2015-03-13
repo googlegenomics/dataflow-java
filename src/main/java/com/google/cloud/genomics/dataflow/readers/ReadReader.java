@@ -57,6 +57,7 @@ public class ReadReader extends GenomicsApiReader<SearchReadsRequest, Read> {
 
     for (Read read : Paginator.Reads.create(genomics, shardBoundary).search(request, fields)) {
       c.output(read);
+      itemCount.addValue(1L);
     }
   }
 }

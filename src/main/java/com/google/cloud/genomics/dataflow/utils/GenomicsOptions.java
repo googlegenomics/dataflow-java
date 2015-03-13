@@ -64,9 +64,8 @@ public interface GenomicsOptions extends DataflowPipelineOptions {
 
   void setNumberOfRetries(int numOfRetries);
 
-  @Description("Specifies number of results to return in a single page of results.  By "
-      + "default the response will be as large as the Genomics API will allow.  Use this "
-      + "option only to reduce response sizes.")
+  @Description("Specifies number of results to return in a single page of results. "
+      + "If unspecified, the default page size for the Genomics API is used.")
   @Default.Integer(0)
   int getPageSize();
 
