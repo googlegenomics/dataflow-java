@@ -54,6 +54,8 @@ import java.util.Collections;
 import java.util.List;
 import java.util.logging.Logger;
 
+import javax.annotation.Nullable;
+
 /**
  * Simple read counting pipeline, intended as an example for reading data from 
  * APIs OR BAM files and invoking GATK tools.
@@ -150,15 +152,23 @@ public class CountReads {
   }
 
   private static List<SearchReadsRequest> getReadRequests(CountReadsOptions options) {
-    List<SearchReadsRequest> requests = Lists.newArrayList();
-    requests.add(new SearchReadsRequest()
-      .setReadGroupSetIds(
-          Collections.singletonList(options.getReadGroupSetId()))
-      .setReferenceName(options.getReferences())
-      .setPageSize(2048));
-
-    return requests;
-  }
+    
+    final String readGroupSetId = options.getReadGroupSetId();
+    return Lists.newArrayList(Iterables.transform(
+        Iterables.concat(Iterables.transform(options.getContigs(),
+          new Function<Contig, Iterable<Contig>>() {
+            @Override
+            public Iterable<Contig> apply(Contig contig) {
+              return contig.getShards();
+            }
+          })),
+        new Function<Contig, SearchReadsRequest>() {
+          @Override
+          public SearchReadsRequest apply(Contig shard) {
+            return shard.getReadsRequest(readGroupSetId);
+          }
+        }));
+   }
   
   private static PCollection<Read> getReadsFromBAMFile() throws IOException {
     LOG.info("getReadsFromBAMFile");
