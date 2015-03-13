@@ -48,7 +48,7 @@ import com.google.cloud.genomics.utils.Paginator.ShardBoundary;
 
 public class IdentityByState {
   private static final String VARIANT_FIELDS =
-      "nextPageToken,variants(id,calls(genotype,callSetName))";
+      "nextPageToken,variants(start,calls(genotype,callSetName))";
 
   public static void main(String[] args) throws IOException, GeneralSecurityException,
       InstantiationException, IllegalAccessException {

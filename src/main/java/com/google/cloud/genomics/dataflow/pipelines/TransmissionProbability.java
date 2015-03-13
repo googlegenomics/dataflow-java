@@ -44,7 +44,7 @@ import java.util.List;
  */
 public class TransmissionProbability {
   private static final String VARIANT_FIELDS
-      = "nextPageToken,variants(id,names,calls(info,callSetName))";
+      = "nextPageToken,variants(id,start,names,calls(info,callSetName))";
 
   public static void main(String[] args) throws IOException, GeneralSecurityException {
     GenomicsDatasetOptions options = PipelineOptionsFactory.fromArgs(args)
