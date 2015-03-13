@@ -44,7 +44,7 @@ import java.util.List;
  */
 public class TransmissionProbability {
   private static final String VARIANT_FIELDS
-      = "nextPageToken,variants(id,names,calls(info,callSetName))";
+      = "nextPageToken,variants(id,start,names,calls(info,callSetName))";
 
   public static void main(String[] args) throws IOException, GeneralSecurityException {
     GenomicsDatasetOptions options = PipelineOptionsFactory.fromArgs(args)
@@ -65,7 +65,7 @@ public class TransmissionProbability {
     //    - Groups Transmission sources by Variant,
     //    - Calculate transmission Probability for each variant
     //    - Print calculated values to a file.
-    DataflowWorkarounds.getPCollection(requests, p, options.getNumWorkers())
+    DataflowWorkarounds.getPCollection(requests, p)
         .apply(ParDo.named("VariantReader")
             .of(new VariantReader(auth, ShardBoundary.STRICT, VARIANT_FIELDS)))
         .apply(ParDo.named("ExtractFamilyVariantStatus")

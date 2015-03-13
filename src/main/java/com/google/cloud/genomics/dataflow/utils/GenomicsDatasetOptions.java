@@ -105,8 +105,8 @@ public interface GenomicsDatasetOptions extends GenomicsOptions {
   void setBasesPerShard(long basesPerShard);
 
   @Description("The maximum number of calls to return. However, at least one variant will always "
-      + "be returned, even if it has more calls than this limit.  By default the response will be as "
-      + "large as the Genomics API will allow.  Use this option only to reduce response sizes.")
+      + "be returned, even if it has more calls than this limit.  If unspecified, the default "
+      + "number of calls will be returned.")
   @Default.Integer(0)
   int getMaxCalls();
 

@@ -142,7 +142,7 @@ public class CountReads {
   private static PCollection<Read> getReadsFromAPI() {
     List<SearchReadsRequest> requests = getReadRequests(options);
     PCollection<SearchReadsRequest> readRequests =
-        DataflowWorkarounds.getPCollection(requests, p, options.getNumWorkers());
+        DataflowWorkarounds.getPCollection(requests, p);
     PCollection<Read> reads =
         readRequests.apply(
             ParDo.of(

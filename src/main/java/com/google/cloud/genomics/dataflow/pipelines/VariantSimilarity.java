@@ -39,7 +39,7 @@ import java.util.List;
  */
 public class VariantSimilarity {
   private static final String VARIANT_FIELDS
-      = "nextPageToken,variants(id,calls(genotype,callSetName))";
+      = "nextPageToken,variants(start,calls(genotype,callSetName))";
 
   public static void main(String[] args) throws IOException, GeneralSecurityException {
     GenomicsDatasetOptions options = PipelineOptionsFactory.fromArgs(args)
@@ -54,7 +54,7 @@ public class VariantSimilarity {
     Pipeline p = Pipeline.create(options);
     DataflowWorkarounds.registerGenomicsCoders(p);
     DataflowWorkarounds
-        .getPCollection(requests, p, options.getNumWorkers())
+        .getPCollection(requests, p)
         .apply(
             ParDo.named("VariantReader").of(
                 new VariantReader(auth, ShardBoundary.STRICT, VARIANT_FIELDS)))
