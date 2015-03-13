@@ -88,9 +88,9 @@ public class JoinNonVariantSegmentsWithVariants {
       PCollection<SearchVariantsRequest> input, GenomicsFactory.OfflineAuth auth, String fields) {
     for (String field : REQUIRED_FIELDS) {
       Preconditions
-          .checkState(
+          .checkArgument(
               fields.contains(field),
-              "Required field missing: %s Add this field to the list of Variants fields returned in the partial response.",
+              "Required field missing: '%s' Add this field to the list of Variants fields returned in the partial response.",
               field);
     }
     return joinVariants(input, auth, fields);

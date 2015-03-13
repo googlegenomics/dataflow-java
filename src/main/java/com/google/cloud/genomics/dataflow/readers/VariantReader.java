@@ -31,7 +31,7 @@ public class VariantReader extends GenomicsApiReader<SearchVariantsRequest, Vari
 
   /**
    * Create a VariantReader using a auth and fields parameter. All fields not specified under 
-   * readFields will not be returned in the API response.
+   * variantFields will not be returned in the API response.
    * 
    * @param auth Auth class containing credentials.
    * @param variantFields Fields to return in responses.

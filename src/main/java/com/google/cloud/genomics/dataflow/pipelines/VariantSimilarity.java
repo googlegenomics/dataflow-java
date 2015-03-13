@@ -39,7 +39,7 @@ import java.util.List;
  */
 public class VariantSimilarity {
   private static final String VARIANT_FIELDS
-      = "nextPageToken,variants(id,calls(genotype,callSetName))";
+      = "nextPageToken,variants(start,calls(genotype,callSetName))";
 
   public static void main(String[] args) throws IOException, GeneralSecurityException {
     GenomicsDatasetOptions options = PipelineOptionsFactory.fromArgs(args)
