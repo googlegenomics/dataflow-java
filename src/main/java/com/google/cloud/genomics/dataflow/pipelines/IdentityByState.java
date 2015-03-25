@@ -23,6 +23,7 @@ import com.google.cloud.dataflow.sdk.Pipeline;
 import com.google.cloud.dataflow.sdk.io.TextIO;
 import com.google.cloud.dataflow.sdk.options.PipelineOptionsFactory;
 import com.google.cloud.dataflow.sdk.transforms.Combine;
+import com.google.cloud.dataflow.sdk.transforms.Create;
 import com.google.cloud.dataflow.sdk.transforms.ParDo;
 import com.google.cloud.dataflow.sdk.values.KV;
 import com.google.cloud.dataflow.sdk.values.PCollection;
@@ -63,8 +64,7 @@ public class IdentityByState {
 
     Pipeline p = Pipeline.create(options);
     DataflowWorkarounds.registerGenomicsCoders(p);
-    PCollection<SearchVariantsRequest> input =
-        DataflowWorkarounds.getPCollection(requests, p);
+    PCollection<SearchVariantsRequest> input = p.begin().apply(Create.of(requests));
 
     PCollection<Variant> variants =
         options.getHasNonVariantSegments()

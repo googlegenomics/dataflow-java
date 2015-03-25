@@ -141,8 +141,8 @@ public class CountReads {
 
   private static PCollection<Read> getReadsFromAPI() {
     List<SearchReadsRequest> requests = getReadRequests(options);
-    PCollection<SearchReadsRequest> readRequests =
-        DataflowWorkarounds.getPCollection(requests, p);
+    PCollection<SearchReadsRequest> readRequests = p.begin()
+        .apply(Create.of(requests));
     PCollection<Read> reads =
         readRequests.apply(
             ParDo.of(
