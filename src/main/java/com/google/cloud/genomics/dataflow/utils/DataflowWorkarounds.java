@@ -15,23 +15,13 @@
  */
 package com.google.cloud.genomics.dataflow.utils;
 
-import com.google.api.client.json.GenericJson;
-import com.google.cloud.dataflow.sdk.Pipeline;
-import com.google.cloud.dataflow.sdk.coders.Coder;
-import com.google.cloud.dataflow.sdk.coders.CoderRegistry;
-import com.google.cloud.dataflow.sdk.options.DataflowPipelineOptions;
-import com.google.cloud.dataflow.sdk.options.PipelineOptions;
-import com.google.cloud.dataflow.sdk.runners.DataflowPipelineRegistrar.Options;
-import com.google.cloud.dataflow.sdk.transforms.Create;
-import com.google.cloud.dataflow.sdk.transforms.Flatten;
-import com.google.cloud.dataflow.sdk.values.PCollection;
-import com.google.cloud.dataflow.sdk.values.PCollectionList;
-import com.google.cloud.genomics.dataflow.coders.GenericJsonCoder;
-import com.google.common.base.Predicate;
-import com.google.common.base.Splitter;
-import com.google.common.collect.Iterables;
-import com.google.common.collect.Lists;
-import com.google.common.primitives.UnsignedInts;
+import static com.google.common.collect.Lists.newArrayList;
+
+import java.net.URL;
+import java.util.Collection;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.logging.Logger;
 
 import org.reflections.Reflections;
 import org.reflections.scanners.ResourcesScanner;
@@ -40,13 +30,13 @@ import org.reflections.util.ClasspathHelper;
 import org.reflections.util.ConfigurationBuilder;
 import org.reflections.util.FilterBuilder;
 
-import java.net.URL;
-import java.util.Collection;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.logging.Logger;
-
-import static com.google.common.collect.Lists.newArrayList;
+import com.google.api.client.json.GenericJson;
+import com.google.cloud.dataflow.sdk.Pipeline;
+import com.google.cloud.dataflow.sdk.coders.Coder;
+import com.google.cloud.dataflow.sdk.coders.CoderRegistry;
+import com.google.cloud.genomics.dataflow.coders.GenericJsonCoder;
+import com.google.common.base.Predicate;
+import com.google.common.collect.Iterables;
 
 /**
  * Contains dataflow-related workarounds.
@@ -106,62 +96,5 @@ public class DataflowWorkarounds {
       LOG.info("Registering coder for " + clazz.getSimpleName());
       DataflowWorkarounds.registerCoder(p, clazz, GenericJsonCoder.of(clazz));
     }
-  }
-  
-  /**
-   * Change a flat list of sharding options into a flattened PCollection to force dataflow to use
-   * multiple workers. In the future, this shouldn't be necessary.
-   */
-  public static <T> PCollection<T> getPCollection(List<T> shardOptions, Coder<T> coder,
-      Pipeline p) {
-    
-    DataflowPipelineOptions options = (GenomicsOptions) p.getOptions();
-    int numWorkers = options.getNumWorkers();
-    String machineType = options.getMachineType();
-    
-    if (machineType != null) {
-      String[] machineNameParts =
-          Iterables.toArray(Splitter.on('-').split(machineType), String.class);
-      if (3 == machineNameParts.length) {
-        try {
-          int numCores = UnsignedInts.parseUnsignedInt(machineNameParts[2]);
-          numWorkers *= numCores;
-        } catch (Exception e) {
-          LOG.warning("Assuming one core per worker: " + e);
-        }
-      }
-    }
-
-    LOG.info("Turning " + shardOptions.size() + " options into " + numWorkers + " workers");
-    numWorkers = Math.min(shardOptions.size(), numWorkers);
-
-    int optionsPerWorker = (int) Math.ceil(shardOptions.size() / numWorkers);
-    List<PCollection<T>> pCollections = Lists.newArrayList();
-
-    
-    for (int i = 0; i < numWorkers; i++) {
-      int start = i * optionsPerWorker;
-      int end = Math.min(shardOptions.size(), start + optionsPerWorker);
-      
-      // It's possible for start >= end in the last worker,
-      // in which case we'll just skip the collection.
-      if (start >= end) {
-        break;
-      }
-      
-      LOG.info("Adding collection with " + start + " to " + end);
-      PCollection<T> collection = p.begin().apply(Create.of(shardOptions.subList(start, end)));
-      if (coder != null) {
-        collection.setCoder(coder);
-      }
-      pCollections.add(collection);
-    }
-
-    return PCollectionList.of(pCollections).apply(Flatten.<T>create());
-  }
-  
-  public static <T> PCollection<T> getPCollection(
-      List<T> shardOptions, Pipeline p) {
-    return getPCollection(shardOptions, null, p);
   }
 }
