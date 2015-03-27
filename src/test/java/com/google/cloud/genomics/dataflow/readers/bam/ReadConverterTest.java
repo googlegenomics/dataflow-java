@@ -1,22 +1,19 @@
 package com.google.cloud.genomics.dataflow.readers.bam;
 
 import com.google.api.services.genomics.model.Read;
-
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertThat;
-import static org.junit.Assert.assertTrue;
-
-import java.util.Arrays;
-import java.util.Comparator;
-import java.util.List;
-
-import org.junit.Before;
+import com.google.cloud.genomics.gatk.common.GenomicsConverter;
+import htsjdk.samtools.SAMFileHeader;
+import htsjdk.samtools.SAMRecord;
+import htsjdk.samtools.SamReader;
+import htsjdk.samtools.SamReaderFactory;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 
-import htsjdk.samtools.SAMRecord;
+import java.io.File;
+import java.io.IOException;
+
+import static org.junit.Assert.assertEquals;
 
 @RunWith(JUnit4.class)
 public class ReadConverterTest {
@@ -41,5 +38,22 @@ public class ReadConverterTest {
     assertEquals("chr20", read.getNextMatePosition().getReferenceName());
     assertEquals((Boolean)true, read.getNextMatePosition().getReverseStrand());
   }
-  
+
+  @Test
+  public void SamToReadToSamTest() throws IOException {
+    String filePath = "src/test/resources/com/google/cloud/genomics/dataflow/readers/bam/conversion_test.sam";
+    File samInput = new File(filePath);
+    SamReader reads = SamReaderFactory.makeDefault().open(samInput);
+    SAMFileHeader header = reads.getFileHeader();
+
+    int numReads = 0;
+    for (SAMRecord sam : reads){
+      Read read = ReadConverter.makeRead(sam);
+      SAMRecord newSam = GenomicsConverter.makeSAMRecord(read, header );
+      assertEquals(newSam.getSAMString(), sam.getSAMString());
+      numReads++;
+    }
+    assertEquals(19, numReads);//sanity check to make sure we actually read the file
+  }
+
 }
