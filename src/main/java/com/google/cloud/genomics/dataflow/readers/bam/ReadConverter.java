@@ -15,6 +15,7 @@
  */
 package com.google.cloud.genomics.dataflow.readers.bam;
 
+import com.google.api.client.util.Maps;
 import com.google.api.services.genomics.model.CigarUnit;
 import com.google.api.services.genomics.model.LinearAlignment;
 import com.google.api.services.genomics.model.Position;
@@ -23,15 +24,12 @@ import com.google.common.base.Function;
 import com.google.common.collect.BiMap;
 import com.google.common.collect.HashBiMap;
 import com.google.common.collect.Lists;
-
-import htsjdk.samtools.CigarElement;
-import htsjdk.samtools.CigarOperator;
-import htsjdk.samtools.SAMException;
-import htsjdk.samtools.SAMRecord;
+import htsjdk.samtools.*;
 import htsjdk.samtools.util.SequenceUtil;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 /**
  * Converts SAMRecords to Reads.
@@ -62,7 +60,7 @@ public class ReadConverter {
     read.setId(record.getReadName()); // TODO: make more unique
     read.setFragmentName(record.getReadName());
     read.setReadGroupId(getAttr(record, "RG"));
-    read.setNumberReads(record.getReadPairedFlag() ? 1 : 2);
+    read.setNumberReads(record.getReadPairedFlag() ? 2 : 1);
     read.setProperPlacement(record.getReadPairedFlag() && record.getProperPairFlag());
     if (!record.getReadUnmappedFlag() && record.getAlignmentStart() > 0) {
       LinearAlignment alignment = new LinearAlignment();
@@ -97,7 +95,7 @@ public class ReadConverter {
       read.setAlignment(alignment);
     }
     read.setDuplicateFragment(record.getDuplicateReadFlag());
-    read.setFragmentLength(record.getReadLength());
+    read.setFragmentLength(record.getInferredInsertSize());
     if (record.getReadPairedFlag()) {
       if (record.getFirstOfPairFlag()) {
         read.setReadNumber(0);
@@ -125,6 +123,12 @@ public class ReadConverter {
       }
       read.setAlignedQuality(readBaseQualities);
     }
+
+    Map<String, List<String>> attributes = Maps.newHashMap();
+    for( SAMRecord.SAMTagAndValue tagAndValue: record.getAttributes()) {
+      attributes.put(tagAndValue.tag, Lists.newArrayList(tagAndValue.value.toString()));
+    }
+    read.setInfo(attributes);
 
     return read;
   }
