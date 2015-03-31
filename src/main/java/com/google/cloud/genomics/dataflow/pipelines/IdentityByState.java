@@ -53,8 +53,11 @@ public class IdentityByState {
 
   public static void main(String[] args) throws IOException, GeneralSecurityException,
       InstantiationException, IllegalAccessException {
+    // Register the options so that they show up via --help
+    PipelineOptionsFactory.register(IdentityByStateOptions.class);
     IdentityByStateOptions options =
         PipelineOptionsFactory.fromArgs(args).withValidation().as(IdentityByStateOptions.class);
+    // Option validation is not yet automatic, we make an explicit call here.
     GenomicsDatasetOptions.Methods.validateOptions(options);
 
     GenomicsFactory.OfflineAuth auth = GenomicsOptions.Methods.getGenomicsAuth(options);

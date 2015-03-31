@@ -43,9 +43,12 @@ public class VariantSimilarity {
       = "nextPageToken,variants(start,calls(genotype,callSetName))";
 
   public static void main(String[] args) throws IOException, GeneralSecurityException {
+    // Register the options so that they show up via --help
+    PipelineOptionsFactory.register(GenomicsDatasetOptions.class);
     GenomicsDatasetOptions options = PipelineOptionsFactory.fromArgs(args)
         .withValidation().as(GenomicsDatasetOptions.class);
-    GenomicsOptions.Methods.validateOptions(options);
+    // Option validation is not yet automatic, we make an explicit call here.
+    GenomicsDatasetOptions.Methods.validateOptions(options);
 
     GenomicsFactory.OfflineAuth auth = GenomicsOptions.Methods.getGenomicsAuth(options);
     List<SearchVariantsRequest> requests =
