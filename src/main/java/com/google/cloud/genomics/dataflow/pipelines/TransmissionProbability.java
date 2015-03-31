@@ -19,6 +19,7 @@ import com.google.api.services.genomics.model.SearchVariantsRequest;
 import com.google.cloud.dataflow.sdk.Pipeline;
 import com.google.cloud.dataflow.sdk.io.TextIO;
 import com.google.cloud.dataflow.sdk.options.PipelineOptionsFactory;
+import com.google.cloud.dataflow.sdk.transforms.Create;
 import com.google.cloud.dataflow.sdk.transforms.DoFn;
 import com.google.cloud.dataflow.sdk.transforms.GroupByKey;
 import com.google.cloud.dataflow.sdk.transforms.ParDo;
@@ -47,9 +48,12 @@ public class TransmissionProbability {
       = "nextPageToken,variants(id,start,names,calls(info,callSetName))";
 
   public static void main(String[] args) throws IOException, GeneralSecurityException {
+    // Register the options so that they show up via --help
+    PipelineOptionsFactory.register(GenomicsDatasetOptions.class);
     GenomicsDatasetOptions options = PipelineOptionsFactory.fromArgs(args)
         .withValidation().as(GenomicsDatasetOptions.class);
-    GenomicsOptions.Methods.validateOptions(options);
+    // Option validation is not yet automatic, we make an explicit call here.
+    GenomicsDatasetOptions.Methods.validateOptions(options);
 
     GenomicsFactory.OfflineAuth auth = GenomicsOptions.Methods.getGenomicsAuth(options);
     List<SearchVariantsRequest> requests = GenomicsDatasetOptions.Methods.getVariantRequests(
@@ -65,7 +69,8 @@ public class TransmissionProbability {
     //    - Groups Transmission sources by Variant,
     //    - Calculate transmission Probability for each variant
     //    - Print calculated values to a file.
-    DataflowWorkarounds.getPCollection(requests, p)
+    p.begin()
+        .apply(Create.of(requests))
         .apply(ParDo.named("VariantReader")
             .of(new VariantReader(auth, ShardBoundary.STRICT, VARIANT_FIELDS)))
         .apply(ParDo.named("ExtractFamilyVariantStatus")

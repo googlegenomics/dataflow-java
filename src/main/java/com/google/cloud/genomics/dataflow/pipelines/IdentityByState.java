@@ -23,6 +23,7 @@ import com.google.cloud.dataflow.sdk.Pipeline;
 import com.google.cloud.dataflow.sdk.io.TextIO;
 import com.google.cloud.dataflow.sdk.options.PipelineOptionsFactory;
 import com.google.cloud.dataflow.sdk.transforms.Combine;
+import com.google.cloud.dataflow.sdk.transforms.Create;
 import com.google.cloud.dataflow.sdk.transforms.ParDo;
 import com.google.cloud.dataflow.sdk.values.KV;
 import com.google.cloud.dataflow.sdk.values.PCollection;
@@ -52,8 +53,11 @@ public class IdentityByState {
 
   public static void main(String[] args) throws IOException, GeneralSecurityException,
       InstantiationException, IllegalAccessException {
+    // Register the options so that they show up via --help
+    PipelineOptionsFactory.register(IdentityByStateOptions.class);
     IdentityByStateOptions options =
         PipelineOptionsFactory.fromArgs(args).withValidation().as(IdentityByStateOptions.class);
+    // Option validation is not yet automatic, we make an explicit call here.
     GenomicsDatasetOptions.Methods.validateOptions(options);
 
     GenomicsFactory.OfflineAuth auth = GenomicsOptions.Methods.getGenomicsAuth(options);
@@ -63,8 +67,7 @@ public class IdentityByState {
 
     Pipeline p = Pipeline.create(options);
     DataflowWorkarounds.registerGenomicsCoders(p);
-    PCollection<SearchVariantsRequest> input =
-        DataflowWorkarounds.getPCollection(requests, p);
+    PCollection<SearchVariantsRequest> input = p.begin().apply(Create.of(requests));
 
     PCollection<Variant> variants =
         options.getHasNonVariantSegments()

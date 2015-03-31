@@ -69,10 +69,10 @@ public class ReadBAMTransform extends PTransform<PCollectionTuple, PCollection<R
   
   public static class ShardFn extends DoFn<String, BAMShard> {
     GenomicsFactory.OfflineAuth auth;
-    PCollectionView<Iterable<Contig>, ?> contigsView;
+    PCollectionView<Iterable<Contig>> contigsView;
     Storage.Objects storage;
     
-    public ShardFn(GenomicsFactory.OfflineAuth auth, PCollectionView<Iterable<Contig>, ?> contigsView) {
+    public ShardFn(GenomicsFactory.OfflineAuth auth, PCollectionView<Iterable<Contig>> contigsView) {
       this.auth = auth;
       this.contigsView = contigsView;
     }
@@ -115,7 +115,7 @@ public class ReadBAMTransform extends PTransform<PCollectionTuple, PCollection<R
   public PCollection<Read> apply(PCollectionTuple contigsAndBAMs) {
 
     final PCollection<Contig> contigs = contigsAndBAMs.get(CONTIGS_TAG);
-    final PCollectionView<Iterable<Contig>, ?> contigsView =
+    final PCollectionView<Iterable<Contig>> contigsView =
         contigs.apply(View.<Contig>asIterable());
 
     final PCollection<String> BAMFileGCSPaths = contigsAndBAMs.get(BAMS_TAG);
