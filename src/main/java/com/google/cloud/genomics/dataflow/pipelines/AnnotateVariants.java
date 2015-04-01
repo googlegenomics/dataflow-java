@@ -250,8 +250,13 @@ public final class AnnotateVariants extends DoFn<Contig, KV<String, VariantAnnot
   }
 
   public static void main(String[] args) throws Exception {
+    // Register the options so that they show up via --help
+    PipelineOptionsFactory.register(GenomicsDatasetOptions.class);
     GenomicsDatasetOptions opts = PipelineOptionsFactory.fromArgs(args)
         .withValidation().as(GenomicsDatasetOptions.class);
+    // Option validation is not yet automatic, we make an explicit call here.
+    GenomicsDatasetOptions.Methods.validateOptions(opts);
+
     GenomicsFactory.OfflineAuth auth = GenomicsOptions.Methods.getGenomicsAuth(opts);
     Genomics genomics = auth.getGenomics(auth.getDefaultFactory());
 

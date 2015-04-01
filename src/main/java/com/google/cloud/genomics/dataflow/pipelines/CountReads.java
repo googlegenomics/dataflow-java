@@ -111,8 +111,12 @@ public class CountReads {
   }
   
   public static void main(String[] args) throws GeneralSecurityException, IOException {
+    // Register the options so that they show up via --help
+    PipelineOptionsFactory.register(CountReadsOptions.class);
     options = PipelineOptionsFactory.fromArgs(args).withValidation().as(CountReadsOptions.class);
-    GenomicsOptions.Methods.validateOptions(options);
+    // Option validation is not yet automatic, we make an explicit call here.
+    GenomicsDatasetOptions.Methods.validateOptions(options);
+
     auth = GCSOptions.Methods.createGCSAuth(options);
     p = Pipeline.create(options);
     DataflowWorkarounds.registerGenomicsCoders(p);
@@ -141,8 +145,8 @@ public class CountReads {
 
   private static PCollection<Read> getReadsFromAPI() {
     List<SearchReadsRequest> requests = getReadRequests(options);
-    PCollection<SearchReadsRequest> readRequests =
-        DataflowWorkarounds.getPCollection(requests, p);
+    PCollection<SearchReadsRequest> readRequests = p.begin()
+        .apply(Create.of(requests));
     PCollection<Read> reads =
         readRequests.apply(
             ParDo.of(
