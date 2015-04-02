@@ -56,7 +56,7 @@ Getting started
   is 16. (That's the default limit on VMs)
 
 .. _Apache Maven: http://maven.apache.org/download.cgi
-.. _sign up instructions: https://cloud.google.com/genomics
+.. _sign up instructions: https://cloud.google.com/genomics/install-genomics-tools#authenticate
 
 Identity By State (IBS)
 -----------------------
