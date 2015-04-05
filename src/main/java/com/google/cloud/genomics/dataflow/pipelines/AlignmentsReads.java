@@ -67,10 +67,10 @@ import javax.annotation.Nullable;
  */
 public class AlignmentsReads {
   private static final Logger LOG = Logger.getLogger(AlignmentsReads.class.getName());
-  private static CountReadsOptions options;
+  private static AlignReadsOptions options;
   private static Pipeline p;
   private static GenomicsFactory.OfflineAuth auth;
-  public static interface CountReadsOptions extends GenomicsDatasetOptions, GCSOptions {
+  public static interface AlignReadsOptions extends GenomicsDatasetOptions, GCSOptions {
     @Description("The ID of the Google Genomics ReadGroupSet this pipeline is working with. "
         + "Default (empty) indicates all ReadGroupSets.")
     @Default.String("")
@@ -90,19 +90,12 @@ public class AlignmentsReads {
     boolean getShardBAMReading();
 
     void setShardBAMReading(boolean newValue);
-
-    
-    //.apply(First.<String>of(100));
-    @Description("limit to first 100 reads")
-    @Default.Boolean(false)
-    boolean getFirst100();
-    void setFirst100(boolean newValue);
     
     
     class ContigsFactory implements DefaultValueFactory<Iterable<Contig>> {
       @Override
       public Iterable<Contig> create(PipelineOptions options) {
-        return Iterables.transform(Splitter.on(",").split(options.as(CountReadsOptions.class).getReferences()),
+        return Iterables.transform(Splitter.on(",").split(options.as(AlignReadsOptions.class).getReferences()),
             new Function<String, Contig>() {
               @Override
               public Contig apply(String contigString) {
@@ -126,8 +119,8 @@ public class AlignmentsReads {
   
   public static void main(String[] args) throws GeneralSecurityException, IOException {
     // Register the options so that they show up via --help
-    PipelineOptionsFactory.register(CountReadsOptions.class);
-    options = PipelineOptionsFactory.fromArgs(args).withValidation().as(CountReadsOptions.class);
+    PipelineOptionsFactory.register(AlignReadsOptions.class);
+    options = PipelineOptionsFactory.fromArgs(args).withValidation().as(AlignReadsOptions.class);
     // Option validation is not yet automatic, we make an explicit call here.
     GenomicsDatasetOptions.Methods.validateOptions(options);
 
@@ -158,6 +151,10 @@ public class AlignmentsReads {
 				case "SEQUENCE_MISMATCH":
 					int endindex=(int)(cigar.getOperationLength()+offset);
 					out.append(read.getAlignedSequence().substring((int)offset, endindex));
+					/*
+					int outputLen=(int)(cigar.getOperationLength()+offset);
+					int endindex=(int)offset+outputLen;
+					*/
 			        offset += cigar.getOperationLength();
 			         break;
 				case "CLIP_SOFT":
@@ -221,7 +218,7 @@ public class AlignmentsReads {
     return reads;
   }
 
-  private static List<SearchReadsRequest> getReadRequests(CountReadsOptions options) {
+  private static List<SearchReadsRequest> getReadRequests(AlignReadsOptions options) {
     
     final String readGroupSetId = options.getReadGroupSetId();
     return Lists.newArrayList(Iterables.transform(
