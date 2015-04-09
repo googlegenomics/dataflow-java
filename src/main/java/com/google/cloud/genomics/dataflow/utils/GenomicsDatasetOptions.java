@@ -17,6 +17,7 @@ import com.google.api.services.genomics.Genomics;
 import com.google.api.services.genomics.model.SearchVariantsRequest;
 import com.google.cloud.dataflow.sdk.options.Default;
 import com.google.cloud.dataflow.sdk.options.Description;
+import com.google.cloud.dataflow.sdk.options.Validation.Required;
 import com.google.cloud.genomics.utils.Contig;
 import com.google.cloud.genomics.utils.Contig.SexChromosomeFilter;
 import com.google.cloud.genomics.utils.GenomicsFactory;
@@ -68,6 +69,7 @@ public interface GenomicsDatasetOptions extends GenomicsOptions {
 
     public static void validateOptions(GenomicsDatasetOptions options) {
       Preconditions.checkArgument(0 < options.getBinSize(), "binSize must be greater than zero");
+      Preconditions.checkArgument(options.getOutput().startsWith("gs://"), "output must be a valid Google Cloud Storage path.");
       GenomicsOptions.Methods.validateOptions(options);
     }
   }
@@ -84,7 +86,8 @@ public interface GenomicsDatasetOptions extends GenomicsOptions {
   String getCallSetIds();
   void setCallSetIds(String callSetIds);
 
-  @Description("Path of the file to which to write.")
+  @Description("Path of the file to which to write pipeline output.")
+  @Required
   String getOutput();
   void setOutput(String output);
 

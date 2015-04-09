@@ -13,10 +13,15 @@
  */
 package com.google.cloud.genomics.dataflow.utils;
 
+import com.google.api.client.extensions.java6.auth.oauth2.VerificationCodeReceiver;
+import com.google.api.client.googleapis.extensions.java6.auth.oauth2.GooglePromptReceiver;
 import com.google.cloud.dataflow.sdk.options.DataflowPipelineOptions;
 import com.google.cloud.dataflow.sdk.options.Default;
 import com.google.cloud.dataflow.sdk.options.Description;
 import com.google.cloud.genomics.utils.GenomicsFactory;
+import com.google.cloud.genomics.utils.GenomicsFactory.Builder;
+import com.google.common.base.Supplier;
+import com.google.common.base.Suppliers;
 
 import java.io.IOException;
 import java.security.GeneralSecurityException;
@@ -33,8 +38,15 @@ public interface GenomicsOptions extends DataflowPipelineOptions {
     public static GenomicsFactory.OfflineAuth getGenomicsAuth(GenomicsOptions options)
         throws IOException, GeneralSecurityException {
       String apiKey = options.getApiKey(), appName = options.getAppName();
-      return GenomicsFactory.builder(appName).setNumberOfRetries(options.getNumberOfRetries()).build()
-          .getOfflineAuth(apiKey, options.getGenomicsSecretsFile());
+      Supplier<? extends VerificationCodeReceiver> verificationCodeReceiver =
+          Suppliers.ofInstance(new GooglePromptReceiver());
+      Builder builder =
+          GenomicsFactory.builder(appName).setNumberOfRetries(options.getNumberOfRetries());
+
+      if (options.isNoLaunchBrowser()) {
+        builder.setVerificationCodeReceiver(verificationCodeReceiver);
+      }
+      return builder.build().getOfflineAuth(apiKey, options.getGenomicsSecretsFile());
     }
 
     public static void validateOptions(GenomicsOptions options) {
@@ -70,4 +82,10 @@ public interface GenomicsOptions extends DataflowPipelineOptions {
   int getPageSize();
 
   void setPageSize(int pageSize);
+
+  // Modeled after gcloud auth login --no-launch-browser
+  @Description("Print a URL to be copied instead of launching a web browser for the authorization flow.")
+  @Default.Boolean(false)
+  boolean isNoLaunchBrowser();
+  void setNoLaunchBrowser(boolean noLaunchBrowser);
 }
