@@ -43,7 +43,7 @@ public interface GenomicsOptions extends DataflowPipelineOptions {
       Builder builder =
           GenomicsFactory.builder(appName).setNumberOfRetries(options.getNumberOfRetries());
 
-      if (options.isHeadless()) {
+      if (options.isNoLaunchBrowser()) {
         builder.setVerificationCodeReceiver(verificationCodeReceiver);
       }
       return builder.build().getOfflineAuth(apiKey, options.getGenomicsSecretsFile());
@@ -83,8 +83,9 @@ public interface GenomicsOptions extends DataflowPipelineOptions {
 
   void setPageSize(int pageSize);
 
-  @Description("Set this option to true when kicking off Dataflow jobs from a machine without a monitor attached.")
+  // Modeled after gcloud auth login --no-launch-browser
+  @Description("Print a URL to be copied instead of launching a web browser for the authorization flow.")
   @Default.Boolean(false)
-  boolean isHeadless();
-  void setHeadless(boolean headless);
+  boolean isNoLaunchBrowser();
+  void setNoLaunchBrowser(boolean noLaunchBrowser);
 }
