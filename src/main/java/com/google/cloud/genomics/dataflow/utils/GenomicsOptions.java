@@ -39,7 +39,7 @@ public interface GenomicsOptions extends DataflowPipelineOptions {
         throws IOException, GeneralSecurityException {
       String apiKey = options.getApiKey(), appName = options.getAppName();
       Supplier<? extends VerificationCodeReceiver> verificationCodeReceiver =
-        Suppliers.ofInstance(new GooglePromptReceiver());
+          Suppliers.ofInstance(new GooglePromptReceiver());
       Builder builder =
           GenomicsFactory.builder(appName).setNumberOfRetries(options.getNumberOfRetries());
 
