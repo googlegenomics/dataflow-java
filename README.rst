@@ -38,8 +38,8 @@ Getting started
 
     java -cp target/google-genomics-dataflow*.jar \
       com.google.cloud.genomics.dataflow.pipelines.VariantSimilarity \
-      --project=YOUR_PROJECT_ID \
-      --output=gs://YOUR_BUCKET/output/localtest.txt \
+      --project=your-project-id \
+      --output=gs://your-bucket/output/localtest.txt \
       --genomicsSecretsFile=client_secrets.json
 
   Note: when running locally, you may run into memory issues depending on the
@@ -51,9 +51,9 @@ Getting started
     java -cp target/google-genomics-dataflow*.jar \
       com.google.cloud.genomics.dataflow.pipelines.VariantSimilarity \
       --runner=BlockingDataflowPipelineRunner \
-      --project=YOUR_PROJECT_ID \
-      --stagingLocation=gs://YOUR_BUCKET/staging \
-      --output=gs://YOUR_BUCKET/output/test.txt \
+      --project=your-project-id \
+      --stagingLocation=gs://your-bucket/staging \
+      --output=gs://your-bucket/output/test.txt \
       --genomicsSecretsFile=client_secrets.json \
       --numWorkers=4
 
