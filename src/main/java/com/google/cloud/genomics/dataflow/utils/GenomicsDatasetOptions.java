@@ -93,13 +93,13 @@ public interface GenomicsDatasetOptions extends GenomicsOptions {
 
   @Description("The IDs of the Google Genomics transcript sets this pipeline is working with, "
       + "comma delimited. Defaults to UCSC refGene (hg19).")
-  @Default.String("CIjfoPXj9LqPlAEQr_GXvYPKvtPqAQ")
+  @Default.String("CIjfoPXj9LqPlAEQ6Mm91Ya458eqAQ")
   String getTranscriptSetIds();
   void setTranscriptSetIds(String transcriptSetIds);
 
   @Description("The IDs of the Google Genomics variant annotation sets this pipeline is working "
       + "with, comma delimited. Defaults to ClinVar (GRCh37).")
-  @Default.String("CILSqfjtlY6tHxCu1Keyxtu472M")
+  @Default.String("CILSqfjtlY6tHxC0nNH-4cu-xlQ")
   String getVariantAnnotationSetIds();
   void setVariantAnnotationSetIds(String variantAnnotationSetIds);
 
