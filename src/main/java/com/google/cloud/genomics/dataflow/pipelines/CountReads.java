@@ -86,7 +86,7 @@ public class CountReads {
 
     void setReadGroupSetId(String readGroupSetId);
 
-    @Description("The Google Storage path to the BAM file to get reads data from, if not using ReadGroupSet.")
+    @Description("The Google Cloud Storage path to the BAM file to get reads data from, if not using ReadGroupSet.")
     @Default.String("")
     String getBAMFilePath();
 
@@ -178,14 +178,14 @@ public class CountReads {
         readRequests.apply(
             ParDo.of(
                 new ReadReader(auth, Paginator.ShardBoundary.OVERLAPS))
-                  .named(ReadReader.class.getSimpleName()));
+                .named(ReadReader.class.getSimpleName()));
     return reads;
   }
 
   private static List<SearchReadsRequest> getReadRequests(CountReadsOptions options) {
     
     final String readGroupSetId = options.getReadGroupSetId();
-    final Iterable<Contig> contigs = parseContigs(options.getReferences());
+    final Iterable<Contig> contigs = Contig.parseContigsFromCommandLine(options.getReferences());
     return Lists.newArrayList(Iterables.transform(
         Iterables.concat(Iterables.transform(contigs,
           new Function<Contig, Iterable<Contig>>() {
@@ -205,7 +205,7 @@ public class CountReads {
   private static PCollection<Read> getReadsFromBAMFile() throws IOException {
     LOG.info("getReadsFromBAMFile");
 
-    final Iterable<Contig> contigs = parseContigs(options.getReferences());
+    final Iterable<Contig> contigs = Contig.parseContigsFromCommandLine(options.getReferences());
         
     if (options.getShardBAMReading()) {
       LOG.info("Sharded reading of "+options.getBAMFilePath());
@@ -222,20 +222,5 @@ public class CountReads {
                   options.getBAMFilePath(),
                   contigs.iterator().next())));
     }
-  }
-
-  private static Iterable<Contig> parseContigs(String c) {
-    return Iterables.transform(Splitter.on(",").split(c),
-        new Function<String, Contig>() {
-          @Override
-          public Contig apply(String contigString) {
-            ArrayList<String> contigInfo = newArrayList(Splitter.on(":").split(contigString));
-            return new Contig(contigInfo.get(0),
-                contigInfo.size() > 1 ?
-                    Long.valueOf(contigInfo.get(1)) : 0,
-                contigInfo.size() > 2 ?
-                    Long.valueOf(contigInfo.get(2)) : -1);
-          }
-        });
   }
 }
