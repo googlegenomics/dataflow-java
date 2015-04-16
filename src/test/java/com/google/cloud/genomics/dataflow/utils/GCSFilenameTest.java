@@ -29,7 +29,9 @@ public class GCSFilenameTest  {
         "file://foo/bar",
         "foo/bar",
         "http://example.com",
-        "gs://bucket"
+        "gs://bucket",
+        "gs://bucket/",
+        "gs:///filename"
     };
     for (String url : urls) {
       try {
@@ -40,5 +42,13 @@ public class GCSFilenameTest  {
       }
 
     }
+  }
+
+  @Test
+  public void testGetGCSPathDefault() throws Exception {
+    String url = "gs:///path/file.xml";
+    String expected = "gs://bucket/path/file.xml";
+    String roundTrip = GCSFilename.URLWithDefaultBucket(url,"bucket").getGCSPath();
+    assertEquals(expected, roundTrip);
   }
 }
