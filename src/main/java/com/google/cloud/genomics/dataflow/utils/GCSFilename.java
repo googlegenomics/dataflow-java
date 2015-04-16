@@ -7,16 +7,24 @@ import java.io.IOException;
  * plus helper code to translate between the (bucket,filename) and "gs://bucket/filename" formats.
  */
 public class GCSFilename {
-  public static final String PREFIX="gs://";
+  public static final String PREFIX = "gs://";
   public final String bucket;
   public final String filename;
-  // fileName can include "/", bucket cannot.
+
+  /**
+   * Hold the (bucket,filename) pair.
+   * filename can include "/", bucket cannot.
+   */
   public GCSFilename(String bucket, String filename) {
     this.bucket = bucket;
     this.filename = filename;
   }
-  // gcsPathUrl is of the form gs://BUCKET/FILENAME
-  // filename can include "/", bucket cannot.
+
+  /**
+   * Parse a GCD URL and hold the result.
+   * gcsPathUrl is of the form gs://BUCKET/FILENAME. filename can include "/", bucket cannot.
+   * @throws IOException
+   */
   public GCSFilename(String gcsPathUrl) throws IOException {
     if (!gcsPathUrl.startsWith(PREFIX)) {
       throw new IOException("Invalid GCS URL (does not start with " + PREFIX + "): " + gcsPathUrl);
@@ -29,6 +37,10 @@ public class GCSFilename {
     this.bucket = suffix.substring(0, slashPos);
     this.filename = suffix.substring(slashPos + 1);
   }
+
+  /**
+   * gs://bucket/filename
+   */
   public String getGCSPath() {
     return PREFIX + bucket + "/" + filename;
   }
