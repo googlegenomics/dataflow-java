@@ -1,6 +1,6 @@
 package com.google.cloud.genomics.dataflow.utils;
 
-import com.google.api.client.repackaged.com.google.common.base.Preconditions;
+import com.google.common.base.Preconditions;
 import com.google.common.base.Strings;
 
 import java.io.IOException;
