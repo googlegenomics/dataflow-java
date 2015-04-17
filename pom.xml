@@ -225,6 +225,8 @@
     </profile>
   </profiles>
 
+
+
   <build>
     <plugins>
       <plugin>
@@ -282,7 +284,29 @@
           </execution>
         </executions>
       </plugin>
+
+      <!-- This enables mvn exec:exec to run the integration test.
+           You should run mvn bundle:bundle first, to create the jar.
+      -->
+      <plugin>
+        <groupId>org.codehaus.mojo</groupId>
+        <artifactId>exec-maven-plugin</artifactId>
+        <version>1.4.0</version>
+        <executions>
+          <execution><!-- Run the integration test. This requires that you set up a local file called 'setup-variables' -->
+            <id>default-cli</id>
+            <phase>generate-sources</phase>
+            <goals>
+              <goal>exec</goal>
+            </goals>
+          </execution>
+        </executions>
+        <configuration>
+          <executable>src/main/scripts/integration_tests.sh</executable>
+        </configuration>
+      </plugin>
     </plugins>
+
   </build>
 
   <properties>

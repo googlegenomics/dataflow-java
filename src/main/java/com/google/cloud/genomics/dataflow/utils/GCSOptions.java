@@ -37,7 +37,6 @@ import java.util.logging.Logger;
 
 /**
  * Options for pipelines that need to access GCS storage.
- * Users must call Methods.initialize to get the credentials set up.
  * getStorageClient() provides the GCS storage client.
  */
 public interface GCSOptions extends GenomicsOptions {
