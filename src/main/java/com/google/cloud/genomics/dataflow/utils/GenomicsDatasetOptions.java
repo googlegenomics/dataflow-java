@@ -69,7 +69,12 @@ public interface GenomicsDatasetOptions extends GenomicsOptions {
 
     public static void validateOptions(GenomicsDatasetOptions options) {
       Preconditions.checkArgument(0 < options.getBinSize(), "binSize must be greater than zero");
-      Preconditions.checkArgument(options.getOutput().startsWith("gs://"), "output must be a valid Google Cloud Storage path.");
+      try {
+        // check we can parse it
+        GCSFilename valid = new GCSFilename(options.getOutput());
+      } catch (Exception x) {
+        Preconditions.checkState(false, "output must be a valid Google Cloud Storage URL (starting with gs://)");
+      }
       GenomicsOptions.Methods.validateOptions(options);
     }
   }
