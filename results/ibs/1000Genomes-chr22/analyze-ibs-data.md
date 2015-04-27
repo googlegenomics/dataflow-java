@@ -63,7 +63,7 @@ file:
 Finally, run [`generate.R`](generate.R) to visualize
 [`1000genomes_chr22_ibs.tsv`](1000genomes_chr22_ibs.tsv) and compare it with
 [the IBS scores computed by
-PLINK/SEQ](https://raw.githubusercontent.com/deflaux/codelabs/qc-codelab/R/1000Genomes-BRCA1-analysis/data/plinkseqIBS/chr22/ALL.chr22.integrated_phase1_v3.20101123.snps_indels_svs.genotypes.ibs).
+PLINK/SEQ](https://raw.githubusercontent.com/googlegenomics/codelabs/master/R/1000Genomes-BRCA1-analysis/data/plinkseqIBS/chr22/ALL.chr22.integrated_phase1_v3.20101123.snps_indels_svs.genotypes.ibs).
 
 ## Loading IBS Data in R
 
