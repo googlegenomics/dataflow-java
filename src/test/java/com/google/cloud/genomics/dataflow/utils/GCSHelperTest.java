@@ -5,7 +5,7 @@ import com.google.cloud.dataflow.sdk.options.PipelineOptionsFactory;
 import com.google.cloud.genomics.utils.GenomicsFactory;
 import com.google.common.hash.HashingInputStream;
 
-import junit.framework.Assert;
+import org.junit.Assert;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
@@ -51,7 +51,7 @@ public class GCSHelperTest {
   public void testOfflineAuth() throws Exception {
     GenomicsOptions options = PipelineOptionsFactory.fromArgs(ARGS).as(GenomicsOptions.class);
     GenomicsFactory.OfflineAuth offlineAuth = GenomicsOptions.Methods.getGenomicsAuth(options);
-    GCSHelper gcsHelper = new GCSHelper(APP, offlineAuth);
+    GCSHelper gcsHelper = new GCSHelper(offlineAuth);
     long fileSize = gcsHelper.getFileSize(TEST_BUCKET, TEST_FNAME);
     Assert.assertEquals(TEST_FSIZE, fileSize);
   }

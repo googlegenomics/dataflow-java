@@ -87,11 +87,11 @@ public class GCSHelper {
   /**
    * connects to storage
    *
-   * @param appName     name of your app
    * @param offlineAuth serialized credentials
    */
-  public GCSHelper(String appName, GenomicsFactory.OfflineAuth offlineAuth) throws GeneralSecurityException, IOException {
+  public GCSHelper(GenomicsFactory.OfflineAuth offlineAuth) throws GeneralSecurityException, IOException {
     Preconditions.checkNotNull(offlineAuth);
+    String appName = offlineAuth.applicationName;
     // set up storage object
     GenomicsFactory factory = GenomicsFactory.builder(appName)
         .setScopes(Lists.newArrayList(StorageScopes.DEVSTORAGE_READ_ONLY, GenomicsScopes.GENOMICS))
