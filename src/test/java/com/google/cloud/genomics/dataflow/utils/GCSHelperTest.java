@@ -6,6 +6,7 @@ import com.google.cloud.genomics.utils.GenomicsFactory;
 import com.google.common.hash.HashingInputStream;
 
 import org.junit.Assert;
+import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
@@ -23,28 +24,27 @@ import java.util.Arrays;
 
 /**
  *
- * This test requires ../client-secrets.json to be present.
+ * This test expects you to have a Google Cloud API key in the GOOGLE_API_KEY environment variable.
  *
  */
 @RunWith(JUnit4.class)
 public class GCSHelperTest {
 
-  final String APP = "GCSHelperTest";
-  final String[] ARGS = { "--genomicsSecretsFile=../client-secrets.json" };
-  // gs://dataflow-samples/shakespeare/kinglear.txt is part of the dataflow documentation and shouldn't move.
-  final String TEST_BUCKET = "dataflow-samples";
-  final String TEST_FNAME = "shakespeare/kinglear.txt";
-  final long   TEST_FSIZE = 157283;
-  final byte[] TEST_MD5 = new byte[] {-33,-61,-91,12,44,48,-29,104,-86,62,72,-117,37,-52,81,14};
+  final String API_KEY = System.getenv("GOOGLE_API_KEY");
+  final String[] ARGS = { "--apiKey="+API_KEY };
+  // this file shouldn't move.
+  final String TEST_BUCKET = "genomics-public-data";
+  final String TEST_FNAME = "ftp-trace.ncbi.nih.gov/1000genomes/ftp/20131219.populations.tsv";
+  final long   TEST_FSIZE = 1663;
+  final byte[] TEST_MD5 = new byte[] {-6, 94, 5, 25, 38, 68, 74, -127, -13, 94, -72, 7, -53, 111, 99, -3};
 
   // Test the various ways of getting a GCSHelper
 
-  @Test
-  public void testClientSecrets() throws Exception {
-    GCSHelper gcsHelper = new GCSHelper(APP, "../client-secrets.json");
-    long fileSize = gcsHelper.getFileSize(TEST_BUCKET, TEST_FNAME);
-    // the test file shouldn't be changing
-    Assert.assertEquals(TEST_FSIZE, fileSize);
+  // we're not testing testClientSecrets because we can't assume the test machine will have the file.
+
+  @Before
+  public void voidEnsureEnvVar() {
+    Assert.assertNotNull("You must set the GOOGLE_API_KEY environment variable for this test.", API_KEY);
   }
 
   @Test
@@ -70,8 +70,8 @@ public class GCSHelperTest {
   public void testGetPartial() throws Exception {
     GenomicsOptions options = PipelineOptionsFactory.fromArgs(ARGS).as(GenomicsOptions.class);
     GCSHelper gcsHelper = new GCSHelper(options);
-    String lear = gcsHelper.getPartialObjectData(TEST_BUCKET, TEST_FNAME, 34, 37).toString();
-    Assert.assertEquals("LEAR", lear);
+    String partial = gcsHelper.getPartialObjectData(TEST_BUCKET, TEST_FNAME, 34, 37).toString();
+    Assert.assertEquals("Code", partial);
   }
 
   @Test
