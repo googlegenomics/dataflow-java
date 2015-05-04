@@ -34,7 +34,16 @@ public class VariantUtilsTest {
   public void testIsVariant() {
     assertTrue(VariantUtils.isVariant(DataUtils.makeVariant("chr7", 200000, 200001, "A",
         Arrays.asList("C"), (Call[]) null)));
-    // Block Records
+    
+    // Deletions, these are the same mutation just encoded in different ways.
+    assertTrue(VariantUtils.isVariant(DataUtils.makeVariant("chr7", 200000, 200001, "CAG", Arrays.asList("C"),
+        (Call[]) null)));
+    assertTrue(VariantUtils.isVariant(DataUtils.makeVariant("chr7", 200000, 200001, "AG", emptyAlt,
+        (Call[]) null)));
+    assertTrue(VariantUtils.isVariant(DataUtils.makeVariant("chr7", 200000, 200001, "AG", null,
+        (Call[]) null)));
+    
+    // Non-Variant Block Records
     assertFalse(VariantUtils.isVariant(DataUtils.makeVariant("chr7", 200000, 200001, "A", emptyAlt,
         (Call[]) null)));
     assertFalse(VariantUtils.isVariant(DataUtils.makeVariant("chr7", 200000, 200001, "A", null,

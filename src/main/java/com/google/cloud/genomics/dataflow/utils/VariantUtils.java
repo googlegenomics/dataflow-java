@@ -28,7 +28,10 @@ public class VariantUtils {
 
   public static boolean isVariant(Variant variant) {
     List<String> alternateBases = variant.getAlternateBases();
-    return !(null == alternateBases || alternateBases.isEmpty());
+    // The same deletion can be specified as [CAG -> C] or [AG -> null], so double check that the
+    // reference bases are also of length 1 when there are no alternates.
+    return !(LENGTH_IS_1.apply(variant.getReferenceBases()) 
+        && (null == alternateBases || alternateBases.isEmpty()));
   }
 
   public static final Predicate<Variant> IS_SNP = new Predicate<Variant>() {
