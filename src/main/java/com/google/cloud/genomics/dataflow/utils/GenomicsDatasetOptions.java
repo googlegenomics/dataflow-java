@@ -13,21 +13,20 @@
  */
 package com.google.cloud.genomics.dataflow.utils;
 
+import java.io.IOException;
+import java.security.GeneralSecurityException;
+import java.util.List;
+import java.util.logging.Logger;
+
 import com.google.api.services.genomics.Genomics;
 import com.google.api.services.genomics.model.SearchVariantsRequest;
 import com.google.cloud.dataflow.sdk.options.Default;
 import com.google.cloud.dataflow.sdk.options.Description;
-import com.google.cloud.dataflow.sdk.options.Validation.Required;
 import com.google.cloud.genomics.utils.Contig;
 import com.google.cloud.genomics.utils.Contig.SexChromosomeFilter;
 import com.google.cloud.genomics.utils.GenomicsFactory;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Lists;
-
-import java.io.IOException;
-import java.security.GeneralSecurityException;
-import java.util.List;
-import java.util.logging.Logger;
 
 /**
  * A common options class for all pipelines that operate over a single dataset and write their
@@ -69,11 +68,14 @@ public interface GenomicsDatasetOptions extends GenomicsOptions {
 
     public static void validateOptions(GenomicsDatasetOptions options) {
       Preconditions.checkArgument(0 < options.getBinSize(), "binSize must be greater than zero");
-      try {
-        // check we can parse it
-        GCSFilename valid = new GCSFilename(options.getOutput());
-      } catch (Exception x) {
-        Preconditions.checkState(false, "output must be a valid Google Cloud Storage URL (starting with gs://)");
+      if (null != options.getOutput()) {
+        try {
+          // Check that we can parse the Google Cloud Storage path.
+          GCSFilename valid = new GCSFilename(options.getOutput());
+        } catch (Exception x) {
+          Preconditions.checkState(false,
+              "output must be a valid Google Cloud Storage URL (starting with gs://)");
+        }
       }
       GenomicsOptions.Methods.validateOptions(options);
     }
@@ -91,8 +93,8 @@ public interface GenomicsDatasetOptions extends GenomicsOptions {
   String getCallSetIds();
   void setCallSetIds(String callSetIds);
 
-  @Description("Path of the file to which to write pipeline output.")
-  @Required
+  // TODO refactor this option so that its only present and validated for pipelines that do write output to GCS.
+  @Description("Google Cloud Storage path prefix of the files to which to write pipeline output, if applicable.")
   String getOutput();
   void setOutput(String output);
 
@@ -129,7 +131,6 @@ public interface GenomicsDatasetOptions extends GenomicsOptions {
       + "number of calls will be returned.")
   @Default.Integer(0)
   int getMaxCalls();
-
   void setMaxCalls(int maxCalls);
 
   @Description("If querying a dataset with non-variant segments (such as Complete Genomics data "
