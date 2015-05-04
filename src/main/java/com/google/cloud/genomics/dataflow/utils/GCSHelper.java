@@ -67,6 +67,25 @@ public class GCSHelper {
 
   /**
    * connects to storage
+   * (use this if you're a Dataflow worker, as you don't have access to the clients-secrets.json from there)
+   *
+   * @param offlineAuth serialized credentials
+   */
+  public GCSHelper(GenomicsFactory.OfflineAuth offlineAuth) throws GeneralSecurityException, IOException {
+    Preconditions.checkNotNull(offlineAuth);
+    String appName = offlineAuth.applicationName;
+    // set up storage object
+    GenomicsFactory factory = GenomicsFactory.builder(appName)
+        .setScopes(Lists.newArrayList(StorageScopes.DEVSTORAGE_READ_ONLY, GenomicsScopes.GENOMICS))
+        .build();
+    httpTransport = factory.getHttpTransport();
+    Storage.Builder builder = new Storage.Builder(httpTransport, JSON_FACTORY, null)
+        .setApplicationName(appName);
+    storage = offlineAuth.setupAuthentication(factory, builder).build();
+  }
+
+  /**
+   * connects to storage
    *
    * @param appName     name of your app
    * @param secretsFile path to clients-secrets.json
@@ -84,23 +103,7 @@ public class GCSHelper {
     storage = offlineAuth.setupAuthentication(factory, builder).build();
   }
 
-  /**
-   * connects to storage
-   *
-   * @param offlineAuth serialized credentials
-   */
-  public GCSHelper(GenomicsFactory.OfflineAuth offlineAuth) throws GeneralSecurityException, IOException {
-    Preconditions.checkNotNull(offlineAuth);
-    String appName = offlineAuth.applicationName;
-    // set up storage object
-    GenomicsFactory factory = GenomicsFactory.builder(appName)
-        .setScopes(Lists.newArrayList(StorageScopes.DEVSTORAGE_READ_ONLY, GenomicsScopes.GENOMICS))
-        .build();
-    httpTransport = factory.getHttpTransport();
-    Storage.Builder builder = new Storage.Builder(httpTransport, JSON_FACTORY, null)
-        .setApplicationName(appName);
-    storage = offlineAuth.setupAuthentication(factory, builder).build();
-  }
+
 
   @VisibleForTesting
   GCSHelper() {
