@@ -28,7 +28,7 @@ import java.util.Arrays;
  *
  */
 @RunWith(JUnit4.class)
-public class GCSHelperTest {
+public class GCSHelperITCase {
 
   final String API_KEY = System.getenv("GOOGLE_API_KEY");
   final String[] ARGS = { "--apiKey="+API_KEY };
@@ -40,7 +40,7 @@ public class GCSHelperTest {
 
   // Test the various ways of getting a GCSHelper
 
-  // we're not testing testClientSecrets because we can't assume the test machine will have the file.
+  // We're not testing testClientSecrets because we can't assume the test machine will have the file.
 
   @Before
   public void voidEnsureEnvVar() {
