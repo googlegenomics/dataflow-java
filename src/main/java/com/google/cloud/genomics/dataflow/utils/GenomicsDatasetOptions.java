@@ -13,6 +13,7 @@
  */
 package com.google.cloud.genomics.dataflow.utils;
 
+import com.google.api.client.repackaged.com.google.common.base.Strings;
 import com.google.api.services.genomics.Genomics;
 import com.google.api.services.genomics.model.SearchVariantsRequest;
 import com.google.cloud.dataflow.sdk.options.Default;
@@ -73,6 +74,9 @@ public interface GenomicsDatasetOptions extends GenomicsOptions {
       try {
         // check we can parse it
         GcsPath valid = GcsPath.fromUri(options.getOutput());
+        // GcsPath allows for empty bucket or filename, but that doesn't make for a good output file.
+        Preconditions.checkArgument(!Strings.isNullOrEmpty(valid.getBucket()), "Bucket must be specified");
+        Preconditions.checkArgument(!Strings.isNullOrEmpty(valid.getObject()), "Filename must be specified");
       } catch (Exception x) {
         Preconditions.checkState(false, "output must be a valid Google Cloud Storage URL (starting with gs://)");
       }
