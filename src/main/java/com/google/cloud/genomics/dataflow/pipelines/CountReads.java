@@ -28,12 +28,12 @@ import com.google.cloud.dataflow.sdk.transforms.Count;
 import com.google.cloud.dataflow.sdk.transforms.Create;
 import com.google.cloud.dataflow.sdk.transforms.DoFn;
 import com.google.cloud.dataflow.sdk.transforms.ParDo;
+import com.google.cloud.dataflow.sdk.util.gcsfs.GcsPath;
 import com.google.cloud.dataflow.sdk.values.PCollection;
 import com.google.cloud.genomics.dataflow.readers.ReadReader;
 import com.google.cloud.genomics.dataflow.readers.bam.ReadBAMTransform;
 import com.google.cloud.genomics.dataflow.readers.bam.Reader;
 import com.google.cloud.genomics.dataflow.utils.DataflowWorkarounds;
-import com.google.cloud.genomics.dataflow.utils.GCSFilename;
 import com.google.cloud.genomics.dataflow.utils.GCSOptions;
 import com.google.cloud.genomics.dataflow.utils.GenomicsDatasetOptions;
 import com.google.cloud.genomics.dataflow.utils.GenomicsOptions;
@@ -149,9 +149,9 @@ public class CountReads {
     // ensure data is accessible
     try {
       // if we can read the size, then surely we can read the file
-      GCSFilename fn = new GCSFilename(url);
+      GcsPath fn = GcsPath.fromUri(url);
       Storage.Objects storageClient = GCSOptions.Methods.createStorageClient(options, auth);
-      Storage.Objects.Get getter = storageClient.get(fn.bucket, fn.filename);
+      Storage.Objects.Get getter = storageClient.get(fn.getBucket(), fn.getObject());
       StorageObject object = getter.execute();
       BigInteger size = object.getSize();
       return true;
