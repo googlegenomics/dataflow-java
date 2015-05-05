@@ -29,7 +29,7 @@ import java.util.logging.Logger;
 import javax.annotation.Nullable;
 
 /**
- * A helper class to download parts of files.
+ * A helper class to download from Google Cloud Storage.
  */
 public class GCSHelper {
 
@@ -48,7 +48,7 @@ public class GCSHelper {
 
 
   /**
-   * connects to storage (this is the preferred way).
+   * Connects to storage (this is the preferred way).
    *
    * @param popts already-filled options.
    */
@@ -66,8 +66,8 @@ public class GCSHelper {
   }
 
   /**
-   * connects to storage
-   * (use this if you're a Dataflow worker, as you don't have access to the clients-secrets.json from there)
+   * Connects to storage
+   * (use this if you're a Dataflow worker, as you don't have access to the clients-secrets.json from there).
    *
    * @param offlineAuth serialized credentials
    */
@@ -85,7 +85,7 @@ public class GCSHelper {
   }
 
   /**
-   * connects to storage
+   * Connects to storage.
    *
    * @param appName     name of your app
    * @param secretsFile path to clients-secrets.json
@@ -145,6 +145,9 @@ public class GCSHelper {
   /**
    * Retrieve part of the file.
    *
+   * Example thing you may want to do with the result:
+   * String str = new String( Arrays.copyOfRange(out.toByteArray() );
+   *
    * @throws IOException
    */
   public ByteArrayOutputStream getPartialObjectData(String bucket, String fname, long start, long endIncl,
@@ -171,8 +174,6 @@ public class GCSHelper {
     }
 
     return out;
-    // example thing you may want to do with the result:
-    // String str = new String( Arrays.copyOfRange(out.toByteArray() );
   }
 
   /**
@@ -186,7 +187,7 @@ public class GCSHelper {
   }
 
   /**
-   * Retrieve the whole file (to disk).
+   * Retrieve the whole file (to a temporary file on disk).
    *
    * @throws IOException
    */
