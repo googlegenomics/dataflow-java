@@ -48,7 +48,7 @@ public class GCSHelper {
 
 
   /**
-   * connects to storage (this is the preferred way).
+   * Connects to storage (this is the preferred way).
    *
    * @param popts already-filled options.
    */
@@ -66,8 +66,8 @@ public class GCSHelper {
   }
 
   /**
-   * connects to storage
-   * (use this if you're a Dataflow worker, as you don't have access to the clients-secrets.json from there)
+   * Connects to storage
+   * (use this if you're a Dataflow worker, as you don't have access to the clients-secrets.json from there).
    *
    * @param offlineAuth serialized credentials
    */
@@ -85,7 +85,7 @@ public class GCSHelper {
   }
 
   /**
-   * connects to storage
+   * Connects to storage.
    *
    * @param appName     name of your app
    * @param secretsFile path to clients-secrets.json
@@ -102,8 +102,6 @@ public class GCSHelper {
         .setApplicationName(appName);
     storage = offlineAuth.setupAuthentication(factory, builder).build();
   }
-
-
 
   @VisibleForTesting
   GCSHelper() {
@@ -145,6 +143,9 @@ public class GCSHelper {
   /**
    * Retrieve part of the file.
    *
+   * Example thing you may want to do with the result:
+   * String str = new String( Arrays.copyOfRange(out.toByteArray() );
+   *
    * @throws IOException
    */
   public ByteArrayOutputStream getPartialObjectData(String bucket, String fname, long start, long endIncl,
@@ -166,13 +167,11 @@ public class GCSHelper {
 
     if (out.size() != (endIncl - start + 1)) {
       String err = "getPartialObjectData failed! Expected " + (endIncl - start + 1) + " bytes, got " + out.size();
-      LOGGER.log(Level.FINE, err);
+      LOGGER.log(Level.WARNING, err);
       throw new IOException(err);
     }
 
     return out;
-    // example thing you may want to do with the result:
-    // String str = new String( Arrays.copyOfRange(out.toByteArray() );
   }
 
   /**
@@ -186,7 +185,7 @@ public class GCSHelper {
   }
 
   /**
-   * Retrieve the whole file (to disk).
+   * Retrieve the whole file (to a temporary file, on disk).
    *
    * @throws IOException
    */
