@@ -18,6 +18,7 @@ import com.google.api.services.genomics.model.SearchVariantsRequest;
 import com.google.cloud.dataflow.sdk.options.Default;
 import com.google.cloud.dataflow.sdk.options.Description;
 import com.google.cloud.dataflow.sdk.options.Validation.Required;
+import com.google.cloud.dataflow.sdk.util.gcsfs.GcsPath;
 import com.google.cloud.genomics.utils.Contig;
 import com.google.cloud.genomics.utils.Contig.SexChromosomeFilter;
 import com.google.cloud.genomics.utils.GenomicsFactory;
@@ -71,7 +72,7 @@ public interface GenomicsDatasetOptions extends GenomicsOptions {
       Preconditions.checkArgument(0 < options.getBinSize(), "binSize must be greater than zero");
       try {
         // check we can parse it
-        GCSFilename valid = new GCSFilename(options.getOutput());
+        GcsPath valid = GcsPath.fromUri(options.getOutput());
       } catch (Exception x) {
         Preconditions.checkState(false, "output must be a valid Google Cloud Storage URL (starting with gs://)");
       }
