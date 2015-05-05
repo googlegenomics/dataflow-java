@@ -2,7 +2,7 @@ package com.google.cloud.genomics.dataflow.utils;
 
 import static org.junit.Assert.assertEquals;
 
-import junit.framework.Assert;
+import org.junit.Assert;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
