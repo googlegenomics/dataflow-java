@@ -33,6 +33,7 @@ import org.reflections.util.FilterBuilder;
 import com.google.api.client.json.GenericJson;
 import com.google.cloud.dataflow.sdk.Pipeline;
 import com.google.cloud.dataflow.sdk.coders.Coder;
+import com.google.cloud.dataflow.sdk.coders.CoderFactory;
 import com.google.cloud.dataflow.sdk.coders.CoderRegistry;
 import com.google.cloud.genomics.dataflow.coders.GenericJsonCoder;
 import com.google.common.base.Predicate;
@@ -50,7 +51,7 @@ public class DataflowWorkarounds {
   public static <T> void registerCoder(Pipeline p, Class<T> clazz, final Coder<T> coder) {
     CoderRegistry registry = p.getCoderRegistry();
     registry.registerCoder(clazz,
-        new CoderRegistry.CoderFactory() {
+        new CoderFactory() {
 
           @Override public Coder<?> create(List<? extends Coder<?>> typeArgumentCoders) {
             return coder;
