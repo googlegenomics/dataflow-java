@@ -41,7 +41,7 @@ public class GCSHelperITCase {
 
   // Test the various ways of getting a GCSHelper
 
-  // we're not testing testClientSecrets because we can't assume the test machine will have the file.
+  // We're not testing testClientSecrets because we can't assume the test machine will have the file.
 
   @Before
   public void voidEnsureEnvVar() {
