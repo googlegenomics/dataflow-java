@@ -25,6 +25,7 @@ import java.util.Arrays;
 /**
  *
  * This test expects you to have a Google Cloud API key in the GOOGLE_API_KEY environment variable.
+ * It will read from GCS, so it's not your usual unit test (hence the integration test-related name).
  *
  */
 @RunWith(JUnit4.class)
