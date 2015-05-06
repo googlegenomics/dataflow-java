@@ -151,9 +151,11 @@ public class JoinNonVariantSegmentsWithVariants {
       GenomicsDatasetOptions options =
           context.getPipelineOptions().as(GenomicsDatasetOptions.class);
       Variant variant = context.element();
-      for (long startBin = getStartBin(options.getBinSize(), variant), endBin =
-          VariantUtils.isVariant(variant) ? startBin : getEndBin(options.getBinSize(), variant), bin =
-          startBin; bin <= endBin; bin++) {
+      long startBin = getStartBin(options.getBinSize(), variant);
+      long endBin =
+          VariantUtils.IS_NON_VARIANT_SEGMENT.apply(variant) ? getEndBin(options.getBinSize(),
+              variant) : startBin;
+      for (long bin = startBin; bin <= endBin; bin++) {
         context.output(KV.of(KV.of(variant.getReferenceName(), bin), variant));
       }
     }
@@ -179,9 +181,9 @@ public class JoinNonVariantSegmentsWithVariants {
       List<Variant> blockRecords = new LinkedList<>();
 
       for (Variant record : records) {
-        if (VariantUtils.isVariant(record)) {
+        if (!VariantUtils.IS_NON_VARIANT_SEGMENT.apply(record)) {
           // TODO: determine and implement the correct criteria for overlaps of non-SNP variants
-          if (VariantUtils.isSnp(record)) {
+          if (VariantUtils.IS_SNP.apply(record)) {
             for (Iterator<Variant> iterator = blockRecords.iterator(); iterator.hasNext();) {
               Variant blockRecord = iterator.next();
               if (JoinNonVariantSegmentsWithVariants.isOverlapping(blockRecord, record)) {
