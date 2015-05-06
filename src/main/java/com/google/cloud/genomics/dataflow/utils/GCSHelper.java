@@ -103,8 +103,6 @@ public class GCSHelper {
     storage = offlineAuth.setupAuthentication(factory, builder).build();
   }
 
-
-
   @VisibleForTesting
   GCSHelper() {
   }
@@ -169,7 +167,7 @@ public class GCSHelper {
 
     if (out.size() != (endIncl - start + 1)) {
       String err = "getPartialObjectData failed! Expected " + (endIncl - start + 1) + " bytes, got " + out.size();
-      LOGGER.log(Level.FINE, err);
+      LOGGER.log(Level.WARNING, err);
       throw new IOException(err);
     }
 

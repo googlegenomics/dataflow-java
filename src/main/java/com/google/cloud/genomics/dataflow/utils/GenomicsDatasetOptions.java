@@ -18,10 +18,12 @@ import java.security.GeneralSecurityException;
 import java.util.List;
 import java.util.logging.Logger;
 
+import com.google.api.client.repackaged.com.google.common.base.Strings;
 import com.google.api.services.genomics.Genomics;
 import com.google.api.services.genomics.model.SearchVariantsRequest;
 import com.google.cloud.dataflow.sdk.options.Default;
 import com.google.cloud.dataflow.sdk.options.Description;
+import com.google.cloud.dataflow.sdk.util.gcsfs.GcsPath;
 import com.google.cloud.genomics.utils.Contig;
 import com.google.cloud.genomics.utils.Contig.SexChromosomeFilter;
 import com.google.cloud.genomics.utils.GenomicsFactory;
@@ -70,11 +72,13 @@ public interface GenomicsDatasetOptions extends GenomicsOptions {
       Preconditions.checkArgument(0 < options.getBinSize(), "binSize must be greater than zero");
       if (null != options.getOutput()) {
         try {
-          // Check that we can parse the Google Cloud Storage path.
-          GCSFilename valid = new GCSFilename(options.getOutput());
+          // Check that we can parse the path.
+          GcsPath valid = GcsPath.fromUri(options.getOutput());
+          // GcsPath allows for empty bucket or filename, but that doesn't make for a good output file.
+          Preconditions.checkArgument(!Strings.isNullOrEmpty(valid.getBucket()), "Bucket must be specified");
+          Preconditions.checkArgument(!Strings.isNullOrEmpty(valid.getObject()), "Filename prefix must be specified");
         } catch (Exception x) {
-          Preconditions.checkState(false,
-              "output must be a valid Google Cloud Storage URL (starting with gs://)");
+          Preconditions.checkState(false, "output must be a valid Google Cloud Storage URL (starting with gs://)");
         }
       }
       GenomicsOptions.Methods.validateOptions(options);
