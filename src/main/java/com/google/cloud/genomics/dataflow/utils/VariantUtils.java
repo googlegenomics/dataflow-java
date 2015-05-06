@@ -26,33 +26,77 @@ import java.util.List;
 
 public class VariantUtils {
 
-  public static boolean isVariant(Variant variant) {
-    List<String> alternateBases = variant.getAlternateBases();
-    // The same deletion can be specified as [CAG -> C] or [AG -> null], so double check that the
-    // reference bases are also of length 1 when there are no alternates.
-    return !(LENGTH_IS_1.apply(variant.getReferenceBases()) 
-        && (null == alternateBases || alternateBases.isEmpty()));
-  }
-
-  public static final Predicate<Variant> IS_SNP = new Predicate<Variant>() {
+  public static final String GATK_NON_VARIANT_SEGMENT_ALT = "<NON_REF>";
+ 
+  /**
+   * Determine whether the variant has any values in alternate bases.
+   */
+  public static final Predicate<Variant> HAS_ALTERNATE = new Predicate<Variant>() {
     @Override
     public boolean apply(Variant variant) {
-      return isSnp(variant);
+      List<String> alternateBases = variant.getAlternateBases();
+      return !(null == alternateBases || alternateBases.isEmpty());
     }
   };
 
-  public static boolean isSnp(Variant variant) {
-    return isVariant(variant) && LENGTH_IS_1.apply(variant.getReferenceBases())
-        && Iterables.all(variant.getAlternateBases(), LENGTH_IS_1);
-  }
-
-  private static final Predicate<String> LENGTH_IS_1 = Predicates.compose(Predicates.equalTo(1),
+  public static final Predicate<String> LENGTH_IS_1 = Predicates.compose(Predicates.equalTo(1),
       new Function<String, Integer>() {
         @Override
         public Integer apply(String string) {
           return string.length();
         }
       });
+
+  /**
+   * Determine whether the variant is a SNP.
+   */
+  public static final Predicate<Variant> IS_SNP = Predicates.and(HAS_ALTERNATE,
+      new Predicate<Variant>() {
+        @Override
+        public boolean apply(Variant variant) {
+          return LENGTH_IS_1.apply(variant.getReferenceBases())
+              && Iterables.all(variant.getAlternateBases(), LENGTH_IS_1);
+        }
+      });
+
+  /**
+   * Determine whether the variant is a non-variant segment (a.k.a. non-variant block record).
+   * 
+   * For Complete Genomics data and gVCFs such as Platinum Genomes, we wind up with zero alternates
+   * (the missing value indicator "." in the VCF ALT field gets converted to null). See
+   * https://sites.google.com/site/gvcftools/home/about-gvcf for more detail.
+   */
+  public static final Predicate<Variant> IS_NON_VARIANT_SEGMENT_WITH_MISSING_ALT = Predicates.and(
+      Predicates.not(HAS_ALTERNATE), new Predicate<Variant>() {
+        @Override
+        public boolean apply(Variant variant) {
+          // The same deletion can be specified as [CAG -> C] or [AG -> null], so double check that
+          // the reference bases are also of length 1 when there are no alternates.
+          return LENGTH_IS_1.apply(variant.getReferenceBases());
+        }
+      });
+
+  /**
+   * Determine whether the variant is a non-variant segment (a.k.a. non-variant block record).
+   * 
+   * For data processed by GATK the value of ALT is "<NON_REF>". See
+   * https://www.broadinstitute.org/gatk/guide/article?id=4017 for more detail.
+   */
+  public static final Predicate<Variant> IS_NON_VARIANT_SEGMENT_WITH_GATK_ALT = Predicates.and(
+      HAS_ALTERNATE, new Predicate<Variant>() {
+        @Override
+        public boolean apply(Variant variant) {
+          return Iterables.all(variant.getAlternateBases(),
+              Predicates.equalTo(GATK_NON_VARIANT_SEGMENT_ALT));
+        }
+      });
+
+  /**
+   * Determine whether the variant is a non-variant segment (a.k.a. non-variant block record).
+   */
+  public static final Predicate<Variant> IS_NON_VARIANT_SEGMENT = Predicates.or(
+      IS_NON_VARIANT_SEGMENT_WITH_MISSING_ALT, IS_NON_VARIANT_SEGMENT_WITH_GATK_ALT);
+
 
   /**
    * Comparator for sorting calls by call set name.

@@ -32,43 +32,56 @@ public class VariantUtilsTest {
 
   @Test
   public void testIsVariant() {
-    assertTrue(VariantUtils.isVariant(DataUtils.makeVariant("chr7", 200000, 200001, "A",
-        Arrays.asList("C"), (Call[]) null)));
+    // SNPs
+    assertFalse(VariantUtils.IS_NON_VARIANT_SEGMENT.apply(DataUtils.makeVariant("chr7", 200000, 200001, "A", Arrays.asList("C"),
+        (Call[]) null)));
     
-    // Deletions, these are the same mutation just encoded in different ways.
-    assertTrue(VariantUtils.isVariant(DataUtils.makeVariant("chr7", 200000, 200001, "CAG", Arrays.asList("C"),
+    // Insertions
+    assertFalse(VariantUtils.IS_NON_VARIANT_SEGMENT.apply(DataUtils.makeVariant("chr7", 200000, 200001, "A", Arrays.asList("AC"),
         (Call[]) null)));
-    assertTrue(VariantUtils.isVariant(DataUtils.makeVariant("chr7", 200000, 200001, "AG", emptyAlt,
+    
+    // Deletions NOTE: These are all the same mutation, just encoded in different ways.
+    assertFalse(VariantUtils.IS_NON_VARIANT_SEGMENT.apply(DataUtils.makeVariant("chr7", 200000, 200001, "CAG", Arrays.asList("C"),
         (Call[]) null)));
-    assertTrue(VariantUtils.isVariant(DataUtils.makeVariant("chr7", 200000, 200001, "AG", null,
+    assertFalse(VariantUtils.IS_NON_VARIANT_SEGMENT.apply(DataUtils.makeVariant("chr7", 200000, 200001, "AG", emptyAlt,
+        (Call[]) null)));
+    assertFalse(VariantUtils.IS_NON_VARIANT_SEGMENT.apply(DataUtils.makeVariant("chr7", 200000, 200001, "AG", null,
+        (Call[]) null)));
+    
+    // Multi-allelic sites
+    assertFalse(VariantUtils.IS_NON_VARIANT_SEGMENT.apply(DataUtils.makeVariant("chr7", 200000, 200001, "A", Arrays.asList("C", "AC"),
+        (Call[]) null)));
+    assertFalse(VariantUtils.IS_NON_VARIANT_SEGMENT.apply(DataUtils.makeVariant("chr7", 200000, 200001, "A", Arrays.asList("C", "G"),
         (Call[]) null)));
     
     // Non-Variant Block Records
-    assertFalse(VariantUtils.isVariant(DataUtils.makeVariant("chr7", 200000, 200001, "A", emptyAlt,
+    assertTrue(VariantUtils.IS_NON_VARIANT_SEGMENT.apply(DataUtils.makeVariant("chr7", 200000, 200001, "A", emptyAlt,
         (Call[]) null)));
-    assertFalse(VariantUtils.isVariant(DataUtils.makeVariant("chr7", 200000, 200001, "A", null,
+    assertTrue(VariantUtils.IS_NON_VARIANT_SEGMENT.apply(DataUtils.makeVariant("chr7", 200000, 200001, "A", null,
+        (Call[]) null)));
+    assertTrue(VariantUtils.IS_NON_VARIANT_SEGMENT.apply(DataUtils.makeVariant("chr7", 200000, 200001, "A", Arrays.asList(VariantUtils.GATK_NON_VARIANT_SEGMENT_ALT),
         (Call[]) null)));
   }
 
   @Test
   public void testIsSNP() {
-    assertTrue(VariantUtils.isSnp(DataUtils.makeVariant("chr7", 200000, 200001, "A",
+    assertTrue(VariantUtils.IS_SNP.apply(DataUtils.makeVariant("chr7", 200000, 200001, "A",
         Arrays.asList("C"), (Call[]) null)));
     // Deletion
-    assertFalse(VariantUtils.isSnp(DataUtils.makeVariant("chr7", 200000, 200001, "CA",
+    assertFalse(VariantUtils.IS_SNP.apply(DataUtils.makeVariant("chr7", 200000, 200001, "CA",
         Arrays.asList("C"), (Call[]) null)));
     // Insertion
-    assertFalse(VariantUtils.isSnp(DataUtils.makeVariant("chr7", 200000, 200001, "C",
+    assertFalse(VariantUtils.IS_SNP.apply(DataUtils.makeVariant("chr7", 200000, 200001, "C",
         Arrays.asList("CA"), (Call[]) null)));
 
     // SNP and Insertion
-    assertFalse(VariantUtils.isSnp(DataUtils.makeVariant("chr7", 200000, 200001, "C",
+    assertFalse(VariantUtils.IS_SNP.apply(DataUtils.makeVariant("chr7", 200000, 200001, "C",
         Arrays.asList("A", "CA"), (Call[]) null)));
 
     // Block Records
-    assertFalse(VariantUtils.isSnp(DataUtils.makeVariant("chr7", 200000, 200001, "A", emptyAlt,
+    assertFalse(VariantUtils.IS_SNP.apply(DataUtils.makeVariant("chr7", 200000, 200001, "A", emptyAlt,
         (Call[]) null)));
-    assertFalse(VariantUtils.isSnp(DataUtils.makeVariant("chr7", 200000, 200001, "A", null,
+    assertFalse(VariantUtils.IS_SNP.apply(DataUtils.makeVariant("chr7", 200000, 200001, "A", null,
         (Call[]) null)));
   }
 
