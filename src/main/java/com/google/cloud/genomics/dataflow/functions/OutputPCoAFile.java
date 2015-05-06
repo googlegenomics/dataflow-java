@@ -45,8 +45,9 @@ public class OutputPCoAFile extends PTransform<PCollection<KV<KV<String, String>
   private static <X> Combine.CombineFn<X, List<X>, Iterable<X>> toList() {
     return new Combine.CombineFn<X, List<X>, Iterable<X>>() {
 
-          @Override public void addInput(List<X> accumulator, X input) {
+          @Override public List<X> addInput(List<X> accumulator, X input) {
             accumulator.add(input);
+            return accumulator;
           }
 
           @Override public List<X> createAccumulator() {

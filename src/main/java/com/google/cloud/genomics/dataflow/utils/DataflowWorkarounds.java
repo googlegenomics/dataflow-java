@@ -23,6 +23,7 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.logging.Logger;
 
+import com.google.cloud.dataflow.sdk.coders.CoderFactory;
 import org.reflections.Reflections;
 import org.reflections.scanners.ResourcesScanner;
 import org.reflections.scanners.SubTypesScanner;
@@ -50,7 +51,7 @@ public class DataflowWorkarounds {
   public static <T> void registerCoder(Pipeline p, Class<T> clazz, final Coder<T> coder) {
     CoderRegistry registry = p.getCoderRegistry();
     registry.registerCoder(clazz,
-        new CoderRegistry.CoderFactory() {
+        new CoderFactory() {
 
           @Override public Coder<?> create(List<? extends Coder<?>> typeArgumentCoders) {
             return coder;
