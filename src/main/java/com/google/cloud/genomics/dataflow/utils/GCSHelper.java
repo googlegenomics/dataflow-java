@@ -29,7 +29,7 @@ import java.util.logging.Logger;
 import javax.annotation.Nullable;
 
 /**
- * A helper class to download parts of files.
+ * A helper class to download from Google Cloud Storage.
  */
 public class GCSHelper {
 
@@ -185,7 +185,7 @@ public class GCSHelper {
   }
 
   /**
-   * Retrieve the whole file (to a temporary file, on disk).
+   * Retrieve the whole file (to a temporary file on disk).
    *
    * @throws IOException
    */
