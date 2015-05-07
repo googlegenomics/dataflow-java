@@ -131,6 +131,7 @@ public class CountReads {
         }
       }
     }
+    System.out.println("Output will be written to "+options.getOutput());
 
     PCollection<Read> reads = getReads();
     PCollection<Long> readCount = reads.apply(Count.<Read>globally());
@@ -140,7 +141,7 @@ public class CountReads {
         c.output(String.valueOf(c.element()));
       }
     }).named("toString"));
-    readCountText.apply(TextIO.Write.to(options.getOutput()).named("WriteOutput"));
+    readCountText.apply(TextIO.Write.to(options.getOutput()).named("WriteOutput").withoutSharding());
 
     p.run();
   }
