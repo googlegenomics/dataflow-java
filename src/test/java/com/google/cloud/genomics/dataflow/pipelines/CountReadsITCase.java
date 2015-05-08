@@ -20,6 +20,7 @@ import java.nio.channels.WritableByteChannel;
 /**
  * This test expects you to have:
  * -a Google Cloud API key in the GOOGLE_API_KEY environment variable,
+ * -your Google Cloud project name in TEST_PROJECT,
  * -a GCS folder path in TEST_OUTPUT_GCS_FOLDER to store temporary test outputs,
  * -a GCS folder path in TEST_STAGING_GCS_FOLDER to store temporary files,
  * GCS folder paths should be of the form "gs://bucket/folder/"
@@ -30,6 +31,7 @@ import java.nio.channels.WritableByteChannel;
 public class CountReadsITCase {
 
   final String API_KEY = System.getenv("GOOGLE_API_KEY");
+  final String TEST_PROJECT = System.getenv("TEST_PROJECT");
   final String TEST_OUTPUT_GCS_FOLDER = System.getenv("TEST_OUTPUT_GCS_FOLDER");
   final String TEST_STAGING_GCS_FOLDER = System.getenv("TEST_STAGING_GCS_FOLDER");
   // this file shouldn't move.
@@ -38,6 +40,7 @@ public class CountReadsITCase {
   @Before
   public void voidEnsureEnvVar() {
     Assert.assertNotNull("You must set the GOOGLE_API_KEY environment variable for this test.", API_KEY);
+    Assert.assertNotNull("You must set the TEST_PROJECT environment variable for this test.", TEST_PROJECT);
     Assert.assertNotNull("You must set the TEST_OUTPUT_GCS_FOLDER environment variable for this test.", TEST_OUTPUT_GCS_FOLDER);
     Assert.assertTrue("TEST_OUTPUT_GCS_FOLDER must end with '/'", TEST_OUTPUT_GCS_FOLDER.endsWith("/"));
     Assert.assertTrue("TEST_OUTPUT_GCS_FOLDER must start with 'gs://'", TEST_OUTPUT_GCS_FOLDER.startsWith("gs://"));
@@ -54,7 +57,7 @@ public class CountReadsITCase {
     final String OUTPUT = TEST_OUTPUT_GCS_FOLDER + "CountReadsITCase-testLocal-output.txt";
     String[] ARGS = {
         "--apiKey=" + API_KEY,
-        "--project=genomics-pipelines",
+        "--project=" + TEST_PROJECT,
         "--output=" + OUTPUT,
         "--references=1:550000:560000",
         "--BAMFilePath=" + TEST_BAM_FNAME
@@ -80,8 +83,8 @@ public class CountReadsITCase {
   public void testCloud() throws Exception {
     final String OUTPUT = TEST_OUTPUT_GCS_FOLDER + "CountReadsITCase-testCloud-output.txt";
     String[] ARGS = {
-        "--apiKey="+API_KEY,
-        "--project=genomics-pipelines",
+        "--apiKey=" + API_KEY,
+        "--project=" + TEST_PROJECT,
         "--output=" + OUTPUT,
         "--numWorkers=2",
         "--runner=BlockingDataflowPipelineRunner",
