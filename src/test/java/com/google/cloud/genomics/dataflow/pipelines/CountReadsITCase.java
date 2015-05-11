@@ -15,7 +15,6 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.Writer;
 import java.nio.channels.Channels;
-import java.nio.channels.WritableByteChannel;
 
 /**
  * This test expects you to have:
@@ -25,7 +24,7 @@ import java.nio.channels.WritableByteChannel;
  * -a GCS folder path in TEST_STAGING_GCS_FOLDER to store temporary files,
  * GCS folder paths should be of the form "gs://bucket/folder/"
  *
- * This test will read and write to GCS.
+ * This test will read and write to GCS, and call the Genomics API.
  */
 @RunWith(JUnit4.class)
 public class CountReadsITCase {
@@ -36,6 +35,8 @@ public class CountReadsITCase {
   final String TEST_STAGING_GCS_FOLDER = System.getenv("TEST_STAGING_GCS_FOLDER");
   // this file shouldn't move.
   final String TEST_BAM_FNAME = "gs://genomics-public-data/ftp-trace.ncbi.nih.gov/1000genomes/ftp/pilot_data/data/NA06985/alignment/NA06985.454.MOSAIK.SRP000033.2009_11.bam";
+  // this is the Readgroupset ID of the same file, in ReadStore. It also shouldn't move.
+  final String TEST_READGROUPSET = "CMvnhpKTFhDvp9zAvYj66AY";
 
   @Before
   public void voidEnsureEnvVar() {
@@ -107,6 +108,36 @@ public class CountReadsITCase {
   }
 
   /**
+   * CountReads running on Dataflow with API input.
+   */
+  @Test
+  public void testCloudWithAPI() throws Exception {
+    final String OUTPUT = TEST_OUTPUT_GCS_FOLDER + "CountReadsITCase-testCloudWithAPI-output.txt";
+    String[] ARGS = {
+        "--apiKey=" + API_KEY,
+        "--project=" + TEST_PROJECT,
+        "--output=" + OUTPUT,
+        "--numWorkers=2",
+        "--runner=BlockingDataflowPipelineRunner",
+        "--stagingLocation=" + TEST_STAGING_GCS_FOLDER,
+        "--references=1:550000:560000",
+        "--readGroupSetId=" + TEST_READGROUPSET
+    };
+    final long EXPECTED = 685;
+    GenomicsOptions popts = PipelineOptionsFactory.create().as(GenomicsOptions.class);
+    popts.setApiKey(API_KEY);
+    GcsUtil gcsUtil = new GcsUtil.GcsUtilFactory().create(popts);
+    touchOutput(gcsUtil, OUTPUT);
+
+    CountReads.main(ARGS);
+
+    BufferedReader reader = new BufferedReader(Channels.newReader(gcsUtil.open(GcsPath.fromUri(OUTPUT)), "UTF-8"));
+    long got = Long.parseLong(reader.readLine());
+
+    Assert.assertEquals(EXPECTED, got);
+  }
+
+  /**
    * make sure we can get to the output, and at the same time avoid a false negative if
    * the program does nothing and we find the output from an earlier run.
    */
@@ -115,4 +146,6 @@ public class CountReadsITCase {
       writer.write("output will go here");
     }
   }
+
+
 }
