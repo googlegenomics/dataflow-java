@@ -30,6 +30,9 @@ import java.security.GeneralSecurityException;
  * GCS folder paths should be of the form "gs://bucket/folder/"
  *
  * This test will read and write to GCS, and call the Genomics API.
+ *
+ * When doing e.g. mvn install, you can skip integration tests using:
+ * mvn install -DskipITs
  */
 @RunWith(JUnit4.class)
 public class CountReadsITCase {
