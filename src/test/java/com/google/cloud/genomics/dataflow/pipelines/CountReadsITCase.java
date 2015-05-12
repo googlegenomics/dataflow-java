@@ -1,7 +1,11 @@
 package com.google.cloud.genomics.dataflow.pipelines;
 
+import com.google.api.services.storage.Storage;
+import com.google.cloud.dataflow.sdk.options.GcsOptions;
+import com.google.cloud.dataflow.sdk.options.PipelineOptions;
 import com.google.cloud.dataflow.sdk.options.PipelineOptionsFactory;
 import com.google.cloud.dataflow.sdk.util.GcsUtil;
+import com.google.cloud.dataflow.sdk.util.Transport;
 import com.google.cloud.dataflow.sdk.util.gcsfs.GcsPath;
 import com.google.cloud.genomics.dataflow.utils.GenomicsOptions;
 
@@ -15,6 +19,7 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.Writer;
 import java.nio.channels.Channels;
+import java.security.GeneralSecurityException;
 
 /**
  * This test expects you to have:
@@ -70,14 +75,18 @@ public class CountReadsITCase {
     GenomicsOptions popts = PipelineOptionsFactory.create().as(GenomicsOptions.class);
     popts.setApiKey(API_KEY);
     GcsUtil gcsUtil = new GcsUtil.GcsUtilFactory().create(popts);
-    touchOutput(gcsUtil, OUTPUT);
+    try {
+      touchOutput(gcsUtil, OUTPUT);
 
-    CountReads.main(ARGS);
+      CountReads.main(ARGS);
 
-    BufferedReader reader = new BufferedReader(Channels.newReader(gcsUtil.open(GcsPath.fromUri(OUTPUT)), "UTF-8"));
-    long got = Long.parseLong(reader.readLine());
+      BufferedReader reader = new BufferedReader(Channels.newReader(gcsUtil.open(GcsPath.fromUri(OUTPUT)), "UTF-8"));
+      long got = Long.parseLong(reader.readLine());
 
     Assert.assertEquals(TEST_EXPECTED, got);
+    } finally {
+      GcsDelete(popts, OUTPUT);
+    }
   }
 
   /**
@@ -99,14 +108,18 @@ public class CountReadsITCase {
     GenomicsOptions popts = PipelineOptionsFactory.create().as(GenomicsOptions.class);
     popts.setApiKey(API_KEY);
     GcsUtil gcsUtil = new GcsUtil.GcsUtilFactory().create(popts);
-    touchOutput(gcsUtil, OUTPUT);
+    try {
+      touchOutput(gcsUtil, OUTPUT);
 
-    CountReads.main(ARGS);
+      CountReads.main(ARGS);
 
-    BufferedReader reader = new BufferedReader(Channels.newReader(gcsUtil.open(GcsPath.fromUri(OUTPUT)), "UTF-8"));
-    long got = Long.parseLong(reader.readLine());
+      BufferedReader reader = new BufferedReader(Channels.newReader(gcsUtil.open(GcsPath.fromUri(OUTPUT)), "UTF-8"));
+      long got = Long.parseLong(reader.readLine());
 
     Assert.assertEquals(TEST_EXPECTED, got);
+    } finally {
+      GcsDelete(popts, OUTPUT);
+    }
   }
 
   /**
@@ -128,19 +141,22 @@ public class CountReadsITCase {
     GenomicsOptions popts = PipelineOptionsFactory.create().as(GenomicsOptions.class);
     popts.setApiKey(API_KEY);
     GcsUtil gcsUtil = new GcsUtil.GcsUtilFactory().create(popts);
-    touchOutput(gcsUtil, OUTPUT);
+    try {
+      touchOutput(gcsUtil, OUTPUT);
 
-    CountReads.main(ARGS);
+      CountReads.main(ARGS);
 
-    BufferedReader reader = new BufferedReader(Channels.newReader(gcsUtil.open(GcsPath.fromUri(OUTPUT)), "UTF-8"));
-    long got = Long.parseLong(reader.readLine());
+      BufferedReader reader = new BufferedReader(Channels.newReader(gcsUtil.open(GcsPath.fromUri(OUTPUT)), "UTF-8"));
+      long got = Long.parseLong(reader.readLine());
 
-    Assert.assertEquals(TEST_EXPECTED, got);
+      Assert.assertEquals(TEST_EXPECTED, got);
+    } finally {
+      GcsDelete(popts, OUTPUT);
+    }
   }
 
   /**
-   * Make sure we can get to the output, and at the same time avoid a false negative if
-   * the program does nothing and we find the output from an earlier run.
+   * Make sure we can get to the output.
    */
   private void touchOutput(GcsUtil gcsUtil, String outputGcsPath) throws IOException {
     try (Writer writer = Channels.newWriter(gcsUtil.create(GcsPath.fromUri(outputGcsPath), "text/plain"), "UTF-8")) {
@@ -148,5 +164,13 @@ public class CountReadsITCase {
     }
   }
 
+  private static void GcsDelete(PipelineOptions popts, String gcsPath) throws IOException, GeneralSecurityException {
+    // boilerplate
+    GcsPath path = GcsPath.fromUri(gcsPath);
+    GcsOptions gcsOptions = (GcsOptions)popts.as(GcsOptions.class);
+    Storage storage = Transport.newStorageClient(gcsOptions).build();
+    // do the actual work
+    storage.objects().delete(path.getBucket(), path.getObject()).execute();
+  }
 
 }
