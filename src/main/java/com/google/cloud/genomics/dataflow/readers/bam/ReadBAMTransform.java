@@ -30,10 +30,12 @@ import com.google.cloud.dataflow.sdk.values.PCollectionTuple;
 import com.google.cloud.dataflow.sdk.values.PCollectionView;
 import com.google.cloud.dataflow.sdk.values.TupleTag;
 import com.google.cloud.genomics.dataflow.utils.GCSOptions;
+import com.google.cloud.genomics.dataflow.utils.GenomicsOptions;
 import com.google.cloud.genomics.utils.Contig;
 import com.google.cloud.genomics.utils.GenomicsFactory;
 
 import java.io.IOException;
+import java.security.GeneralSecurityException;
 import java.util.Arrays;
 import java.util.List;
 
@@ -42,17 +44,13 @@ import java.util.List;
  * a collection of reads by reading BAM files in a sharded manner.
  */
 public class ReadBAMTransform extends PTransform<PCollectionTuple, PCollection<Read>> {
-  GenomicsFactory.OfflineAuth auth;
-  
   public static TupleTag<Contig> CONTIGS_TAG = new TupleTag<>();
   public static TupleTag<String> BAMS_TAG = new TupleTag<>();
-  
-  public static PCollection<Read> getReadsFromBAMFilesSharded(
-      Pipeline p, 
-      GenomicsFactory.OfflineAuth auth,
-      Iterable<Contig> contigs, List<String> BAMFiles) {
+
+    public static PCollection<Read> getReadsFromBAMFilesSharded(
+      Pipeline p,
+      Iterable<Contig> contigs, List<String> BAMFiles) throws IOException {
       ReadBAMTransform readBAMSTransform = new ReadBAMTransform();
-      readBAMSTransform.setAuth(auth);
       PCollectionTuple tuple = PCollectionTuple
           .of(
               ReadBAMTransform.BAMS_TAG, 
@@ -68,18 +66,16 @@ public class ReadBAMTransform extends PTransform<PCollectionTuple, PCollection<R
   }
   
   public static class ShardFn extends DoFn<String, BAMShard> {
-    GenomicsFactory.OfflineAuth auth;
     PCollectionView<Iterable<Contig>> contigsView;
     Storage.Objects storage;
     
-    public ShardFn(GenomicsFactory.OfflineAuth auth, PCollectionView<Iterable<Contig>> contigsView) {
-      this.auth = auth;
+    public ShardFn(PCollectionView<Iterable<Contig>> contigsView) {
       this.contigsView = contigsView;
     }
     
     @Override
-    public void startBundle(DoFn<String, BAMShard>.Context c) throws IOException {
-      storage = GCSOptions.Methods.createStorageClient(c, auth);
+    public void startBundle(DoFn<String, BAMShard>.Context c) throws GeneralSecurityException, IOException {
+      storage = GCSOptions.Methods.createStorageClient(c);
     }
     
     @Override
@@ -90,17 +86,14 @@ public class ReadBAMTransform extends PTransform<PCollectionTuple, PCollection<R
   }
   
   public static class ReadFn extends DoFn<BAMShard, Read> {
-    GenomicsFactory.OfflineAuth auth;
     Storage.Objects storage;
     
-    public ReadFn(GenomicsFactory.OfflineAuth auth) {
-      this.auth = auth;
-
+    public ReadFn() {
     }
     
     @Override
-    public void startBundle(DoFn<BAMShard, Read>.Context c) throws IOException {
-      storage = GCSOptions.Methods.createStorageClient(c, auth);
+    public void startBundle(DoFn<BAMShard, Read>.Context c) throws GeneralSecurityException, IOException {
+      storage = GCSOptions.Methods.createStorageClient(c);
     }
     
     @Override
@@ -109,7 +102,6 @@ public class ReadBAMTransform extends PTransform<PCollectionTuple, PCollection<R
           .process();
     }
   }
-  
   
   @Override
   public PCollection<Read> apply(PCollectionTuple contigsAndBAMs) {
@@ -123,20 +115,12 @@ public class ReadBAMTransform extends PTransform<PCollectionTuple, PCollection<R
     final PCollection<BAMShard> shards =
         BAMFileGCSPaths.apply(ParDo
             .withSideInputs(Arrays.asList(contigsView))
-            .of(new ShardFn(auth, contigsView)))
+            .of(new ShardFn(contigsView)))
               .setCoder(SerializableCoder.of(BAMShard.class));
     
     final PCollection<Read> reads = shards.apply(ParDo
-        .of(new ReadFn(auth)));
+        .of(new ReadFn()));
 
     return reads;
-  }
-
-  public GenomicsFactory.OfflineAuth  getAuth() {
-    return auth;
-  }
-
-  public void setAuth(GenomicsFactory.OfflineAuth auth) {
-    this.auth = auth;
   }
 }

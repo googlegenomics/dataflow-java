@@ -32,6 +32,7 @@ import com.google.common.collect.ImmutableList;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 
 import java.io.IOException;
+import java.security.GeneralSecurityException;
 import java.util.List;
 import java.util.logging.Logger;
 
@@ -121,12 +122,16 @@ public interface GCSOptions extends GenomicsOptions {
     }
     
     public static Storage.Objects createStorageClient(
-        DoFn<?, ?>.Context context, GenomicsFactory.OfflineAuth auth) throws IOException {
+        DoFn<?, ?>.Context context) throws GeneralSecurityException, IOException {
       final GCSOptions gcsOptions =
           context.getPipelineOptions().as(GCSOptions.class);
-      return createStorageClient(gcsOptions, auth);
+      return createStorageClient(gcsOptions);
     }
-    
+
+    public static Storage.Objects createStorageClient(GCSOptions gcsOptions) throws GeneralSecurityException, IOException {
+      return createStorageClient(gcsOptions, GenomicsOptions.Methods.getGenomicsAuth(gcsOptions));
+    }
+
     public static Storage.Objects createStorageClient(GCSOptions gcsOptions,
         GenomicsFactory.OfflineAuth auth) throws IOException {
       LOG.info("Creating storgae client for " + auth.applicationName);

@@ -151,7 +151,7 @@ public class CountReads {
     try {
       // if we can read the size, then surely we can read the file
       GcsPath fn = GcsPath.fromUri(url);
-      Storage.Objects storageClient = GCSOptions.Methods.createStorageClient(options, auth);
+      Storage.Objects storageClient = GCSOptions.Methods.createStorageClient(options);
       Storage.Objects.Get getter = storageClient.get(fn.getBucket(), fn.getObject());
       StorageObject object = getter.execute();
       BigInteger size = object.getSize();
@@ -161,7 +161,7 @@ public class CountReads {
     }
   }
 
-  private static PCollection<Read> getReads() throws IOException {
+  private static PCollection<Read> getReads() throws GeneralSecurityException, IOException {
     if (!options.getBAMFilePath().isEmpty()) {
       return getReadsFromBAMFile();
     } 
@@ -203,23 +203,22 @@ public class CountReads {
         }));
    }
   
-  private static PCollection<Read> getReadsFromBAMFile() throws IOException {
+  private static PCollection<Read> getReadsFromBAMFile() throws GeneralSecurityException, IOException {
     LOG.info("getReadsFromBAMFile");
 
     final Iterable<Contig> contigs = Contig.parseContigsFromCommandLine(options.getReferences());
         
     if (options.getShardBAMReading()) {
       LOG.info("Sharded reading of "+options.getBAMFilePath());
-      return ReadBAMTransform.getReadsFromBAMFilesSharded(p, 
-          auth,
-          contigs, 
+      return ReadBAMTransform.getReadsFromBAMFilesSharded(p,
+          contigs,
           Collections.singletonList(options.getBAMFilePath()));
     } else {  // For testing and comparing sharded vs. not sharded only
       LOG.info("Unsharded reading of "+options.getBAMFilePath());
       return p.apply(
           Create.of(
               Reader.readSequentiallyForTesting(
-                  GCSOptions.Methods.createStorageClient(options, auth),
+                  GCSOptions.Methods.createStorageClient(options),
                   options.getBAMFilePath(),
                   contigs.iterator().next())));
     }
