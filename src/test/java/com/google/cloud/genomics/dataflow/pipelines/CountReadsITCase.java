@@ -83,6 +83,7 @@ public class CountReadsITCase {
   /**
    * CountReads running on Dataflow.
    */
+  /*
   @Test
   public void testCloud() throws Exception {
     final String OUTPUT = TEST_OUTPUT_GCS_FOLDER + "CountReadsITCase-testCloud-output.txt";
@@ -107,11 +108,12 @@ public class CountReadsITCase {
     long got = Long.parseLong(reader.readLine());
 
     Assert.assertEquals(TEST_EXPECTED, got);
-  }
+  }*/
 
   /**
    * CountReads running on Dataflow with API input.
    */
+  /*
   @Test
   public void testCloudWithAPI() throws Exception {
     final String OUTPUT = TEST_OUTPUT_GCS_FOLDER + "CountReadsITCase-testCloudWithAPI-output.txt";
@@ -136,7 +138,7 @@ public class CountReadsITCase {
     long got = Long.parseLong(reader.readLine());
 
     Assert.assertEquals(TEST_EXPECTED, got);
-  }
+  }*/
 
   /**
    * Make sure we can get to the output, and at the same time avoid a false negative if
