@@ -42,7 +42,7 @@ public class BAMShard implements Serializable {
   /**
    * Begins a new shard with an empty chunk list and a starting locus.
    */
-  public BAMShard(String file, String referenceName, int firstLocus) {
+  public BAMShard(String file, String referenceName, long firstLocus) {
     this.file = file;
     this.contig = new Contig(referenceName, firstLocus, -1);
     this.chunks = Lists.newLinkedList();
@@ -65,7 +65,7 @@ public class BAMShard implements Serializable {
   /**
    * Appends chunks from another bin to the list and moved the end position.
    */
-  public void addBin(List<Chunk> chunksToAdd, int lastLocus) {
+  public void addBin(List<Chunk> chunksToAdd, long lastLocus) {
     assert chunks != null;
     contig = new Contig(contig.referenceName, contig.start, lastLocus);
     chunks.addAll(chunksToAdd);
@@ -77,10 +77,8 @@ public class BAMShard implements Serializable {
    * for this shard. We get all chunks overlapping this loci, and then ask the index
    * for the chunks overlapping them. 
    */
-  public BAMShard finalize(BAMFileIndexImpl index, int lastLocus) {
-    if (lastLocus >= 0) {
-      contig = new Contig(contig.referenceName, contig.start, lastLocus);
-    }
+  public BAMShard finalize(BAMFileIndexImpl index, long lastLocus) {
+    contig = new Contig(contig.referenceName, contig.start, lastLocus);
     this.chunks = index.getChunksOverlapping(contig.referenceName, 
         (int)contig.start, (int)contig.end);
     updateSpan();

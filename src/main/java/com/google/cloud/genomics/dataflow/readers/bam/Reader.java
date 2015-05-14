@@ -96,8 +96,10 @@ public class Reader {
 
   boolean isWrongSequence(SAMRecord record) {
     return (procesingUnmapped && !record.getReadUnmappedFlag()) ||
-        (!procesingUnmapped && shard.contig.referenceName != null && !shard.contig.referenceName.isEmpty()
-        && !shard.contig.referenceName.equals(record.getReferenceName()));
+        (!procesingUnmapped && (record.getReadUnmappedFlag() || 
+            (shard.contig.referenceName != null && 
+            !shard.contig.referenceName.isEmpty() &&
+            !shard.contig.referenceName.equals(record.getReferenceName()))));
   }
   
   void processRecord(SAMRecord record) {
@@ -109,7 +111,7 @@ public class Reader {
       recordsBeforeStart++;
       return;
     }
-    if (record.getAlignmentStart() > shard.contig.end) {
+    if (record.getAlignmentStart() >= shard.contig.end) {
       recordsAfterEnd++;
       return;
     }
@@ -137,8 +139,8 @@ public class Reader {
     Stopwatch timer = Stopwatch.createStarted();
     SamReader samReader = BAMIO.openBAM(storageClient, storagePath); 
     SAMRecordIterator iterator =  samReader.queryOverlapping(contig.referenceName, 
-        (int) contig.start,
-        (int) contig.end);
+        (int) contig.start + 1,
+        (int) contig.end + 1);
     List<Read> reads = new ArrayList<Read>(); 
     
     int recordsBeforeStart = 0;
@@ -147,7 +149,8 @@ public class Reader {
     int recordsProcessed = 0;
     while (iterator.hasNext()) {
       SAMRecord record = iterator.next();
-      final boolean wrongSequence = !contig.referenceName.equals(record.getReferenceName());
+      final boolean wrongSequence = !contig.referenceName.equals(record.getReferenceName())
+          || (!contig.referenceName.equals("*") && record.getReadUnmappedFlag());
       
       if (wrongSequence) {
         mismatchedSequence++;
@@ -157,7 +160,7 @@ public class Reader {
         recordsBeforeStart++;
         continue;
       }
-      if (record.getAlignmentStart() > contig.end) {
+      if (record.getAlignmentStart() >= contig.end) {
         recordsAfterEnd++;
         continue;
       }
