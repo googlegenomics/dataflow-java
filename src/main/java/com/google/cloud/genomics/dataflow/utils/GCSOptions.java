@@ -29,10 +29,9 @@ import com.google.cloud.dataflow.sdk.transforms.DoFn;
 import com.google.cloud.genomics.utils.GenomicsFactory;
 import com.google.common.collect.ImmutableList;
 
-import com.fasterxml.jackson.annotation.JsonIgnore;
+import org.codehaus.jackson.annotate.JsonIgnore;
 
 import java.io.IOException;
-import java.security.GeneralSecurityException;
 import java.util.List;
 import java.util.logging.Logger;
 
@@ -48,7 +47,7 @@ public interface GCSOptions extends GenomicsOptions {
       return Utils.getDefaultTransport();
     }
   }
-  
+
   @Default.InstanceFactory(HttpTransportFactory.class)
   @JsonIgnore
   HttpTransport getTransport();
@@ -61,90 +60,86 @@ public interface GCSOptions extends GenomicsOptions {
       return Utils.getDefaultJsonFactory();
     }
   }
-  
+
   @Default.InstanceFactory(JsonFactoryFactory.class)
   @JsonIgnore
   JsonFactory getJsonFactory();
 
   void setJsonFactory(JsonFactory jsonFactory);
 
-  
+
   class ScopesFactory implements DefaultValueFactory<List<String>> {
     @Override
     public List<String> create(PipelineOptions options) {
       return ImmutableList.<String>builder()
-        .add(DataflowScopes.USERINFO_EMAIL)
-        .add(GenomicsScopes.GENOMICS)
-        .add(StorageScopes.DEVSTORAGE_READ_WRITE)
-        .build();
+              .add(DataflowScopes.USERINFO_EMAIL)
+              .add(GenomicsScopes.GENOMICS)
+              .add(StorageScopes.DEVSTORAGE_READ_WRITE)
+              .build();
     }
   }
-  
+
   @Default.InstanceFactory(ScopesFactory.class)
   @JsonIgnore
   List<String> getScopes();
 
   void setScopes(List<String> scopes);
-  
+
   class GenomicsFactoryFactory implements DefaultValueFactory<GenomicsFactory> {
     @Override
     public GenomicsFactory create(PipelineOptions options) {
       GCSOptions gcsOptions = options.as(GCSOptions.class);
       try {
         return GenomicsFactory
-          .builder(gcsOptions.getAppName())
-            .setScopes(gcsOptions.getScopes())
-            .setHttpTransport(gcsOptions.getTransport())
-            .setJsonFactory(gcsOptions.getJsonFactory())
-            .build();
+                .builder(gcsOptions.getAppName())
+                .setScopes(gcsOptions.getScopes())
+                .setHttpTransport(gcsOptions.getTransport())
+                .setJsonFactory(gcsOptions.getJsonFactory())
+                .build();
       } catch (Exception ex) {
-          throw new RuntimeException(ex);
+        throw new RuntimeException(ex);
       }
     }
   }
-  
+
   @Default.InstanceFactory(GenomicsFactoryFactory.class)
   @JsonIgnore
   GenomicsFactory getGenomicsFactory();
-  
+
   void setGenomicsFactory(GenomicsFactory factory);
-  
+
   class Methods {
     private static final Logger LOG = Logger.getLogger(GCSOptions.class.getName());
     private Methods() {
     }
-    
+
     public static GenomicsFactory.OfflineAuth createGCSAuth(GCSOptions options)
-      throws IOException {
+            throws IOException {
       return options
               .getGenomicsFactory()
               .getOfflineAuth(null, options.getGenomicsSecretsFile());
     }
-    
-    public static Storage.Objects createStorageClient(
-        DoFn<?, ?>.Context context) throws GeneralSecurityException, IOException {
-      final GCSOptions gcsOptions =
-          context.getPipelineOptions().as(GCSOptions.class);
-      return createStorageClient(gcsOptions);
-    }
 
-    public static Storage.Objects createStorageClient(GCSOptions gcsOptions) throws GeneralSecurityException, IOException {
-      return createStorageClient(gcsOptions, GenomicsOptions.Methods.getGenomicsAuth(gcsOptions));
+    public static Storage.Objects createStorageClient(
+            DoFn<?, ?>.Context context, GenomicsFactory.OfflineAuth auth) throws IOException {
+      final GCSOptions gcsOptions =
+              context.getPipelineOptions().as(GCSOptions.class);
+      return createStorageClient(gcsOptions, auth);
     }
 
     public static Storage.Objects createStorageClient(GCSOptions gcsOptions,
-        GenomicsFactory.OfflineAuth auth) throws IOException {
+                                                      GenomicsFactory.OfflineAuth auth) throws IOException {
       LOG.info("Creating storgae client for " + auth.applicationName);
       final Storage.Builder storageBuilder = new Storage.Builder(
-          gcsOptions.getTransport(),
-          gcsOptions.getJsonFactory(),
-          null);
-      
+              gcsOptions.getTransport(),
+              gcsOptions.getJsonFactory(),
+              null);
+
       return auth
-          .setupAuthentication(gcsOptions.getGenomicsFactory(), storageBuilder)
-          .build()
-            .objects();
-      }
-    
+              .setupAuthentication(gcsOptions.getGenomicsFactory(), storageBuilder)
+              .build()
+              .objects();
+    }
+
   }
 }

@@ -37,6 +37,7 @@ import com.google.cloud.genomics.utils.GenomicsFactory;
 import java.io.IOException;
 import java.security.GeneralSecurityException;
 import java.util.Arrays;
+import java.util.Iterator;
 import java.util.List;
 
 /**
@@ -44,83 +45,115 @@ import java.util.List;
  * a collection of reads by reading BAM files in a sharded manner.
  */
 public class ReadBAMTransform extends PTransform<PCollectionTuple, PCollection<Read>> {
-  public static TupleTag<Contig> CONTIGS_TAG = new TupleTag<>();
-  public static TupleTag<String> BAMS_TAG = new TupleTag<>();
+    GenomicsFactory.OfflineAuth auth;
 
+    public static TupleTag<Contig> CONTIGS_TAG = new TupleTag<>();
+    public static TupleTag<String> BAMS_TAG = new TupleTag<>();
+
+    /*
+     * getReadsFromBAMFilesSharded reads a BAM using the the API key or the client secrets file.
+     * This function can only be called on the client when using the client secrets file to produce
+     * the credentials (as the file is not copied to workers.
+     */
     public static PCollection<Read> getReadsFromBAMFilesSharded(
-      Pipeline p,
-      Iterable<Contig> contigs, List<String> BAMFiles) throws IOException {
-      ReadBAMTransform readBAMSTransform = new ReadBAMTransform();
-      PCollectionTuple tuple = PCollectionTuple
-          .of(
-              ReadBAMTransform.BAMS_TAG, 
-                p.apply(
-                    Create.of(BAMFiles))
-                .setCoder(StringUtf8Coder.of()))
-         .and(ReadBAMTransform.CONTIGS_TAG, 
-             p.apply(
-                 Create.of(
-                     contigs))
-             .setCoder(SerializableCoder.of(Contig.class)));
-      return readBAMSTransform.apply(tuple);
-  }
-  
-  public static class ShardFn extends DoFn<String, BAMShard> {
-    PCollectionView<Iterable<Contig>> contigsView;
-    Storage.Objects storage;
-    
-    public ShardFn(PCollectionView<Iterable<Contig>> contigsView) {
-      this.contigsView = contigsView;
-    }
-    
-    @Override
-    public void startBundle(DoFn<String, BAMShard>.Context c) throws GeneralSecurityException, IOException {
-      storage = GCSOptions.Methods.createStorageClient(c);
-    }
-    
-    @Override
-    public void processElement(ProcessContext c) throws java.lang.Exception {
-      (new Sharder(storage, c.element(), c.sideInput(contigsView), c))
-          .process();
-    }
-  }
-  
-  public static class ReadFn extends DoFn<BAMShard, Read> {
-    Storage.Objects storage;
-    
-    public ReadFn() {
-    }
-    
-    @Override
-    public void startBundle(DoFn<BAMShard, Read>.Context c) throws GeneralSecurityException, IOException {
-      storage = GCSOptions.Methods.createStorageClient(c);
-    }
-    
-    @Override
-    public void processElement(ProcessContext c) throws java.lang.Exception {
-      (new Reader(storage, c.element(), c))
-          .process();
-    }
-  }
-  
-  @Override
-  public PCollection<Read> apply(PCollectionTuple contigsAndBAMs) {
+            Pipeline p,
+            Iterable<Contig> contigs, List<String> BAMFiles) throws IOException, GeneralSecurityException {
+        final GCSOptions gcsOptions =
+                p.getOptions().as(GCSOptions.class);
+        return getReadsFromBAMFilesSharded(p, GenomicsOptions.Methods.getGenomicsAuth(gcsOptions),
+                contigs, BAMFiles);
 
-    final PCollection<Contig> contigs = contigsAndBAMs.get(CONTIGS_TAG);
-    final PCollectionView<Iterable<Contig>> contigsView =
-        contigs.apply(View.<Contig>asIterable());
+    }
+    public static PCollection<Read> getReadsFromBAMFilesSharded(
+            Pipeline p,
+            GenomicsFactory.OfflineAuth auth,
+            Iterable<Contig> contigs, List<String> BAMFiles) {
+        ReadBAMTransform readBAMSTransform = new ReadBAMTransform();
+        readBAMSTransform.setAuth(auth);
+        PCollectionTuple tuple = PCollectionTuple
+                .of(
+                        ReadBAMTransform.BAMS_TAG,
+                        p.apply(
+                                Create.of(BAMFiles))
+                                .setCoder(StringUtf8Coder.of()))
+                .and(ReadBAMTransform.CONTIGS_TAG,
+                        p.apply(
+                                Create.of(
+                                        contigs))
+                                .setCoder(SerializableCoder.of(Contig.class)));
+        return readBAMSTransform.apply(tuple);
+    }
 
-    final PCollection<String> BAMFileGCSPaths = contigsAndBAMs.get(BAMS_TAG);
-   
-    final PCollection<BAMShard> shards =
-        BAMFileGCSPaths.apply(ParDo
-            .withSideInputs(Arrays.asList(contigsView))
-            .of(new ShardFn(contigsView)))
-              .setCoder(SerializableCoder.of(BAMShard.class));
-    
-    final PCollection<Read> reads = shards.apply(ParDo
-        .of(new ReadFn()));
+    public static class ShardFn extends DoFn<String, BAMShard> {
+        GenomicsFactory.OfflineAuth auth;
+        PCollectionView<Iterable<Contig>> contigsView;
+        Storage.Objects storage;
 
-    return reads;
-  }
+        public ShardFn(GenomicsFactory.OfflineAuth auth, PCollectionView<Iterable<Contig>> contigsView) {
+            this.auth = auth;
+            this.contigsView = contigsView;
+        }
+
+        @Override
+        public void startBundle(DoFn<String, BAMShard>.Context c) throws IOException {
+            storage = GCSOptions.Methods.createStorageClient(c, auth);
+        }
+
+        @Override
+        public void processElement(ProcessContext c) throws java.lang.Exception {
+            (new Sharder(storage, c.element(), c.sideInput(contigsView), c))
+                    .process();
+        }
+    }
+
+    public static class ReadFn extends DoFn<BAMShard, Read> {
+        GenomicsFactory.OfflineAuth auth;
+        Storage.Objects storage;
+
+        public ReadFn(GenomicsFactory.OfflineAuth auth) {
+            this.auth = auth;
+
+        }
+
+        @Override
+        public void startBundle(DoFn<BAMShard, Read>.Context c) throws IOException {
+            storage = GCSOptions.Methods.createStorageClient(c, auth);
+        }
+
+        @Override
+        public void processElement(ProcessContext c) throws java.lang.Exception {
+            (new Reader(storage, c.element(), c))
+                    .process();
+        }
+    }
+
+
+    @Override
+    public PCollection<Read> apply(PCollectionTuple contigsAndBAMs) {
+
+        final PCollection<Contig> contigs = contigsAndBAMs.get(CONTIGS_TAG);
+        final PCollectionView<Iterable<Contig>> contigsView =
+                contigs.apply(View.<Contig>asIterable());
+
+        final PCollection<String> BAMFileGCSPaths = contigsAndBAMs.get(BAMS_TAG);
+
+        final PCollection<BAMShard> shards =
+                BAMFileGCSPaths.apply(ParDo
+                        .withSideInputs(Arrays.asList(contigsView))
+                        .of(new ShardFn(auth, contigsView)))
+                        .setCoder(SerializableCoder.of(BAMShard.class));
+
+        final PCollection<Read> reads = shards.apply(ParDo
+                .of(new ReadFn(auth)));
+
+        return reads;
+    }
+
+    public GenomicsFactory.OfflineAuth  getAuth() {
+        return auth;
+    }
+
+    public void setAuth(GenomicsFactory.OfflineAuth auth) {
+        this.auth = auth;
+    }
 }

@@ -17,18 +17,17 @@ import static com.google.common.collect.Lists.newArrayList;
 
 import com.google.api.services.genomics.model.Read;
 import com.google.api.services.genomics.model.SearchReadsRequest;
-import com.google.api.services.storage.Storage;
-import com.google.api.services.storage.model.StorageObject;
 import com.google.cloud.dataflow.sdk.Pipeline;
 import com.google.cloud.dataflow.sdk.io.TextIO;
 import com.google.cloud.dataflow.sdk.options.Default;
+import com.google.cloud.dataflow.sdk.options.DefaultValueFactory;
 import com.google.cloud.dataflow.sdk.options.Description;
+import com.google.cloud.dataflow.sdk.options.PipelineOptions;
 import com.google.cloud.dataflow.sdk.options.PipelineOptionsFactory;
 import com.google.cloud.dataflow.sdk.transforms.Count;
 import com.google.cloud.dataflow.sdk.transforms.Create;
 import com.google.cloud.dataflow.sdk.transforms.DoFn;
 import com.google.cloud.dataflow.sdk.transforms.ParDo;
-import com.google.cloud.dataflow.sdk.util.gcsfs.GcsPath;
 import com.google.cloud.dataflow.sdk.values.PCollection;
 import com.google.cloud.genomics.dataflow.readers.ReadReader;
 import com.google.cloud.genomics.dataflow.readers.bam.ReadBAMTransform;
@@ -40,64 +39,75 @@ import com.google.cloud.genomics.dataflow.utils.GenomicsOptions;
 import com.google.cloud.genomics.utils.Contig;
 import com.google.cloud.genomics.utils.GenomicsFactory;
 import com.google.cloud.genomics.utils.Paginator;
+import com.google.cloud.genomics.utils.Paginator.ShardBoundary;
 import com.google.common.base.Function;
 import com.google.common.base.Splitter;
-import com.google.common.base.Strings;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
-import com.fasterxml.jackson.annotation.JsonIgnore;
+
+import org.codehaus.jackson.annotate.JsonIgnore;
 
 import java.io.IOException;
-import java.math.BigInteger;
 import java.security.GeneralSecurityException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.logging.Logger;
 
+import javax.annotation.Nullable;
+
 /**
- * Simple read counting pipeline, intended as an example for reading data from 
+ * Simple read counting pipeline, intended as an example for reading data from
  * APIs OR BAM files and invoking GATK tools.
- *
- * Specify either ReadGroupSet or BAMFilePath.
- *
- * Example command line (you have to fill in the env. variables; BAMFilePath is of the "gs://foo/bar" format):
- * java -cp target/google-genomics*jar com.google.cloud.genomics.dataflow.pipelines.CountReads \
- *   --project=$PROJECT_ID \
- *   --stagingLocation=$STAGING \
- *   --genomicsSecretsFile=$CLIENT_SECRETS \
- *   --references=$DESIRED_CONTIGS \
- *   --BAMFilePath=$BAM_FILE_PATH \
- *   --output=$OUTPUT
- *
- * See src/main/scripts/count_reads.sh for more detail.
  */
 public class CountReads {
   private static final Logger LOG = Logger.getLogger(CountReads.class.getName());
   private static CountReadsOptions options;
   private static Pipeline p;
   private static GenomicsFactory.OfflineAuth auth;
-
   public static interface CountReadsOptions extends GenomicsDatasetOptions, GCSOptions {
     @Description("The ID of the Google Genomics ReadGroupSet this pipeline is working with. "
-        + "Default (empty) indicates all ReadGroupSets.")
+            + "Default (empty) indicates all ReadGroupSets.")
     @Default.String("")
     String getReadGroupSetId();
 
     void setReadGroupSetId(String readGroupSetId);
 
-    @Description("The Google Cloud Storage path to the BAM file to get reads data from, if not using ReadGroupSet.")
+    @Description("The path to the BAM file to get reads data from.")
     @Default.String("")
     String getBAMFilePath();
 
     void setBAMFilePath(String filePath);
-    
-    @Description("Whether to shard BAM file reading.")
+
+    @Description("Whether to shard BAM reading")
     @Default.Boolean(true)
     boolean getShardBAMReading();
 
     void setShardBAMReading(boolean newValue);
 
+    class ContigsFactory implements DefaultValueFactory<Iterable<Contig>> {
+      @Override
+      public Iterable<Contig> create(PipelineOptions options) {
+        return Iterables.transform(Splitter.on(",").split(options.as(CountReadsOptions.class).getReferences()),
+                new Function<String, Contig>() {
+                  @Override
+                  public Contig apply(String contigString) {
+                    ArrayList<String> contigInfo = newArrayList(Splitter.on(":").split(contigString));
+                    return new Contig(contigInfo.get(0),
+                            contigInfo.size() > 1 ?
+                                    Long.valueOf(contigInfo.get(1)) : 0,
+                            contigInfo.size() > 2 ?
+                                    Long.valueOf(contigInfo.get(2)) : -1);
+                  }
+                });
+      }
+    }
+
+    @Default.InstanceFactory(ContigsFactory.class)
+    @JsonIgnore
+    Iterable<Contig> getContigs();
+
+    void setContigs(Iterable<Contig> contigs);
   }
 
   public static void main(String[] args) throws GeneralSecurityException, IOException {
@@ -106,32 +116,10 @@ public class CountReads {
     options = PipelineOptionsFactory.fromArgs(args).withValidation().as(CountReadsOptions.class);
     // Option validation is not yet automatic, we make an explicit call here.
     GenomicsDatasetOptions.Methods.validateOptions(options);
-    auth = GenomicsOptions.Methods.getGenomicsAuth(options);
+
+    auth = GCSOptions.Methods.createGCSAuth(options);
     p = Pipeline.create(options);
     DataflowWorkarounds.registerGenomicsCoders(p);
-
-    // ensure data is accessible
-    String BAMFilePath = options.getBAMFilePath();
-    if (!Strings.isNullOrEmpty(BAMFilePath)) {
-      if (GCSURLExists(BAMFilePath)) {
-        System.out.println(BAMFilePath + " is present, good.");
-      } else {
-        System.out.println("Error: " + BAMFilePath + " not found.");
-        return;
-      }
-      if (options.getShardBAMReading()) {
-        // the BAM code expects an index at BAMFilePath+".bai"
-        // and sharded reading will fail if the index isn't there.
-        String BAMIndexPath = BAMFilePath + ".bai";
-        if (GCSURLExists(BAMIndexPath)) {
-          System.out.println(BAMIndexPath + " is present, good.");
-        } else {
-          System.out.println("Error: " + BAMIndexPath + " not found.");
-          return;
-        }
-      }
-    }
-    System.out.println("Output will be written to "+options.getOutput());
 
     PCollection<Read> reads = getReads();
     PCollection<Long> readCount = reads.apply(Count.<Read>globally());
@@ -141,30 +129,14 @@ public class CountReads {
         c.output(String.valueOf(c.element()));
       }
     }).named("toString"));
-    readCountText.apply(TextIO.Write.to(options.getOutput()).named("WriteOutput").withoutSharding());
-
+    readCountText.apply(TextIO.Write.to(options.getOutput()).named("WriteOutput"));
     p.run();
   }
 
-  private static boolean GCSURLExists(String url) {
-    // ensure data is accessible
-    try {
-      // if we can read the size, then surely we can read the file
-      GcsPath fn = GcsPath.fromUri(url);
-      Storage.Objects storageClient = GCSOptions.Methods.createStorageClient(options);
-      Storage.Objects.Get getter = storageClient.get(fn.getBucket(), fn.getObject());
-      StorageObject object = getter.execute();
-      BigInteger size = object.getSize();
-      return true;
-    } catch (Exception x) {
-      return false;
-    }
-  }
-
-  private static PCollection<Read> getReads() throws GeneralSecurityException, IOException {
+  private static PCollection<Read> getReads() throws IOException {
     if (!options.getBAMFilePath().isEmpty()) {
       return getReadsFromBAMFile();
-    } 
+    }
     if (!options.getReadGroupSetId().isEmpty()) {
       return getReadsFromAPI();
     }
@@ -174,53 +146,51 @@ public class CountReads {
   private static PCollection<Read> getReadsFromAPI() {
     List<SearchReadsRequest> requests = getReadRequests(options);
     PCollection<SearchReadsRequest> readRequests = p.begin()
-        .apply(Create.of(requests));
+            .apply(Create.of(requests));
     PCollection<Read> reads =
-        readRequests.apply(
-            ParDo.of(
-                new ReadReader(auth, Paginator.ShardBoundary.OVERLAPS))
-                .named(ReadReader.class.getSimpleName()));
+            readRequests.apply(
+                    ParDo.of(
+                            new ReadReader(auth, Paginator.ShardBoundary.OVERLAPS))
+                            .named(ReadReader.class.getSimpleName()));
     return reads;
   }
 
   private static List<SearchReadsRequest> getReadRequests(CountReadsOptions options) {
-    
+
     final String readGroupSetId = options.getReadGroupSetId();
-    final Iterable<Contig> contigs = Contig.parseContigsFromCommandLine(options.getReferences());
     return Lists.newArrayList(Iterables.transform(
-        Iterables.concat(Iterables.transform(contigs,
-          new Function<Contig, Iterable<Contig>>() {
-            @Override
-            public Iterable<Contig> apply(Contig contig) {
-              return contig.getShards();
-            }
-          })),
-        new Function<Contig, SearchReadsRequest>() {
-          @Override
-          public SearchReadsRequest apply(Contig shard) {
-            return shard.getReadsRequest(readGroupSetId);
-          }
-        }));
-   }
-  
-  private static PCollection<Read> getReadsFromBAMFile() throws GeneralSecurityException, IOException {
+            Iterables.concat(Iterables.transform(options.getContigs(),
+                    new Function<Contig, Iterable<Contig>>() {
+                      @Override
+                      public Iterable<Contig> apply(Contig contig) {
+                        return contig.getShards();
+                      }
+                    })),
+            new Function<Contig, SearchReadsRequest>() {
+              @Override
+              public SearchReadsRequest apply(Contig shard) {
+                return shard.getReadsRequest(readGroupSetId);
+              }
+            }));
+  }
+
+  private static PCollection<Read> getReadsFromBAMFile() throws IOException {
     LOG.info("getReadsFromBAMFile");
 
-    final Iterable<Contig> contigs = Contig.parseContigsFromCommandLine(options.getReferences());
-        
+    final Iterable<Contig> contigs = options.getContigs();
+
     if (options.getShardBAMReading()) {
-      LOG.info("Sharded reading of "+options.getBAMFilePath());
       return ReadBAMTransform.getReadsFromBAMFilesSharded(p,
-          contigs,
-          Collections.singletonList(options.getBAMFilePath()));
+              auth,
+              contigs,
+              Collections.singletonList(options.getBAMFilePath()));
     } else {  // For testing and comparing sharded vs. not sharded only
-      LOG.info("Unsharded reading of "+options.getBAMFilePath());
       return p.apply(
-          Create.of(
-              Reader.readSequentiallyForTesting(
-                  GCSOptions.Methods.createStorageClient(options),
-                  options.getBAMFilePath(),
-                  contigs.iterator().next())));
+              Create.of(
+                      Reader.readSequentiallyForTesting(
+                              GCSOptions.Methods.createStorageClient(options, auth),
+                              options.getBAMFilePath(),
+                              contigs.iterator().next())));
     }
   }
 }
