@@ -3,7 +3,7 @@
 # Assumes the script is run from dataflow-java directory.
 # Assumes client_secrets.json is located in a parent directory of dataflow-java.
 
-JAR=target/google-genomics-dataflow-v1beta2-0.4-SNAPSHOT.jar
+JAR=target/google-genomics-dataflow*.jar
 CLIENT_SECRETS=$(readlink -f ../client_secrets.json)
 # Assumes the following variables are set
 # Please set them before calling or edit this file and set them.

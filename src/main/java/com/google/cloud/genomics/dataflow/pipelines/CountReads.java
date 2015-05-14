@@ -94,7 +94,7 @@ public class CountReads {
     
     @Description("Whether to shard BAM file reading.")
     @Default.Boolean(true)
-    boolean getShardBAMReading();
+    boolean isShardBAMReading();
 
     void setShardBAMReading(boolean newValue);
 
@@ -119,7 +119,7 @@ public class CountReads {
         System.out.println("Error: " + BAMFilePath + " not found.");
         return;
       }
-      if (options.getShardBAMReading()) {
+      if (options.isShardBAMReading()) {
         // the BAM code expects an index at BAMFilePath+".bai"
         // and sharded reading will fail if the index isn't there.
         String BAMIndexPath = BAMFilePath + ".bai";
@@ -178,7 +178,7 @@ public class CountReads {
     PCollection<Read> reads =
         readRequests.apply(
             ParDo.of(
-                new ReadReader(auth, Paginator.ShardBoundary.OVERLAPS))
+                new ReadReader(auth, Paginator.ShardBoundary.STRICT))
                 .named(ReadReader.class.getSimpleName()));
     return reads;
   }
@@ -208,14 +208,14 @@ public class CountReads {
 
     final Iterable<Contig> contigs = Contig.parseContigsFromCommandLine(options.getReferences());
         
-    if (options.getShardBAMReading()) {
-      LOG.info("Sharded reading of "+options.getBAMFilePath());
+    if (options.isShardBAMReading()) {
+      LOG.info("Sharded reading of "+ options.getBAMFilePath());
       return ReadBAMTransform.getReadsFromBAMFilesSharded(p, 
           auth,
           contigs, 
           Collections.singletonList(options.getBAMFilePath()));
     } else {  // For testing and comparing sharded vs. not sharded only
-      LOG.info("Unsharded reading of "+options.getBAMFilePath());
+      LOG.info("Unsharded reading of " + options.getBAMFilePath());
       return p.apply(
           Create.of(
               Reader.readSequentiallyForTesting(

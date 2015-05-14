@@ -19,6 +19,8 @@ import com.google.api.services.storage.Storage;
 import com.google.api.services.storage.Storage.Objects;
 import com.google.cloud.dataflow.sdk.transforms.DoFn;
 import com.google.cloud.genomics.utils.Contig;
+import com.google.common.base.Function;
+import com.google.common.collect.Iterables;
 import com.google.common.collect.Maps;
 
 import htsjdk.samtools.BAMFileIndexImpl;
@@ -37,6 +39,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+
+import javax.annotation.Nullable;
 
 /**
  * Generates shards for a given BAM file and a desired set of contigs.
@@ -65,7 +69,15 @@ public class Sharder {
     super();
     this.storageClient = storageClient;
     this.filePath = filePath;
-    this.requestedContigs = requestedContigs;
+    // HTSJDK expects 1-based coordinates - need to shift by 1
+    this.requestedContigs = Iterables.transform(requestedContigs,
+        new Function<Contig, Contig>() {
+          @Override
+          @Nullable
+          public Contig apply(@Nullable Contig arg0) {
+            return new Contig(arg0.referenceName, arg0.start + 1, arg0.end + 1);
+          }
+        });
     this.c = c;
   }
 
@@ -183,11 +195,14 @@ public class Sharder {
       }
 
       if (currentShard == null) {
+        int startLocus = 
+            Math.max(index.getFirstLocusInBin(bin), (int)contig.start);
+        
         if (LOG.isLoggable(Level.FINE)) {
-          LOG.fine("Creating shard starting from " + index.getFirstLocusInBin(bin));
+          LOG.fine("Creating shard starting from " + startLocus);
         }
         currentShard = new BAMShard(filePath, reference.getSequenceName(),
-            index.getFirstLocusInBin(bin));
+            startLocus);
       }
       currentShard.addBin(chunksInBin, index.getLastLocusInBin(bin));
       if (LOG.isLoggable(Level.FINE)) {
@@ -197,7 +212,7 @@ public class Sharder {
       if (shardingPolicy.shardBigEnough(currentShard)) {
         LOG.info("Shard size is big enough to finalize: " + 
             currentShard.sizeInLoci() + ", " + currentShard.approximateSizeInBytes() + " bytes");
-        c.output(currentShard.finalize(index, -1));
+        c.output(currentShard.finalize(index, Math.min(index.getLastLocusInBin(bin), (int)contig.end)));
         currentShard = null;
       }
     }
