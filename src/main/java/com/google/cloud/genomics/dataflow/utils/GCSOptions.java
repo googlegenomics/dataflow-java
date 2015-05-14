@@ -113,7 +113,7 @@ public interface GCSOptions extends GenomicsOptions {
     private static final Logger LOG = Logger.getLogger(GCSOptions.class.getName());
     private Methods() {
     }
-    
+
     public static GenomicsFactory.OfflineAuth createGCSAuth(GCSOptions options)
       throws IOException {
       return options
@@ -128,6 +128,11 @@ public interface GCSOptions extends GenomicsOptions {
       return createStorageClient(gcsOptions, auth);
     }
 
+    /*
+    *  createStorageClient creates a storage object using the API key or the client secrets file.
+    * This function can only be called on the client when using the client secrets file to produce
+    * the credentials (as the file is not copied to workers).
+    */
     public static Storage.Objects createStorageClient(GCSOptions gcsOptions) throws IOException, GeneralSecurityException {
       return createStorageClient(gcsOptions, GenomicsOptions.Methods.getGenomicsAuth(gcsOptions));
     }

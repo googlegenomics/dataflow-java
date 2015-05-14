@@ -49,17 +49,23 @@ public class ReadBAMTransform extends PTransform<PCollectionTuple, PCollection<R
   public static TupleTag<Contig> CONTIGS_TAG = new TupleTag<>();
   public static TupleTag<String> BAMS_TAG = new TupleTag<>();
 
-    public static PCollection<Read> getReadsFromBAMFilesSharded(
-            Pipeline p,
-            Iterable<Contig> contigs, List<String> BAMFiles) throws IOException, GeneralSecurityException {
-        final GCSOptions gcsOptions =
-                p.getOptions().as(GCSOptions.class);
-        return getReadsFromBAMFilesSharded(
-                p,
-                GenomicsOptions.Methods.getGenomicsAuth(gcsOptions),
-                contigs,
-                BAMFiles);
-    }
+  /*
+  *  getReadsFromBAMFilesSharded reads a BAM using the API key or the client secrets file.
+  * This function can only be called on the client when using the client secrets file to produce
+  * the credentials (as the file is not copied to workers).
+  */
+  public static PCollection<Read> getReadsFromBAMFilesSharded(
+          Pipeline p,
+          Iterable<Contig> contigs, List<String> BAMFiles) throws IOException, GeneralSecurityException {
+      final GCSOptions gcsOptions =
+              p.getOptions().as(GCSOptions.class);
+      return getReadsFromBAMFilesSharded(
+              p,
+              GenomicsOptions.Methods.getGenomicsAuth(gcsOptions),
+              contigs,
+              BAMFiles);
+
+  }
   public static PCollection<Read> getReadsFromBAMFilesSharded(
       Pipeline p, 
       GenomicsFactory.OfflineAuth auth,
