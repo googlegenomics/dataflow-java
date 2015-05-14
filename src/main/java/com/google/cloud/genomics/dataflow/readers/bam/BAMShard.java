@@ -77,7 +77,7 @@ public class BAMShard implements Serializable {
    * for this shard. We get all chunks overlapping this loci, and then ask the index
    * for the chunks overlapping them. 
    */
-  public BAMShard finalize(BAMFileIndexImpl index, int lastLocus) {
+  public BAMShard finalize(BAMFileIndexImpl index, long lastLocus) {
     contig = new Contig(contig.referenceName, contig.start, lastLocus);
     this.chunks = index.getChunksOverlapping(contig.referenceName, 
         (int)contig.start, (int)contig.end);
