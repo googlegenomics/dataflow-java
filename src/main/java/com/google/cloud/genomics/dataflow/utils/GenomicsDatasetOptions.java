@@ -104,7 +104,7 @@ public interface GenomicsDatasetOptions extends GenomicsOptions {
 
   @Description("The IDs of the Google Genomics transcript sets this pipeline is working with, "
       + "comma delimited. Defaults to UCSC refGene (hg19).")
-  @Default.String("CIjfoPXj9LqPlAEQ6Mm91Ya458eqAQ")
+  @Default.String("CIjfoPXj9LqPlAEQ5vnql4KewYuSAQ")
   String getTranscriptSetIds();
   void setTranscriptSetIds(String transcriptSetIds);
 
