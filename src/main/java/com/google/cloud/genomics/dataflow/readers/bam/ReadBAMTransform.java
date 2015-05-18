@@ -30,10 +30,12 @@ import com.google.cloud.dataflow.sdk.values.PCollectionTuple;
 import com.google.cloud.dataflow.sdk.values.PCollectionView;
 import com.google.cloud.dataflow.sdk.values.TupleTag;
 import com.google.cloud.genomics.dataflow.utils.GCSOptions;
+import com.google.cloud.genomics.dataflow.utils.GenomicsOptions;
 import com.google.cloud.genomics.utils.Contig;
 import com.google.cloud.genomics.utils.GenomicsFactory;
 
 import java.io.IOException;
+import java.security.GeneralSecurityException;
 import java.util.Arrays;
 import java.util.List;
 
@@ -46,7 +48,24 @@ public class ReadBAMTransform extends PTransform<PCollectionTuple, PCollection<R
   
   public static TupleTag<Contig> CONTIGS_TAG = new TupleTag<>();
   public static TupleTag<String> BAMS_TAG = new TupleTag<>();
-  
+
+  /*
+  *  getReadsFromBAMFilesSharded reads a BAM using the API key or the client secrets file.
+  * This function can only be called on the client when using the client secrets file to produce
+  * the credentials (as the file is not copied to workers).
+  */
+  public static PCollection<Read> getReadsFromBAMFilesSharded(
+          Pipeline p,
+          Iterable<Contig> contigs, List<String> BAMFiles) throws IOException, GeneralSecurityException {
+      final GCSOptions gcsOptions =
+              p.getOptions().as(GCSOptions.class);
+      return getReadsFromBAMFilesSharded(
+              p,
+              GenomicsOptions.Methods.getGenomicsAuth(gcsOptions),
+              contigs,
+              BAMFiles);
+
+  }
   public static PCollection<Read> getReadsFromBAMFilesSharded(
       Pipeline p, 
       GenomicsFactory.OfflineAuth auth,
