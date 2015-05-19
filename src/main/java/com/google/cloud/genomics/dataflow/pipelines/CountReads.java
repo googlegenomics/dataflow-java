@@ -46,6 +46,7 @@ import com.google.common.base.Strings;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import htsjdk.samtools.ValidationStringency;
 
 import java.io.IOException;
 import java.math.BigInteger;
@@ -212,7 +213,8 @@ public class CountReads {
       LOG.info("Sharded reading of "+ options.getBAMFilePath());
       return ReadBAMTransform.getReadsFromBAMFilesSharded(p, 
           auth,
-          contigs, 
+          contigs,
+          ValidationStringency.DEFAULT_STRINGENCY,
           Collections.singletonList(options.getBAMFilePath()));
     } else {  // For testing and comparing sharded vs. not sharded only
       LOG.info("Unsharded reading of " + options.getBAMFilePath());
@@ -221,7 +223,8 @@ public class CountReads {
               Reader.readSequentiallyForTesting(
                   GCSOptions.Methods.createStorageClient(options, auth),
                   options.getBAMFilePath(),
-                  contigs.iterator().next())));
+                  contigs.iterator().next(),
+                  ValidationStringency.DEFAULT_STRINGENCY)));
     }
   }
 }

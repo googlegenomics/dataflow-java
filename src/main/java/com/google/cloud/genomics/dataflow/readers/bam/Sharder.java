@@ -30,6 +30,7 @@ import htsjdk.samtools.GenomicIndexUtil;
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SAMSequenceRecord;
 import htsjdk.samtools.SamReader;
+import htsjdk.samtools.ValidationStringency;
 import htsjdk.samtools.seekablestream.SeekableStream;
 import htsjdk.samtools.util.IOUtil;
 
@@ -106,7 +107,7 @@ public class Sharder {
   }
   
   void openFile() throws IOException {
-    final BAMIO.ReaderAndIndex r = BAMIO.openBAMAndExposeIndex(storageClient, filePath);
+    final BAMIO.ReaderAndIndex r = BAMIO.openBAMAndExposeIndex(storageClient, filePath, ValidationStringency.DEFAULT_STRINGENCY);
     reader = r.reader;
     indexStream = r.index;
     header = reader.getFileHeader();

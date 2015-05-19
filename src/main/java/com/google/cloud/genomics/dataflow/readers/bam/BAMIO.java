@@ -20,6 +20,7 @@ import com.google.api.services.storage.Storage;
 import htsjdk.samtools.SamInputResource;
 import htsjdk.samtools.SamReader;
 import htsjdk.samtools.SamReaderFactory;
+import htsjdk.samtools.ValidationStringency;
 import htsjdk.samtools.seekablestream.SeekableStream;
 
 import java.io.IOException;
@@ -38,17 +39,17 @@ public class BAMIO {
   }
   private static final Logger LOG = Logger.getLogger(BAMIO.class.getName());
   
-  public static ReaderAndIndex openBAMAndExposeIndex(Storage.Objects storageClient,String gcsStoragePath) throws IOException {
+  public static ReaderAndIndex openBAMAndExposeIndex(Storage.Objects storageClient, String gcsStoragePath, ValidationStringency stringency) throws IOException {
     ReaderAndIndex result = new ReaderAndIndex();
     result.index = openIndexForPath(storageClient, gcsStoragePath);
     result.reader = openBAMReader(
-        openBAMFile(storageClient, gcsStoragePath,result.index));
+        openBAMFile(storageClient, gcsStoragePath,result.index), stringency);
     return result;
   }
   
-  public static SamReader openBAM(Storage.Objects storageClient,String gcsStoragePath) throws IOException {
+  public static SamReader openBAM(Storage.Objects storageClient, String gcsStoragePath, ValidationStringency stringency) throws IOException {
     return openBAMReader(openBAMFile(storageClient, gcsStoragePath,
-        openIndexForPath(storageClient, gcsStoragePath)));
+        openIndexForPath(storageClient, gcsStoragePath)), stringency);
   }
       
   private static SeekableStream openIndexForPath(Storage.Objects storageClient,String gcsStoragePath) {
@@ -73,8 +74,8 @@ public class BAMIO {
     return samInputResource;
   }
   
-  private static SamReader openBAMReader(SamInputResource resource) {
-    SamReaderFactory samReaderFactory = SamReaderFactory.makeDefault()
+  private static SamReader openBAMReader(SamInputResource resource, ValidationStringency stringency) {
+    SamReaderFactory samReaderFactory = SamReaderFactory.makeDefault().validationStringency(stringency)
         .enable(SamReaderFactory.Option.CACHE_FILE_BASED_INDEXES);
     final SamReader samReader = samReaderFactory.open(resource);
     return samReader;
