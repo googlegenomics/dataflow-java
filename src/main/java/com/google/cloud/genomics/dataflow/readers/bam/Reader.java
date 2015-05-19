@@ -25,6 +25,7 @@ import com.google.common.base.Stopwatch;
 import htsjdk.samtools.SAMRecord;
 import htsjdk.samtools.SAMRecordIterator;
 import htsjdk.samtools.SamReader;
+import htsjdk.samtools.ValidationStringency;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -43,6 +44,7 @@ public class Reader {
   BAMShard shard;
   DoFn<BAMShard, Read>.ProcessContext c;
   Stopwatch timer;
+  ValidationStringency stringency;
   
   SAMRecordIterator iterator;
   boolean procesingUnmapped;
@@ -52,11 +54,12 @@ public class Reader {
   int mismatchedSequence = 0;
   int recordsProcessed = 0;
   
-  public Reader(Objects storageClient, BAMShard shard, DoFn<BAMShard, Read>.ProcessContext c) {
+  public Reader(Objects storageClient, ValidationStringency stringency, BAMShard shard, DoFn<BAMShard, Read>.ProcessContext c) {
     super();
     this.storageClient = storageClient;
     this.shard = shard;
     this.c = c;
+    this.stringency = stringency;
   }
   
   public void process() throws IOException {
@@ -72,7 +75,7 @@ public class Reader {
 
   void openFile() throws IOException {
     LOG.info("Processing shard " + shard);
-    final SamReader reader = BAMIO.openBAM(storageClient, shard.file);
+    final SamReader reader = BAMIO.openBAM(storageClient, shard. file, stringency);
     iterator = null;
     procesingUnmapped = shard.contig.referenceName.equals("*");
     if (reader.hasIndex() && reader.indexing() != null) {
@@ -135,9 +138,9 @@ public class Reader {
    * This makes it easier to discover errors such as reads that are somehow
    * skipped by a sharded approach.
    */
-  public static Iterable<Read> readSequentiallyForTesting(Objects storageClient, String storagePath, Contig contig) throws IOException {
+  public static Iterable<Read> readSequentiallyForTesting(Objects storageClient, String storagePath, Contig contig, ValidationStringency stringency) throws IOException {
     Stopwatch timer = Stopwatch.createStarted();
-    SamReader samReader = BAMIO.openBAM(storageClient, storagePath); 
+    SamReader samReader = BAMIO.openBAM(storageClient, storagePath, stringency);
     SAMRecordIterator iterator =  samReader.queryOverlapping(contig.referenceName, 
         (int) contig.start + 1,
         (int) contig.end + 1);
