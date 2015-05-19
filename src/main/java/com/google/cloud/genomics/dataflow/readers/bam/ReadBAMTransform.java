@@ -33,6 +33,8 @@ import com.google.cloud.genomics.dataflow.utils.GCSOptions;
 import com.google.cloud.genomics.utils.Contig;
 import com.google.cloud.genomics.utils.GenomicsFactory;
 
+import htsjdk.samtools.ValidationStringency;
+
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.List;
@@ -43,15 +45,68 @@ import java.util.List;
  */
 public class ReadBAMTransform extends PTransform<PCollectionTuple, PCollection<Read>> {
   GenomicsFactory.OfflineAuth auth;
-  
+  ValidationStringency stringency;
+
   public static TupleTag<Contig> CONTIGS_TAG = new TupleTag<>();
   public static TupleTag<String> BAMS_TAG = new TupleTag<>();
-  
+
+  // ----------------------------------------------------------------
+  // helper classes
+
+  public static class ShardFn extends DoFn<String, BAMShard> {
+    GenomicsFactory.OfflineAuth auth;
+    PCollectionView<Iterable<Contig>> contigsView;
+    Storage.Objects storage;
+
+    public ShardFn(GenomicsFactory.OfflineAuth auth, PCollectionView<Iterable<Contig>> contigsView) {
+      this.auth = auth;
+      this.contigsView = contigsView;
+    }
+
+    @Override
+    public void startBundle(DoFn<String, BAMShard>.Context c) throws IOException {
+      storage = GCSOptions.Methods.createStorageClient(c, auth);
+    }
+
+    @Override
+    public void processElement(ProcessContext c) throws java.lang.Exception {
+      (new Sharder(storage, c.element(), c.sideInput(contigsView), c))
+          .process();
+    }
+  }
+
+  public static class ReadFn extends DoFn<BAMShard, Read> {
+    GenomicsFactory.OfflineAuth auth;
+    Storage.Objects storage;
+    ValidationStringency stringency;
+
+    public ReadFn(GenomicsFactory.OfflineAuth auth, ValidationStringency stringency) {
+      this.auth = auth;
+      this.stringency = stringency;
+    }
+
+    @Override
+    public void startBundle(DoFn<BAMShard, Read>.Context c) throws IOException {
+      storage = GCSOptions.Methods.createStorageClient(c, auth);
+    }
+
+    @Override
+    public void processElement(ProcessContext c) throws java.lang.Exception {
+      (new Reader(storage, stringency, c.element(), c))
+          .process();
+    }
+  }
+
+  // ----------------------------------------------------------------
+  // back to ReadBAMTransform
+
   public static PCollection<Read> getReadsFromBAMFilesSharded(
       Pipeline p, 
       GenomicsFactory.OfflineAuth auth,
-      Iterable<Contig> contigs, List<String> BAMFiles) {
-      ReadBAMTransform readBAMSTransform = new ReadBAMTransform();
+      Iterable<Contig> contigs,
+      ValidationStringency stringency,
+      List<String> BAMFiles) {
+      ReadBAMTransform readBAMSTransform = new ReadBAMTransform(stringency);
       readBAMSTransform.setAuth(auth);
       PCollectionTuple tuple = PCollectionTuple
           .of(
@@ -66,51 +121,7 @@ public class ReadBAMTransform extends PTransform<PCollectionTuple, PCollection<R
              .setCoder(SerializableCoder.of(Contig.class)));
       return readBAMSTransform.apply(tuple);
   }
-  
-  public static class ShardFn extends DoFn<String, BAMShard> {
-    GenomicsFactory.OfflineAuth auth;
-    PCollectionView<Iterable<Contig>> contigsView;
-    Storage.Objects storage;
-    
-    public ShardFn(GenomicsFactory.OfflineAuth auth, PCollectionView<Iterable<Contig>> contigsView) {
-      this.auth = auth;
-      this.contigsView = contigsView;
-    }
-    
-    @Override
-    public void startBundle(DoFn<String, BAMShard>.Context c) throws IOException {
-      storage = GCSOptions.Methods.createStorageClient(c, auth);
-    }
-    
-    @Override
-    public void processElement(ProcessContext c) throws java.lang.Exception {
-      (new Sharder(storage, c.element(), c.sideInput(contigsView), c))
-          .process();
-    }
-  }
-  
-  public static class ReadFn extends DoFn<BAMShard, Read> {
-    GenomicsFactory.OfflineAuth auth;
-    Storage.Objects storage;
-    
-    public ReadFn(GenomicsFactory.OfflineAuth auth) {
-      this.auth = auth;
 
-    }
-    
-    @Override
-    public void startBundle(DoFn<BAMShard, Read>.Context c) throws IOException {
-      storage = GCSOptions.Methods.createStorageClient(c, auth);
-    }
-    
-    @Override
-    public void processElement(ProcessContext c) throws java.lang.Exception {
-      (new Reader(storage, c.element(), c))
-          .process();
-    }
-  }
-  
-  
   @Override
   public PCollection<Read> apply(PCollectionTuple contigsAndBAMs) {
 
@@ -127,7 +138,7 @@ public class ReadBAMTransform extends PTransform<PCollectionTuple, PCollection<R
               .setCoder(SerializableCoder.of(BAMShard.class));
     
     final PCollection<Read> reads = shards.apply(ParDo
-        .of(new ReadFn(auth)));
+        .of(new ReadFn(auth, stringency)));
 
     return reads;
   }
@@ -138,5 +149,12 @@ public class ReadBAMTransform extends PTransform<PCollectionTuple, PCollection<R
 
   public void setAuth(GenomicsFactory.OfflineAuth auth) {
     this.auth = auth;
+  }
+
+  // non-public methods
+
+  protected ReadBAMTransform(ValidationStringency stringency) {
+    super();
+    this.stringency = stringency;
   }
 }
