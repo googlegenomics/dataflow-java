@@ -49,6 +49,11 @@ public class CountReadsITCase {
   final String TEST_CONTIG = "1:550000:560000";
   // How many reads are in that region.
   final long TEST_EXPECTED = 685;
+  // Same as the above variables, but for the NA12877_S1 dataset.
+  final String NA12877_S1_BAM_FILENAME = "gs://genomics-public-data/platinum-genomes/bam/NA12877_S1.bam";
+  final String NA12877_S1_READGROUPSET = "CMvnhpKTFhD3he72j4KZuyc";
+  final String NA12877_S1_CONTIG = "chr17:41196311:41277499";
+  final long NA12877_S1_EXPECTED = 45081;
 
   @Before
   public void voidEnsureEnvVar() {
@@ -61,19 +66,15 @@ public class CountReadsITCase {
     Assert.assertTrue("TEST_STAGING_GCS_FOLDER must start with 'gs://'", TEST_STAGING_GCS_FOLDER.startsWith("gs://"));
     // we don't care how TEST_STAGING_GCS_FOLDER ends, so no check for it.
   }
-
-  /**
-   * CountReads running on the client's machine.
-   */
-  @Test
-  public void testLocal() throws Exception {
-    final String OUTPUT = TEST_OUTPUT_GCS_FOLDER + "CountReadsITCase-testLocal-output.txt";
+  
+  private void testLocalBase(String outputFilename, String contig, String bamFilename, long expectedCount) throws Exception {
+    final String OUTPUT = TEST_OUTPUT_GCS_FOLDER + outputFilename;
     String[] ARGS = {
         "--apiKey=" + API_KEY,
         "--project=" + TEST_PROJECT,
         "--output=" + OUTPUT,
-        "--references=" + TEST_CONTIG,
-        "--BAMFilePath=" + TEST_BAM_FNAME
+        "--references=" + contig,
+        "--BAMFilePath=" + bamFilename,
     };
     GenomicsOptions popts = PipelineOptionsFactory.create().as(GenomicsOptions.class);
     popts.setApiKey(API_KEY);
@@ -86,18 +87,29 @@ public class CountReadsITCase {
       BufferedReader reader = new BufferedReader(Channels.newReader(gcsUtil.open(GcsPath.fromUri(OUTPUT)), "UTF-8"));
       long got = Long.parseLong(reader.readLine());
 
-    Assert.assertEquals(TEST_EXPECTED, got);
+    Assert.assertEquals(expectedCount, got);
     } finally {
       GcsDelete(popts, OUTPUT);
     }
   }
 
   /**
-   * CountReads running on Dataflow.
+   * CountReads running on the client's machine.
    */
   @Test
-  public void testCloud() throws Exception {
-    final String OUTPUT = TEST_OUTPUT_GCS_FOLDER + "CountReadsITCase-testCloud-output.txt";
+  public void testLocal() throws Exception {
+    testLocalBase("CountReadsITCase-testLocal-output.txt",
+        TEST_CONTIG, TEST_BAM_FNAME, TEST_EXPECTED);
+  }
+  
+  @Test
+  public void testLocalNA12877_S1() throws Exception {
+    testLocalBase("CountReadsITCase-testLocal-NA12877_S1-output.txt",
+        NA12877_S1_CONTIG, NA12877_S1_BAM_FILENAME, NA12877_S1_EXPECTED);
+  }
+
+  private void testCloudBase(String outputFilename, String contig, String bamFilename, long expectedCount) throws Exception {
+    final String OUTPUT = TEST_OUTPUT_GCS_FOLDER + outputFilename;
     String[] ARGS = {
         "--apiKey=" + API_KEY,
         "--project=" + TEST_PROJECT,
@@ -105,8 +117,8 @@ public class CountReadsITCase {
         "--numWorkers=2",
         "--runner=BlockingDataflowPipelineRunner",
         "--stagingLocation=" + TEST_STAGING_GCS_FOLDER,
-        "--references=" + TEST_CONTIG,
-        "--BAMFilePath=" + TEST_BAM_FNAME
+        "--references=" + contig,
+        "--BAMFilePath=" + bamFilename
     };
     GenomicsOptions popts = PipelineOptionsFactory.create().as(GenomicsOptions.class);
     popts.setApiKey(API_KEY);
@@ -119,7 +131,51 @@ public class CountReadsITCase {
       BufferedReader reader = new BufferedReader(Channels.newReader(gcsUtil.open(GcsPath.fromUri(OUTPUT)), "UTF-8"));
       long got = Long.parseLong(reader.readLine());
 
-    Assert.assertEquals(TEST_EXPECTED, got);
+      Assert.assertEquals(expectedCount, got);
+    } finally {
+      GcsDelete(popts, OUTPUT);
+    }
+  }
+  
+  /**
+   * CountReads running on Dataflow.
+   */
+  @Test
+  public void testCloud() throws Exception {
+    testCloudBase("CountReadsITCase-testCloud-output.txt",
+        TEST_CONTIG, TEST_BAM_FNAME, TEST_EXPECTED);
+  }
+  
+  @Test
+  public void testCloudNA12877_S1() throws Exception {
+    testCloudBase("CountReadsITCase-testCloud-NA12877_S1-output.txt",
+        NA12877_S1_CONTIG, NA12877_S1_BAM_FILENAME, NA12877_S1_EXPECTED);
+  }
+
+  public void testCloudWithAPIBase(String outputFilename, String contig, String readGroupSetId, long expectedCount) throws Exception {
+    final String OUTPUT = TEST_OUTPUT_GCS_FOLDER + outputFilename;
+    String[] ARGS = {
+        "--apiKey=" + API_KEY,
+        "--project=" + TEST_PROJECT,
+        "--output=" + OUTPUT,
+        "--numWorkers=2",
+        "--runner=BlockingDataflowPipelineRunner",
+        "--stagingLocation=" + TEST_STAGING_GCS_FOLDER,
+        "--references=" + contig,
+        "--readGroupSetId=" + readGroupSetId
+    };
+    GenomicsOptions popts = PipelineOptionsFactory.create().as(GenomicsOptions.class);
+    popts.setApiKey(API_KEY);
+    GcsUtil gcsUtil = new GcsUtil.GcsUtilFactory().create(popts);
+    try {
+      touchOutput(gcsUtil, OUTPUT);
+
+      CountReads.main(ARGS);
+
+      BufferedReader reader = new BufferedReader(Channels.newReader(gcsUtil.open(GcsPath.fromUri(OUTPUT)), "UTF-8"));
+      long got = Long.parseLong(reader.readLine());
+
+      Assert.assertEquals(expectedCount, got);
     } finally {
       GcsDelete(popts, OUTPUT);
     }
@@ -130,32 +186,14 @@ public class CountReadsITCase {
    */
   @Test
   public void testCloudWithAPI() throws Exception {
-    final String OUTPUT = TEST_OUTPUT_GCS_FOLDER + "CountReadsITCase-testCloudWithAPI-output.txt";
-    String[] ARGS = {
-        "--apiKey=" + API_KEY,
-        "--project=" + TEST_PROJECT,
-        "--output=" + OUTPUT,
-        "--numWorkers=2",
-        "--runner=BlockingDataflowPipelineRunner",
-        "--stagingLocation=" + TEST_STAGING_GCS_FOLDER,
-        "--references=" + TEST_CONTIG,
-        "--readGroupSetId=" + TEST_READGROUPSET
-    };
-    GenomicsOptions popts = PipelineOptionsFactory.create().as(GenomicsOptions.class);
-    popts.setApiKey(API_KEY);
-    GcsUtil gcsUtil = new GcsUtil.GcsUtilFactory().create(popts);
-    try {
-      touchOutput(gcsUtil, OUTPUT);
+    testCloudWithAPIBase("CountReadsITCase-testCloudWithAPI-output.txt",
+        TEST_CONTIG, TEST_READGROUPSET, TEST_EXPECTED);
+  }
 
-      CountReads.main(ARGS);
-
-      BufferedReader reader = new BufferedReader(Channels.newReader(gcsUtil.open(GcsPath.fromUri(OUTPUT)), "UTF-8"));
-      long got = Long.parseLong(reader.readLine());
-
-      Assert.assertEquals(TEST_EXPECTED, got);
-    } finally {
-      GcsDelete(popts, OUTPUT);
-    }
+  @Test
+  public void testCloudWithAPI_NA12877_S1() throws Exception {
+    testCloudWithAPIBase("CountReadsITCase-testCloudWithAPI-NA12877_S1-output.txt",
+        NA12877_S1_CONTIG, NA12877_S1_READGROUPSET, NA12877_S1_EXPECTED);
   }
 
   /**
