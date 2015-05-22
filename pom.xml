@@ -8,7 +8,7 @@
   <groupId>com.google.cloud.genomics</groupId>
   <artifactId>google-genomics-dataflow</artifactId>
   <packaging>jar</packaging>
-  <version>v1beta2-0.9</version>
+  <version>v1beta2-0.10-SNAPSHOT</version>
 
   <organization>
     <name>Google</name>
@@ -50,7 +50,7 @@
     <connection>scm:git:git@github.com:googlegenomics/dataflow-java.git</connection>
     <developerConnection>scm:git:git@github.com:googlegenomics/dataflow-java.git</developerConnection>
     <url>git@github.com:googlegenomics/dataflow-java.git</url>
-    <tag>google-genomics-dataflow-v1beta2-0.9</tag>
+    <tag>HEAD</tag>
   </scm>
 
   <distributionManagement>
