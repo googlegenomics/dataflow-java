@@ -40,7 +40,7 @@ Getting started
       com.google.cloud.genomics.dataflow.pipelines.VariantSimilarity \
       --project=your-project-id \
       --output=gs://your-bucket/output/localtest.txt \
-      --genomicsSecretsFile=client_secrets.json
+      --secretsFile=client_secrets.json
 
   Note: when running locally, you may run into memory issues depending on the
   capacity of your local machine.
@@ -54,7 +54,7 @@ Getting started
       --project=your-project-id \
       --stagingLocation=gs://your-bucket/staging \
       --output=gs://your-bucket/output/test.txt \
-      --genomicsSecretsFile=client_secrets.json \
+      --secretsFile=client_secrets.json \
       --numWorkers=4
 
   Note: By default, the max workers you can have without requesting more GCE quota

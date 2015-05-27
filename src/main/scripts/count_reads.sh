@@ -59,7 +59,7 @@ java -XX:MaxPermSize=512m -Xms2g -Xmx3g -cp $JAR \
 com.google.cloud.genomics.dataflow.pipelines.CountReads \
 --project=$PROJECT_ID \
 --output=$OUTPUT \
---genomicsSecretsFile=$CLIENT_SECRETS \
+--secretsFile=$CLIENT_SECRETS \
 --references=$DESIRED_CONTIGS \
 $bam_argument $api_argument $additional_arguments
 
