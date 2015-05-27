@@ -64,7 +64,6 @@ public interface GenomicsOptions extends DataflowPipelineOptions {
 
   void setApiKey(String apiKey);
 
-
   @Description("Specifies the maximum number of retries to attempt (if needed) for requests to the Genomics API.")
   @Default.Integer(10)
   int getNumberOfRetries();
