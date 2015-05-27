@@ -117,7 +117,7 @@ public interface GCSOptions extends GenomicsOptions {
       throws IOException {
       return options
               .getGenomicsFactory()
-              .getOfflineAuth(options.getApiKey(), options.getGenomicsSecretsFile());
+              .getOfflineAuth(options.getApiKey(), options.getSecretsFile());
     }
     
     public static Storage.Objects createStorageClient(

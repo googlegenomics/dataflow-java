@@ -66,7 +66,7 @@ import java.util.logging.Logger;
  * java -cp target/google-genomics*jar com.google.cloud.genomics.dataflow.pipelines.CountReads \
  *   --project=$PROJECT_ID \
  *   --stagingLocation=$STAGING \
- *   --genomicsSecretsFile=$CLIENT_SECRETS \
+ *   --secretsFile=$CLIENT_SECRETS \
  *   --references=$DESIRED_CONTIGS \
  *   --BAMFilePath=$BAM_FILE_PATH \
  *   --output=$OUTPUT
