@@ -46,14 +46,14 @@ public interface GenomicsOptions extends DataflowPipelineOptions {
       if (options.isNoLaunchBrowser()) {
         builder.setVerificationCodeReceiver(verificationCodeReceiver);
       }
-      return builder.build().getOfflineAuth(apiKey, options.getGenomicsSecretsFile());
+      return builder.build().getOfflineAuth(apiKey, options.getSecretsFile());
     }
 
     public static void validateOptions(GenomicsOptions options) {
-      String secretsFile = options.getGenomicsSecretsFile(), apiKey = options.getApiKey();
+      String secretsFile = options.getSecretsFile(), apiKey = options.getApiKey();
       if (secretsFile == null && apiKey == null) {
         throw new IllegalArgumentException(
-            "Need to specify either --genomicsSecretsFile or --apiKey");
+            "Need to specify either --secretsFile or --apiKey");
       }
     }
   }
@@ -63,12 +63,6 @@ public interface GenomicsOptions extends DataflowPipelineOptions {
   String getApiKey();
 
   void setApiKey(String apiKey);
-
-  @Description("If querying a private dataset, or performing any write operations, " +
-      "you need to provide the path to client_secrets.json. Do not supply an api key.")
-  String getGenomicsSecretsFile();
-
-  void setGenomicsSecretsFile(String genomicsSecretsFile);
 
   @Description("Specifies the maximum number of retries to attempt (if needed) for requests to the Genomics API.")
   @Default.Integer(10)
