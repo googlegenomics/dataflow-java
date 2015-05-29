@@ -62,7 +62,7 @@ public class GCSHelper {
     httpTransport = factory.getHttpTransport();
     Storage.Builder builder = new Storage.Builder(httpTransport, JSON_FACTORY, null)
         .setApplicationName(popts.getAppName());
-    storage = factory.getOfflineAuth(popts.getApiKey(), popts.getGenomicsSecretsFile()).setupAuthentication(factory, builder).build();
+    storage = factory.getOfflineAuth(popts.getApiKey(), popts.getSecretsFile()).setupAuthentication(factory, builder).build();
   }
 
   /**
