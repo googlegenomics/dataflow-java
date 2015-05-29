@@ -25,6 +25,7 @@ import com.google.cloud.dataflow.sdk.transforms.DoFn;
 import com.google.cloud.dataflow.sdk.transforms.PTransform;
 import com.google.cloud.dataflow.sdk.transforms.ParDo;
 import com.google.cloud.dataflow.sdk.transforms.View;
+import com.google.cloud.dataflow.sdk.util.Transport;
 import com.google.cloud.dataflow.sdk.values.PCollection;
 import com.google.cloud.dataflow.sdk.values.PCollectionTuple;
 import com.google.cloud.dataflow.sdk.values.PCollectionView;
@@ -65,7 +66,7 @@ public class ReadBAMTransform extends PTransform<PCollectionTuple, PCollection<R
 
     @Override
     public void startBundle(DoFn<String, BAMShard>.Context c) throws IOException {
-      storage = GCSOptions.Methods.createStorageClient(c, auth);
+      storage = Transport.newStorageClient(c.getPipelineOptions().as(GCSOptions.class)).build().objects();
     }
 
     @Override
@@ -87,7 +88,7 @@ public class ReadBAMTransform extends PTransform<PCollectionTuple, PCollection<R
 
     @Override
     public void startBundle(DoFn<BAMShard, Read>.Context c) throws IOException {
-      storage = GCSOptions.Methods.createStorageClient(c, auth);
+      storage = Transport.newStorageClient(c.getPipelineOptions().as(GCSOptions.class)).build().objects();
     }
 
     @Override
