@@ -31,6 +31,7 @@ import com.google.cloud.dataflow.sdk.transforms.ParDo;
 import com.google.cloud.dataflow.sdk.values.KV;
 import com.google.cloud.dataflow.sdk.values.PCollection;
 import com.google.cloud.genomics.dataflow.coders.GenericJsonCoder;
+import com.google.cloud.genomics.dataflow.model.PosRgsMq;
 import com.google.cloud.genomics.dataflow.pipelines.CalculateCoverage.CalculateCoverageMean;
 import com.google.cloud.genomics.dataflow.pipelines.CalculateCoverage.CalculateQuantiles;
 import com.google.cloud.genomics.dataflow.utils.DataflowWorkarounds;
