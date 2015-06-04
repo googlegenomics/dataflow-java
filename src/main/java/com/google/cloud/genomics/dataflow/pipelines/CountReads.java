@@ -57,21 +57,11 @@ import java.util.List;
 import java.util.logging.Logger;
 
 /**
- * Simple read counting pipeline, intended as an example for reading data from 
+ * Simple read counting pipeline, intended as an example for reading data from
  * APIs OR BAM files and invoking GATK tools.
  *
- * Specify either ReadGroupSet or BAMFilePath.
- *
- * Example command line (you have to fill in the env. variables; BAMFilePath is of the "gs://foo/bar" format):
- * java -cp target/google-genomics*jar com.google.cloud.genomics.dataflow.pipelines.CountReads \
- *   --project=$PROJECT_ID \
- *   --stagingLocation=$STAGING \
- *   --secretsFile=$CLIENT_SECRETS \
- *   --references=$DESIRED_CONTIGS \
- *   --BAMFilePath=$BAM_FILE_PATH \
- *   --output=$OUTPUT
- *
- * See src/main/scripts/count_reads.sh for more detail.
+ * See http://googlegenomics.readthedocs.org/en/latest/use_cases/analyze_reads/count_reads.html
+ * for running instructions.
  */
 public class CountReads {
   private static final Logger LOG = Logger.getLogger(CountReads.class.getName());
@@ -92,7 +82,7 @@ public class CountReads {
     String getBAMFilePath();
 
     void setBAMFilePath(String filePath);
-    
+
     @Description("Whether to shard BAM file reading.")
     @Default.Boolean(true)
     boolean isShardBAMReading();
@@ -165,7 +155,7 @@ public class CountReads {
   private static PCollection<Read> getReads() throws IOException {
     if (!options.getBAMFilePath().isEmpty()) {
       return getReadsFromBAMFile();
-    } 
+    }
     if (!options.getReadGroupSetId().isEmpty()) {
       return getReadsFromAPI();
     }
@@ -185,7 +175,7 @@ public class CountReads {
   }
 
   private static List<SearchReadsRequest> getReadRequests(CountReadsOptions options) {
-    
+
     final String readGroupSetId = options.getReadGroupSetId();
     final Iterable<Contig> contigs = Contig.parseContigsFromCommandLine(options.getReferences());
     return Lists.newArrayList(Iterables.transform(
@@ -203,15 +193,15 @@ public class CountReads {
           }
         }));
    }
-  
+
   private static PCollection<Read> getReadsFromBAMFile() throws IOException {
     LOG.info("getReadsFromBAMFile");
 
     final Iterable<Contig> contigs = Contig.parseContigsFromCommandLine(options.getReferences());
-        
+
     if (options.isShardBAMReading()) {
       LOG.info("Sharded reading of "+ options.getBAMFilePath());
-      return ReadBAMTransform.getReadsFromBAMFilesSharded(p, 
+      return ReadBAMTransform.getReadsFromBAMFilesSharded(p,
           auth,
           contigs,
           ValidationStringency.DEFAULT_STRINGENCY,
