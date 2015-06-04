@@ -26,6 +26,12 @@ import com.google.cloud.genomics.utils.Paginator.ShardBoundary;
 import java.io.IOException;
 import java.util.logging.Logger;
 
+/**
+ * ReadReader is a DoFn that takes SearchReadsRequests, submits them
+ * to the Genomics API, and gives you Reads in return.
+ * It will take care of paging for you. You can optionally specify
+ * which fields you'd like returned.
+ */
 public class ReadReader extends GenomicsApiReader<SearchReadsRequest, Read> {
   private static final Logger LOG = Logger.getLogger(ReadReader.class.getName());
   private final ShardBoundary shardBoundary;
