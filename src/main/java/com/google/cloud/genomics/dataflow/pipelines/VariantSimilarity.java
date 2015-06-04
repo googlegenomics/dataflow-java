@@ -36,7 +36,9 @@ import java.util.List;
 
 /**
  * A pipeline that generates similarity data for variants in a dataset.
- * See the README for running instructions.
+ *
+ * See http://googlegenomics.readthedocs.org/en/latest/use_cases/compute_principal_coordinate_analysis/index.html
+ * for running instructions.
  */
 public class VariantSimilarity {
   private static final String VARIANT_FIELDS

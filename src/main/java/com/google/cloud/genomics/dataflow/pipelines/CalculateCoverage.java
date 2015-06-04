@@ -70,6 +70,9 @@ import java.util.List;
  * There is also the option to change the number of quantiles accordingly (numQuantiles = 5 would
  * give you the minimum ReadGroupSet mean coverage for each and across all mapping qualities, the
  * 25th, 50th, and 75th percentiles, and the maximum of these values).
+ *
+ * See http://googlegenomics.readthedocs.org/en/latest/use_cases/analyze_reads/calculate_coverage.html
+ * for running instructions.
  */
 public class CalculateCoverage {
 
