@@ -77,6 +77,9 @@ import java.util.logging.Logger;
  * <li>Performs an exact match join on the provided existing variant
  *   annotations, if any.
  * </ul>
+ *
+ * See http://googlegenomics.readthedocs.org/en/latest/use_cases/annotate_variants/google_genomics_annotation.html
+ * for running instructions.
  */
 public final class AnnotateVariants extends DoFn<Contig, KV<String, VariantAnnotation>> {
   private static final Logger LOG = Logger.getLogger(AnnotateVariants.class.getName());

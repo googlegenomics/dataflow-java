@@ -59,6 +59,9 @@ import java.util.logging.Logger;
 /**
  * Simple read counting pipeline, intended as an example for reading data from
  * APIs OR BAM files and invoking GATK tools.
+ *
+ * See http://googlegenomics.readthedocs.org/en/latest/use_cases/analyze_reads/count_reads.html
+ * for running instructions.
  */
 public class CountReads {
   private static final Logger LOG = Logger.getLogger(CountReads.class.getName());
