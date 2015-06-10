@@ -70,7 +70,7 @@ Command Line Options
 Use ``--help`` to get more information about the command line options.  Change
 the pipeline class name below to match the one you would like to run::
 
-  java -cp google-genomics-dataflow*.jar \
+  java -cp google-genomics-dataflow*-runnable.jar \
     com.google.cloud.genomics.dataflow.pipelines.VariantSimilarity --help
 
 Code layout
