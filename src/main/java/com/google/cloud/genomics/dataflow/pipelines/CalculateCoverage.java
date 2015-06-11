@@ -17,14 +17,13 @@ import com.google.api.services.genomics.Genomics;
 import com.google.api.services.genomics.model.Annotation;
 import com.google.api.services.genomics.model.AnnotationSet;
 import com.google.api.services.genomics.model.BatchCreateAnnotationsRequest;
-import com.google.api.services.genomics.model.CigarUnit;
 import com.google.api.services.genomics.model.Position;
 import com.google.api.services.genomics.model.RangePosition;
-import com.google.api.services.genomics.model.Read;
 import com.google.api.services.genomics.model.ReadGroupSet;
 import com.google.api.services.genomics.model.SearchReadGroupSetsRequest;
-import com.google.api.services.genomics.model.SearchReadsRequest;
 import com.google.cloud.dataflow.sdk.Pipeline;
+import com.google.cloud.dataflow.sdk.coders.Proto2Coder;
+import com.google.cloud.dataflow.sdk.coders.SerializableCoder;
 import com.google.cloud.dataflow.sdk.options.Default;
 import com.google.cloud.dataflow.sdk.options.Description;
 import com.google.cloud.dataflow.sdk.options.PipelineOptionsFactory;
@@ -40,11 +39,11 @@ import com.google.cloud.dataflow.sdk.values.KV;
 import com.google.cloud.dataflow.sdk.values.PCollection;
 import com.google.cloud.genomics.dataflow.coders.GenericJsonCoder;
 import com.google.cloud.genomics.dataflow.model.PosRgsMq;
-import com.google.cloud.genomics.dataflow.readers.ReadReader;
 import com.google.cloud.genomics.dataflow.utils.DataflowWorkarounds;
 import com.google.cloud.genomics.dataflow.utils.GCSOptions;
 import com.google.cloud.genomics.dataflow.utils.GenomicsDatasetOptions;
 import com.google.cloud.genomics.dataflow.utils.GenomicsOptions;
+import com.google.cloud.genomics.grpc.Channels;
 import com.google.cloud.genomics.utils.Contig;
 import com.google.cloud.genomics.utils.GenomicsFactory;
 import com.google.cloud.genomics.utils.Paginator;
@@ -52,11 +51,18 @@ import com.google.cloud.genomics.utils.RetryPolicy;
 import com.google.common.base.Function;
 import com.google.common.collect.FluentIterable;
 import com.google.common.collect.Lists;
+import com.google.genomics.v1.CigarUnit;
+import com.google.genomics.v1.Read;
+import com.google.genomics.v1.StreamReadsRequest;
+import com.google.genomics.v1.StreamReadsResponse;
+import com.google.genomics.v1.StreamingReadServiceGrpc;
 
 import java.io.IOException;
 import java.security.GeneralSecurityException;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
+import java.util.logging.Logger;
 
 /**
  * Class for calculating read depth coverage for a given data set.
@@ -79,6 +85,7 @@ public class CalculateCoverage {
   private static CoverageOptions options;
   private static Pipeline p;
   private static GenomicsFactory.OfflineAuth auth;
+  private static final Logger LOG = Logger.getLogger(CalculateCoverage.class.getName());
 
   /**
    * Options required to run this pipeline.
@@ -136,6 +143,11 @@ public class CalculateCoverage {
     int getNumQuantiles();
 
     void setNumQuantiles(int numQuantiles);
+
+    @Default.Boolean(true)
+    Boolean getUseAlpn();
+
+    void setUseAlpn(Boolean value);
   }
 
   public static void main(String[] args) throws GeneralSecurityException, IOException {
@@ -145,9 +157,16 @@ public class CalculateCoverage {
     // Option validation is not yet automatic, we make an explicit call here.
     GenomicsDatasetOptions.Methods.validateOptions(options);
     auth = GenomicsOptions.Methods.getGenomicsAuth(options);
+
+    // Must call getUseAlpn in order for it to be serialized.
+    LOG.info("use_alpn: " + options.getUseAlpn().toString());
+
     p = Pipeline.create(options);
     DataflowWorkarounds.registerGenomicsCoders(p);
     DataflowWorkarounds.registerCoder(p, PosRgsMq.class, GenericJsonCoder.of(PosRgsMq.class));
+    DataflowWorkarounds.registerCoder(p, Read.class, SerializableCoder.of(Read.class));
+    DataflowWorkarounds.registerCoder(p, StreamReadsRequest.class,
+        Proto2Coder.of(StreamReadsRequest.class));
 
     if (options.getInputDatasetId().isEmpty() && options.getReadGroupSetIds().isEmpty()) {
       throw new IllegalArgumentException("InputDatasetId or ReadGroupSetIds must be specified");
@@ -162,7 +181,7 @@ public class CalculateCoverage {
 
     AnnotationSet annotationSet = createAnnotationSet(checkReferenceSetIds(rgsIds));
 
-    PCollection<Read> reads = getReadsFromAPI(rgsIds);
+    PCollection<Read> reads = getReadsFromAPI(rgsIds).apply(ParDo.of(new ConvergeList()));
     PCollection<KV<PosRgsMq, Double>> coverageMeans = reads.apply(new CalculateCoverageMean());
     PCollection<KV<Position, KV<PosRgsMq.MappingQuality, List<Double>>>> quantiles
         = coverageMeans.apply(new CalculateQuantiles(options.getNumQuantiles()));
@@ -171,6 +190,20 @@ public class CalculateCoverage {
     answer.apply(ParDo.of(new CreateAnnotations(annotationSet.getId(), auth, true)));
 
     p.run();
+  }
+
+  /**
+   * This step exists to emit the individual reads in a parallel step to the StreamReads step in
+   * order to increase throughput.
+   */
+  static class ConvergeList extends DoFn<List<Read>, Read> {
+
+    @Override
+    public void processElement(ProcessContext c) {
+      for (Read r : c.element()) {
+        c.output(r);
+      }
+    }
   }
 
   /**
@@ -199,15 +232,15 @@ public class CalculateCoverage {
       if (c.element().getAlignment() != null) { //is mapped
         // Calculate length of read
         long readLength = 0;
-        for (CigarUnit cigar : c.element().getAlignment().getCigar()) {
+        for (CigarUnit cigar : c.element().getAlignment().getCigarList()) {
           switch (cigar.getOperation()) {
-            case "ALIGNMENT_MATCH":
-            case "SEQUENCE_MATCH":
-            case "SEQUENCE_MISMATCH":
-            case "PAD":
-            case "DELETE":
-            case "SKIP":
-              readLength += cigar.getOperationLength().intValue();
+            case ALIGNMENT_MATCH:
+            case SEQUENCE_MATCH:
+            case SEQUENCE_MISMATCH:
+            case PAD:
+            case DELETE:
+            case SKIP:
+              readLength += cigar.getOperationLength();
               break;
           }
         }
@@ -247,9 +280,9 @@ public class CalculateCoverage {
           long dist = Math.min(bucket + pOptions.getBucketWidth(), readEnd) - readCurr;
           readCurr += dist;
           baseCount += dist;
-          Position p = new Position();
-          p.setPosition(bucket);
-          p.setReferenceName(c.element().getAlignment().getPosition().getReferenceName());
+          Position p = new Position()
+              .setPosition(bucket)
+              .setReferenceName(c.element().getAlignment().getPosition().getReferenceName());
           Integer mq = c.element().getAlignment().getMappingQuality();
           if (mq == null) {
             mq = 0;
@@ -477,39 +510,54 @@ public class CalculateCoverage {
     return asWithId;
   }
 
-  private static PCollection<Read> getReadsFromAPI(List<String> readGroupSetIds)
+  private static PCollection<List<Read>> getReadsFromAPI(List<String> readGroupSetIds)
       throws IOException, GeneralSecurityException {
-    List<SearchReadsRequest> requests = Lists.newArrayList();
+    List<StreamReadsRequest> requests = Lists.newArrayList();
     for (String r : readGroupSetIds) {
       requests.addAll(getReadRequests(options, r));
     }
-    PCollection<SearchReadsRequest> readRequests = p.begin().apply(Create.of(requests));
-    PCollection<Read> reads = readRequests.apply(
-        ParDo.of(
-            new ReadReader(auth, Paginator.ShardBoundary.STRICT,
-                "alignments(alignment(position,cigar,mappingQuality),readGroupSetId)"
-                + ",nextPageToken"))
-        .named(ReadReader.class.getSimpleName()));
+    PCollection<StreamReadsRequest> readRequests = p.begin().apply(Create.of(requests));
+    PCollection<List<Read>> reads = readRequests.apply(ParDo.of(new StreamReads()));
     return reads;
   }
 
-  private static List<SearchReadsRequest> getReadRequests(CoverageOptions options,
+  static class StreamReads extends DoFn<StreamReadsRequest, List<Read>> {
+
+    private transient StreamingReadServiceGrpc.StreamingReadServiceBlockingStub readStub;
+
+    @Override
+    public void startBundle(Context c) throws IOException {
+      this.readStub = StreamingReadServiceGrpc.newBlockingStub(Channels.fromDefaultCreds());
+    }
+
+    @Override
+    public void processElement(ProcessContext c) {
+      Iterator<StreamReadsResponse> iter = readStub.streamReads(c.element());
+      while (iter.hasNext()) {
+        StreamReadsResponse readResponse = iter.next();
+        c.output(readResponse.getAlignmentsList());
+      }
+    }
+  }
+
+  private static List<StreamReadsRequest> getReadRequests(CoverageOptions options,
       final String readGroupSetId) {
     if (options.isAllReferences()) {
-      return Lists.newArrayList(new SearchReadsRequest()
-          .setReadGroupSetIds(Lists.newArrayList(readGroupSetId)));
+      return Lists.newArrayList(StreamReadsRequest.newBuilder()
+          .setReadGroupSetId(readGroupSetId)
+          .build());
     }
     final Iterable<Contig> contigs = Contig.parseContigsFromCommandLine(options.getReferences());
     return FluentIterable.from(contigs)
-        .transformAndConcat(new Function<Contig, Iterable<Contig>>() {
+        .transform(new Function<Contig, StreamReadsRequest>() {
           @Override
-          public Iterable<Contig> apply(Contig contig) {
-            return contig.getShards();
-          }
-        }).transform(new Function<Contig, SearchReadsRequest>() {
-          @Override
-          public SearchReadsRequest apply(Contig shard) {
-            return shard.getReadsRequest(readGroupSetId);
+          public StreamReadsRequest apply(Contig shard) {
+            return StreamReadsRequest.newBuilder()
+                .setReadGroupSetId(readGroupSetId)
+                .setStart(shard.start)
+                .setEnd(shard.end)
+                .setReferenceName(shard.referenceName)
+                .build();
           }
         }).toList();
   }

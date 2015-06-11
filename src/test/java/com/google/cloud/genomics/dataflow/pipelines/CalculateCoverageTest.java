@@ -16,12 +16,10 @@
 package com.google.cloud.genomics.dataflow.pipelines;
 
 import com.google.api.services.genomics.model.Annotation;
-import com.google.api.services.genomics.model.CigarUnit;
-import com.google.api.services.genomics.model.LinearAlignment;
 import com.google.api.services.genomics.model.Position;
 import com.google.api.services.genomics.model.RangePosition;
-import com.google.api.services.genomics.model.Read;
 import com.google.cloud.dataflow.sdk.Pipeline;
+import com.google.cloud.dataflow.sdk.coders.SerializableCoder;
 import com.google.cloud.dataflow.sdk.options.PipelineOptionsFactory;
 import com.google.cloud.dataflow.sdk.testing.DataflowAssert;
 import com.google.cloud.dataflow.sdk.testing.TestPipeline;
@@ -36,6 +34,10 @@ import com.google.cloud.genomics.dataflow.pipelines.CalculateCoverage.CalculateC
 import com.google.cloud.genomics.dataflow.pipelines.CalculateCoverage.CalculateQuantiles;
 import com.google.cloud.genomics.dataflow.utils.DataflowWorkarounds;
 import com.google.common.collect.Lists;
+import com.google.genomics.v1.CigarUnit;
+import com.google.genomics.v1.CigarUnit.Operation;
+import com.google.genomics.v1.LinearAlignment;
+import com.google.genomics.v1.Read;
 
 import org.junit.BeforeClass;
 import org.junit.Test;
@@ -70,65 +72,59 @@ public class CalculateCoverageTest {
   static final int[] readLengthInfo = {4, 3, 1, 3, 1, 4, 3, 2, 1, 1, 4, 2, 1, 1, 3,
     4, 2, 1, 2, 1, 4, 3, 3, 2, 1};
 
+  static final Operation[] ops1 = {Operation.INSERT, Operation.SEQUENCE_MISMATCH, Operation.PAD};
+  static final Operation[] ops2 = {Operation.DELETE, Operation.SKIP, Operation.SEQUENCE_MATCH};
+  static final Operation[] ops3 =
+      {Operation.INSERT, Operation.ALIGNMENT_MATCH, Operation.CLIP_SOFT};
+
   @BeforeClass
   public static void oneTimeSetUp() {
     // Test data for testCalculateCoverageMean
     // Read 1 (Contains two operations that result in increasing the length of the read)
     List<CigarUnit> cigars = new ArrayList<>();
     for (int i = 0; i < 3; i++) {
-      CigarUnit u = new CigarUnit();
-      u.setOperationLength(2L);
+      CigarUnit u = CigarUnit.newBuilder().setOperationLength(2L).setOperation(ops1[i]).build();
+      CigarUnit.newBuilder().setOperation(CigarUnit.Operation.SKIP);
       cigars.add(u);
     }
-    cigars.get(0).setOperation("INSERT");
-    cigars.get(1).setOperation("SEQUENCE_MISMATCH");
-    cigars.get(2).setOperation("PAD");
-    Read read2ValidOps = new Read()
-        .setAlignment(new LinearAlignment()
-            .setCigar(cigars)
-            .setPosition(new Position()
+    Read read2ValidOps = Read.newBuilder()
+        .setAlignment(LinearAlignment.newBuilder()
+            .addAllCigar(cigars)
+            .setPosition(com.google.genomics.v1.Position.newBuilder()
                 .setPosition(3L)
                 .setReferenceName("chr1"))
             .setMappingQuality(15))
-        .setReadGroupSetId("123");
+        .setReadGroupSetId("123").build();
     // Read 2 (Contains three operations that result in increasing the length of the read)
     cigars.clear();
     for (int i = 0; i < 3; i++) {
-      CigarUnit u = new CigarUnit();
-      u.setOperationLength(1L);
+      CigarUnit u = CigarUnit.newBuilder().setOperationLength(1L).setOperation(ops2[i]).build();
       cigars.add(u);
     }
-    cigars.get(0).setOperation("DELETE");
-    cigars.get(1).setOperation("SKIP");
-    cigars.get(2).setOperation("SEQUENCE_MATCH");
-    Read read3ValidOps = new Read()
-        .setAlignment(new LinearAlignment()
-            .setCigar(cigars)
-            .setPosition(new Position()
+    Read read3ValidOps = Read.newBuilder()
+        .setAlignment(LinearAlignment.newBuilder()
+            .addAllCigar(cigars)
+            .setPosition(com.google.genomics.v1.Position.newBuilder()
                 .setPosition(2L)
                 .setReferenceName("chr1"))
             .setMappingQuality(1))
-        .setReadGroupSetId("123");
+        .setReadGroupSetId("123").build();
     // Read 3 (Unmapped)
-    Read unmappedRead = new Read().setAlignment(null);
+    Read unmappedRead = Read.newBuilder().build();
     // Read 4 (Contains one operation that results in increasing the length of the read)
     cigars.clear();
     for (int i = 0; i < 3; i++) {
-      CigarUnit u = new CigarUnit();
-      u.setOperationLength(4L);
+      CigarUnit u = CigarUnit.newBuilder().setOperationLength(4L).setOperation(ops3[i]).build();
       cigars.add(u);
     }
-    cigars.get(0).setOperation("INSERT");
-    cigars.get(1).setOperation("ALIGNMENT_MATCH");
-    cigars.get(2).setOperation("CLIP_SOFT");
-    Read read1ValidOp = new Read()
-        .setAlignment(new LinearAlignment()
-            .setCigar(cigars)
-            .setPosition(new Position()
+    Read read1ValidOp = Read.newBuilder()
+        .setAlignment(LinearAlignment.newBuilder()
+            .addAllCigar(cigars)
+            .setPosition(com.google.genomics.v1.Position.newBuilder()
                 .setPosition(4L)
                 .setReferenceName("chr1"))
             .setMappingQuality(1))
-        .setReadGroupSetId("321");
+        .setReadGroupSetId("321").build();
     testSet = Lists.newArrayList(read2ValidOps, read3ValidOps, unmappedRead, read1ValidOp);
     // Test data for testCalculateQuantiles
     testSet2 = Lists.newArrayList();
@@ -155,19 +151,17 @@ public class CalculateCoverageTest {
     for (int i = 0; i < 25; i++) {
       cigars = new ArrayList<>();
       for (int j = 0; j < readLengthInfo[i]; j++) {
-        CigarUnit u = new CigarUnit();
-        u.setOperationLength(1L);
-        u.setOperation("ALIGNMENT_MATCH");
+        CigarUnit u = CigarUnit.newBuilder().setOperationLength(1L).setOperation(Operation.ALIGNMENT_MATCH).build();
         cigars.add(u);
       }
-      Read read = new Read()
-          .setAlignment(new LinearAlignment()
-              .setCigar(cigars)
-              .setPosition(new Position()
+      Read read = Read.newBuilder()
+          .setAlignment(LinearAlignment.newBuilder()
+              .addAllCigar(cigars)
+              .setPosition(com.google.genomics.v1.Position.newBuilder()
                   .setPosition(readPosInfo[i])
                   .setReferenceName("1"))
               .setMappingQuality(readMQInfo[i]))
-          .setReadGroupSetId("Rgs" + i / 5 + 1);
+          .setReadGroupSetId("Rgs" + i / 5 + 1).build();
       input.add(read);
     }
   }
@@ -282,7 +276,7 @@ public class CalculateCoverageTest {
     popts.setBucketWidth(TEST_BUCKET_WIDTH);
     popts.setNumQuantiles(TEST_NUM_QUANTILES);
     Pipeline p = TestPipeline.create(popts);
-    DataflowWorkarounds.registerCoder(p, Read.class, GenericJsonCoder.of(Read.class));
+    DataflowWorkarounds.registerCoder(p, Read.class, SerializableCoder.of(Read.class));
     DataflowWorkarounds.registerCoder(p, Position.class, GenericJsonCoder.of(Position.class));
     DataflowWorkarounds.registerCoder(p, PosRgsMq.class, GenericJsonCoder.of(PosRgsMq.class));
     DataflowWorkarounds.registerCoder(p, Annotation.class, GenericJsonCoder.of(Annotation.class));
