@@ -20,7 +20,6 @@ import com.google.api.services.genomics.model.BatchCreateAnnotationsRequest;
 import com.google.api.services.genomics.model.Position;
 import com.google.api.services.genomics.model.RangePosition;
 import com.google.api.services.genomics.model.ReadGroupSet;
-import com.google.api.services.genomics.model.SearchReadGroupSetsRequest;
 import com.google.cloud.dataflow.sdk.Pipeline;
 import com.google.cloud.dataflow.sdk.coders.Proto2Coder;
 import com.google.cloud.dataflow.sdk.coders.SerializableCoder;
@@ -39,28 +38,22 @@ import com.google.cloud.dataflow.sdk.values.KV;
 import com.google.cloud.dataflow.sdk.values.PCollection;
 import com.google.cloud.genomics.dataflow.coders.GenericJsonCoder;
 import com.google.cloud.genomics.dataflow.model.PosRgsMq;
+import com.google.cloud.genomics.dataflow.readers.ReadStreamer;
 import com.google.cloud.genomics.dataflow.utils.DataflowWorkarounds;
 import com.google.cloud.genomics.dataflow.utils.GCSOptions;
 import com.google.cloud.genomics.dataflow.utils.GenomicsDatasetOptions;
 import com.google.cloud.genomics.dataflow.utils.GenomicsOptions;
-import com.google.cloud.genomics.grpc.Channels;
 import com.google.cloud.genomics.utils.Contig;
 import com.google.cloud.genomics.utils.GenomicsFactory;
-import com.google.cloud.genomics.utils.Paginator;
 import com.google.cloud.genomics.utils.RetryPolicy;
-import com.google.common.base.Function;
-import com.google.common.collect.FluentIterable;
 import com.google.common.collect.Lists;
 import com.google.genomics.v1.CigarUnit;
 import com.google.genomics.v1.Read;
 import com.google.genomics.v1.StreamReadsRequest;
-import com.google.genomics.v1.StreamReadsResponse;
-import com.google.genomics.v1.StreamingReadServiceGrpc;
 
 import java.io.IOException;
 import java.security.GeneralSecurityException;
 import java.util.HashMap;
-import java.util.Iterator;
 import java.util.List;
 import java.util.logging.Logger;
 
@@ -77,7 +70,8 @@ import java.util.logging.Logger;
  * give you the minimum ReadGroupSet mean coverage for each and across all mapping qualities, the
  * 25th, 50th, and 75th percentiles, and the maximum of these values).
  *
- * See http://googlegenomics.readthedocs.org/en/latest/use_cases/analyze_reads/calculate_coverage.html
+ * See
+ * http://googlegenomics.readthedocs.org/en/latest/use_cases/analyze_reads/calculate_coverage.html
  * for running instructions.
  */
 public class CalculateCoverage {
@@ -172,7 +166,12 @@ public class CalculateCoverage {
       throw new IllegalArgumentException("InputDatasetId or ReadGroupSetIds must be specified");
     }
 
-    List<String> rgsIds = getReadGroupSetIds();
+    List<String> rgsIds;
+    if (options.getInputDatasetId().isEmpty()) {
+      rgsIds = Lists.newArrayList(options.getReadGroupSetIds().split(","));
+    } else {
+      rgsIds = ReadStreamer.getReadGroupSetIds(options.getInputDatasetId(), auth);
+    }
 
     if (rgsIds.size() < options.getNumQuantiles()) {
       throw new IllegalArgumentException("Number of ReadGroupSets must be greater than or equal to"
@@ -181,7 +180,7 @@ public class CalculateCoverage {
 
     AnnotationSet annotationSet = createAnnotationSet(checkReferenceSetIds(rgsIds));
 
-    PCollection<Read> reads = getReadsFromAPI(rgsIds).apply(ParDo.of(new ConvergeList()));
+    PCollection<Read> reads = getReadsFromAPI(rgsIds);
     PCollection<KV<PosRgsMq, Double>> coverageMeans = reads.apply(new CalculateCoverageMean());
     PCollection<KV<Position, KV<PosRgsMq.MappingQuality, List<Double>>>> quantiles
         = coverageMeans.apply(new CalculateQuantiles(options.getNumQuantiles()));
@@ -444,27 +443,6 @@ public class CalculateCoverage {
     }
   }
 
-  private static List<String> getReadGroupSetIds() throws IOException, GeneralSecurityException {
-    if (options.getInputDatasetId().isEmpty()) { // using ReadGroupSetIds
-      String s = options.getReadGroupSetIds();
-      return Lists.newArrayList(s.split(","));
-    } else { // using InputDatasetId
-      List<String> output = Lists.newArrayList();
-      String datasetId = options.getInputDatasetId();
-      Iterable<ReadGroupSet> rgs = Paginator.ReadGroupSets.create(
-          auth.getGenomics(auth.getDefaultFactory()))
-          .search(new SearchReadGroupSetsRequest().setDatasetIds(Lists.newArrayList(datasetId)),
-              "readGroupSets/id,nextPageToken");
-      for (ReadGroupSet r : rgs) {
-        output.add(r.getId());
-      }
-      if (output.isEmpty()) {
-        throw new IOException("InputDataset does not contain any ReadGroupSets");
-      }
-      return output;
-    }
-  }
-
   private static String checkReferenceSetIds(List<String> readGroupSetIds)
       throws GeneralSecurityException, IOException {
     String referenceSetId = null;
@@ -510,55 +488,17 @@ public class CalculateCoverage {
     return asWithId;
   }
 
-  private static PCollection<List<Read>> getReadsFromAPI(List<String> readGroupSetIds)
+  private static PCollection<Read> getReadsFromAPI(List<String> rgsIds)
       throws IOException, GeneralSecurityException {
     List<StreamReadsRequest> requests = Lists.newArrayList();
-    for (String r : readGroupSetIds) {
-      requests.addAll(getReadRequests(options, r));
-    }
-    PCollection<StreamReadsRequest> readRequests = p.begin().apply(Create.of(requests));
-    PCollection<List<Read>> reads = readRequests.apply(ParDo.of(new StreamReads()));
-    return reads;
-  }
-
-  static class StreamReads extends DoFn<StreamReadsRequest, List<Read>> {
-
-    private transient StreamingReadServiceGrpc.StreamingReadServiceBlockingStub readStub;
-
-    @Override
-    public void startBundle(Context c) throws IOException {
-      this.readStub = StreamingReadServiceGrpc.newBlockingStub(Channels.fromDefaultCreds());
-    }
-
-    @Override
-    public void processElement(ProcessContext c) {
-      Iterator<StreamReadsResponse> iter = readStub.streamReads(c.element());
-      while (iter.hasNext()) {
-        StreamReadsResponse readResponse = iter.next();
-        c.output(readResponse.getAlignmentsList());
+    for (String r : rgsIds) {
+      if (options.isAllReferences()) {
+        requests.add(ReadStreamer.getReadRequests(r));
+      } else {
+        requests.addAll(ReadStreamer.getReadRequests(r, options.getReferences()));
       }
     }
-  }
-
-  private static List<StreamReadsRequest> getReadRequests(CoverageOptions options,
-      final String readGroupSetId) {
-    if (options.isAllReferences()) {
-      return Lists.newArrayList(StreamReadsRequest.newBuilder()
-          .setReadGroupSetId(readGroupSetId)
-          .build());
-    }
-    final Iterable<Contig> contigs = Contig.parseContigsFromCommandLine(options.getReferences());
-    return FluentIterable.from(contigs)
-        .transform(new Function<Contig, StreamReadsRequest>() {
-          @Override
-          public StreamReadsRequest apply(Contig shard) {
-            return StreamReadsRequest.newBuilder()
-                .setReadGroupSetId(readGroupSetId)
-                .setStart(shard.start)
-                .setEnd(shard.end)
-                .setReferenceName(shard.referenceName)
-                .build();
-          }
-        }).toList();
+    PCollection<StreamReadsRequest> readRequests = p.begin().apply(Create.of(requests));
+    return readRequests.apply(new ReadStreamer.StreamReads());
   }
 }
