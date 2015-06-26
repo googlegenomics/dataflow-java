@@ -31,6 +31,9 @@ Getting started
 * Move the ``client_secrets.json`` file into the dataflow-java directory.
   (Authentication will take place the first time you run a pipeline.)
 
+* run "gcloud auth login" to log into the account that has access to your
+  Google Cloud Storage bucket.
+
 * Then you can run a pipeline locally with the command line, passing in the
   Project ID and Google Cloud Storage bucket you made in the first step.
   This command runs the VariantSimilarity pipeline (which runs PCoA on a dataset)::
