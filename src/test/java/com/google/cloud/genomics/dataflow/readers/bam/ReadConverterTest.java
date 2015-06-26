@@ -38,6 +38,24 @@ public class ReadConverterTest {
     assertEquals("chr20", read.getNextMatePosition().getReferenceName());
     assertEquals((Boolean)true, read.getNextMatePosition().getReverseStrand());
   }
+  @Test
+  public void testByteArrayAttributes() {
+    // Client code of SamRecord can pass anything to setAttribute including
+    // byte[] (which doesn't have toString defined). This verifies
+    // we handle that case correctly.
+    SAMRecord record = new SAMRecord(null);
+    record.setReferenceName("chr20");
+    record.setAlignmentStart(1);
+    record.setCigarString(String.format("%dM", 10));
+    String s = "123456";
+    record.setAttribute("FZ", s.getBytes());
+
+    Read read = ReadConverter.makeRead(record);
+    assertEquals((long)0, (long)read.getAlignment().getPosition().getPosition());
+    assertEquals((long)1, (long)read.getAlignment().getCigar().size());
+    assertEquals("chr20", read.getAlignment().getPosition().getReferenceName());
+    assertEquals(s, read.getInfo().get("FZ").get(0));
+  }
 
   @Test
   public void SamToReadToSamTest() throws IOException {

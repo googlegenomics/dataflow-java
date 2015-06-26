@@ -126,7 +126,14 @@ public class ReadConverter {
 
     Map<String, List<String>> attributes = Maps.newHashMap();
     for( SAMRecord.SAMTagAndValue tagAndValue: record.getAttributes()) {
-      attributes.put(tagAndValue.tag, Lists.newArrayList(tagAndValue.value.toString()));
+      String s = tagAndValue.value.toString();
+      if (tagAndValue.value instanceof byte[]) {
+        // It's possible for client code of SamRecord to pass byte[]
+        // to setAttribute. toString is not defined for byte[], so
+        // it produces garbage. The solution to create a string directly.
+        s = new String(((byte[]) tagAndValue.value));
+      }
+      attributes.put(tagAndValue.tag, Lists.newArrayList(s));
     }
     read.setInfo(attributes);
 
