@@ -62,7 +62,8 @@ public class GCSHelper {
     httpTransport = factory.getHttpTransport();
     Storage.Builder builder = new Storage.Builder(httpTransport, JSON_FACTORY, null)
         .setApplicationName(popts.getAppName());
-    storage = factory.getOfflineAuth(popts.getApiKey(), popts.getSecretsFile()).setupAuthentication(factory, builder).build();
+    GenomicsFactory.OfflineAuth auth = GenomicsOptions.Methods.getGenomicsAuth(popts);
+    storage = auth.setupAuthentication(factory, builder).build();
   }
 
   /**
@@ -95,9 +96,8 @@ public class GCSHelper {
     GenomicsFactory factory = GenomicsFactory.builder(appName)
         .setScopes(Lists.newArrayList(DEVSTORAGE_READ_ONLY, GenomicsScopes.GENOMICS))
         .build();
-    JacksonFactory jsonFactory = JacksonFactory.getDefaultInstance();
     httpTransport = factory.getHttpTransport();
-    GenomicsFactory.OfflineAuth offlineAuth = factory.getOfflineAuth(null, secretsFile);
+    GenomicsFactory.OfflineAuth offlineAuth = factory.getOfflineAuthFromClientSecretsFile(secretsFile);
     Storage.Builder builder = new Storage.Builder(httpTransport, JSON_FACTORY, null)
         .setApplicationName(appName);
     storage = offlineAuth.setupAuthentication(factory, builder).build();
