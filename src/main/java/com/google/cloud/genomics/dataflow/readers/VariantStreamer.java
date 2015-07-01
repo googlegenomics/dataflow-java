@@ -42,6 +42,9 @@ import java.util.List;
  */
 public class VariantStreamer {
 
+  // TODO should be replaced with a better heuristic
+  private static final long SHARD_SIZE = 5000000L; 
+  
   /**
    * Gets VariantSetIds from a given datasetId using the Genomics API.
    */
@@ -81,7 +84,7 @@ public class VariantStreamer {
         .transformAndConcat(new Function<Contig, Iterable<Contig>>() {
             @Override
             public Iterable<Contig> apply(Contig contig) {
-              return contig.getShards(5000000L);
+              return contig.getShards(SHARD_SIZE);
             }
           })
         .transform(new Function<Contig, StreamVariantsRequest>() {

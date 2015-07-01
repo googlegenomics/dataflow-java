@@ -42,6 +42,9 @@ import java.util.List;
  */
 public class ReadStreamer {
 
+  // TODO should be replaced with a better heuristic
+  private static final long SHARD_SIZE = 5000000L; 
+  
   /**
    * Gets ReadGroupSetIds from a given datasetId using the Genomics API.
    */
@@ -81,7 +84,7 @@ public class ReadStreamer {
         .transformAndConcat(new Function<Contig, Iterable<Contig>>() {
           @Override
           public Iterable<Contig> apply(Contig contig) {
-            return contig.getShards(5000000L);
+            return contig.getShards(SHARD_SIZE);
           }
         })
         .transform(new Function<Contig, StreamReadsRequest>() {
@@ -125,8 +128,8 @@ public class ReadStreamer {
     @Override
     public void processElement(ProcessContext c) throws IOException {
       initializedShardCount.addValue(1);
-      StreamingReadServiceGrpc.StreamingReadServiceBlockingStub readStub =
-          StreamingReadServiceGrpc.newBlockingStub(Channels.fromDefaultCreds());
+      StreamingReadServiceGrpc.StreamingReadServiceBlockingStub readStub
+          = StreamingReadServiceGrpc.newBlockingStub(Channels.fromDefaultCreds());
       Iterator<StreamReadsResponse> iter = readStub.streamReads(c.element());
       while (iter.hasNext()) {
         StreamReadsResponse readResponse = iter.next();
