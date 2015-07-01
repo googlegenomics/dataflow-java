@@ -28,10 +28,10 @@ import com.google.cloud.dataflow.sdk.options.PipelineOptions;
 import com.google.cloud.dataflow.sdk.transforms.DoFn;
 import com.google.cloud.genomics.utils.GenomicsFactory;
 import com.google.common.collect.ImmutableList;
-
 import com.fasterxml.jackson.annotation.JsonIgnore;
 
 import java.io.IOException;
+import java.security.GeneralSecurityException;
 import java.util.List;
 import java.util.logging.Logger;
 
@@ -114,10 +114,8 @@ public interface GCSOptions extends GenomicsOptions {
     }
     
     public static GenomicsFactory.OfflineAuth createGCSAuth(GCSOptions options)
-      throws IOException {
-      return options
-              .getGenomicsFactory()
-              .getOfflineAuth(options.getApiKey(), options.getSecretsFile());
+      throws IOException, GeneralSecurityException {
+      return GenomicsOptions.Methods.getGenomicsAuth(options);
     }
     
     public static Storage.Objects createStorageClient(
