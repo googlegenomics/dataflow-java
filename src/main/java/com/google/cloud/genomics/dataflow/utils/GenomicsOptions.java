@@ -29,15 +29,12 @@ import com.google.cloud.genomics.utils.GenomicsFactory.Builder;
  * annotated with a @JsonIgnore annotation.
  */
 public interface GenomicsOptions extends DataflowPipelineOptions {
-  
-  // Use the same appName for all pipelines in this collection so that the oauth flow only needs to happen once.
-  public static final String APP_NAME = "dataflow-java";
 
   public static class Methods {
-    
+
     public static GenomicsFactory.OfflineAuth getGenomicsAuth(GenomicsOptions options) throws GeneralSecurityException, IOException {
       Builder builder =
-          GenomicsFactory.builder(APP_NAME).setNumberOfRetries(options.getNumberOfRetries());
+          GenomicsFactory.builder(options.getAppName()).setNumberOfRetries(options.getNumberOfRetries());
 
       String secretsFile = options.getSecretsFile(), apiKey = options.getApiKey();
       if (secretsFile == null && apiKey == null) {
