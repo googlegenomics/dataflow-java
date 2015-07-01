@@ -15,9 +15,11 @@ package com.google.cloud.genomics.dataflow.readers;
 
 import com.google.api.services.genomics.model.ReadGroupSet;
 import com.google.api.services.genomics.model.SearchReadGroupSetsRequest;
+import com.google.cloud.dataflow.sdk.transforms.Aggregator;
 import com.google.cloud.dataflow.sdk.transforms.DoFn;
 import com.google.cloud.dataflow.sdk.transforms.PTransform;
 import com.google.cloud.dataflow.sdk.transforms.ParDo;
+import com.google.cloud.dataflow.sdk.transforms.Sum;
 import com.google.cloud.dataflow.sdk.values.PCollection;
 import com.google.cloud.genomics.grpc.Channels;
 import com.google.cloud.genomics.utils.Contig;
@@ -60,8 +62,8 @@ public class ReadStreamer {
   }
 
   /**
-   * Constructs a StreamReadsRequest for a readGroupSetId, assuming that the user wants all
-   * to include all references.
+   * Constructs a StreamReadsRequest for a readGroupSetId, assuming that the user wants to
+   * include all references.
    */
   public static StreamReadsRequest getReadRequests(String readGroupSetId) {
     return StreamReadsRequest.newBuilder()
@@ -77,11 +79,11 @@ public class ReadStreamer {
     final Iterable<Contig> contigs = Contig.parseContigsFromCommandLine(references);
     return FluentIterable.from(contigs)
         .transformAndConcat(new Function<Contig, Iterable<Contig>>() {
-            @Override
-            public Iterable<Contig> apply(Contig contig) {
-              return contig.getShards(100000000L);
-            }
-          })
+          @Override
+          public Iterable<Contig> apply(Contig contig) {
+            return contig.getShards(5000000L);
+          }
+        })
         .transform(new Function<Contig, StreamReadsRequest>() {
           @Override
           public StreamReadsRequest apply(Contig shard) {
@@ -111,20 +113,26 @@ public class ReadStreamer {
 
   private static class RetrieveReads extends DoFn<StreamReadsRequest, List<Read>> {
 
-    private transient StreamingReadServiceGrpc.StreamingReadServiceBlockingStub readStub;
+    protected Aggregator<Integer> initializedShardCount;
+    protected Aggregator<Integer> finishedShardCount;
 
     @Override
     public void startBundle(Context c) throws IOException {
-      this.readStub = StreamingReadServiceGrpc.newBlockingStub(Channels.fromDefaultCreds());
+      initializedShardCount = c.createAggregator("Initialized Shard Count", new Sum.SumIntegerFn());
+      finishedShardCount = c.createAggregator("Finished Shard Count", new Sum.SumIntegerFn());
     }
 
     @Override
-    public void processElement(ProcessContext c) {
+    public void processElement(ProcessContext c) throws IOException {
+      initializedShardCount.addValue(1);
+      StreamingReadServiceGrpc.StreamingReadServiceBlockingStub readStub =
+          StreamingReadServiceGrpc.newBlockingStub(Channels.fromDefaultCreds());
       Iterator<StreamReadsResponse> iter = readStub.streamReads(c.element());
       while (iter.hasNext()) {
         StreamReadsResponse readResponse = iter.next();
         c.output(readResponse.getAlignmentsList());
       }
+      finishedShardCount.addValue(1);
     }
   }
 
@@ -134,10 +142,18 @@ public class ReadStreamer {
    */
   private static class ConvergeReadsList extends DoFn<List<Read>, Read> {
 
+    protected Aggregator<Long> itemCount;
+
+    @Override
+    public void startBundle(Context c) {
+      itemCount = c.createAggregator("Number of reads", new Sum.SumLongFn());
+    }
+
     @Override
     public void processElement(ProcessContext c) {
       for (Read r : c.element()) {
         c.output(r);
+        itemCount.addValue(1L);
       }
     }
   }
