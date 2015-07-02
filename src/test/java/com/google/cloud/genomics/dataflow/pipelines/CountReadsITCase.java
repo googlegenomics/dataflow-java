@@ -49,11 +49,16 @@ public class CountReadsITCase {
   final String TEST_CONTIG = "1:550000:560000";
   // How many reads are in that region.
   final long TEST_EXPECTED = 685;
+  // In this file there are no unmapped reads, so expecting the same number.
+  final long TEST_EXPECTED_WITH_UNMAPPED = TEST_EXPECTED;
+  
   // Same as the above variables, but for the NA12877_S1 dataset.
   final String NA12877_S1_BAM_FILENAME = "gs://genomics-public-data/platinum-genomes/bam/NA12877_S1.bam";
   final String NA12877_S1_READGROUPSET = "CMvnhpKTFhD3he72j4KZuyc";
   final String NA12877_S1_CONTIG = "chr17:41196311:41277499";
   final long NA12877_S1_EXPECTED = 45081;
+  // How many reads are in that region if we take unmapped ones too    
+  final long NA12877_S1_EXPECTED_WITH_UNMAPPED = 45142;
 
   @Before
   public void voidEnsureEnvVar() {
@@ -67,13 +72,15 @@ public class CountReadsITCase {
     // we don't care how TEST_STAGING_GCS_FOLDER ends, so no check for it.
   }
   
-  private void testLocalBase(String outputFilename, String contig, String bamFilename, long expectedCount) throws Exception {
+  private void testLocalBase(String outputFilename, String contig, String bamFilename, long expectedCount,
+      boolean includeUnmapped) throws Exception {
     final String OUTPUT = TEST_OUTPUT_GCS_FOLDER + outputFilename;
     String[] ARGS = {
         "--apiKey=" + API_KEY,
         "--project=" + TEST_PROJECT,
         "--output=" + OUTPUT,
         "--references=" + contig,
+        "--includeUnmapped=" + includeUnmapped,
         "--BAMFilePath=" + bamFilename,
     };
     GenomicsOptions popts = PipelineOptionsFactory.create().as(GenomicsOptions.class);
@@ -99,13 +106,26 @@ public class CountReadsITCase {
   @Test
   public void testLocal() throws Exception {
     testLocalBase("CountReadsITCase-testLocal-output.txt",
-        TEST_CONTIG, TEST_BAM_FNAME, TEST_EXPECTED);
+        TEST_CONTIG, TEST_BAM_FNAME, TEST_EXPECTED, false);
+  }
+  
+  @Test
+  public void testLocalUnmapped() throws Exception {
+    testLocalBase("CountReadsITCase-testLocal-output.txt",
+        TEST_CONTIG, TEST_BAM_FNAME, TEST_EXPECTED_WITH_UNMAPPED, true);
   }
   
   @Test
   public void testLocalNA12877_S1() throws Exception {
     testLocalBase("CountReadsITCase-testLocal-NA12877_S1-output.txt",
-        NA12877_S1_CONTIG, NA12877_S1_BAM_FILENAME, NA12877_S1_EXPECTED);
+        NA12877_S1_CONTIG, NA12877_S1_BAM_FILENAME, NA12877_S1_EXPECTED, false);
+  }
+  
+  @Test
+  public void testLocalNA12877_S1_UNMAPPED() throws Exception {
+    testLocalBase("CountReadsITCase-testLocal-NA12877_S1-output.txt",
+        NA12877_S1_CONTIG, NA12877_S1_BAM_FILENAME, 
+        NA12877_S1_EXPECTED_WITH_UNMAPPED, true);
   }
 
   private void testCloudBase(String outputFilename, String contig, String bamFilename, long expectedCount) throws Exception {
