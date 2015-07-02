@@ -20,6 +20,7 @@ import com.google.api.services.storage.Storage;
 import com.google.api.services.storage.Storage.Objects;
 import com.google.cloud.dataflow.sdk.transforms.DoFn;
 import com.google.cloud.genomics.utils.Contig;
+import com.google.cloud.genomics.utils.ReadUtils;
 import com.google.common.base.Stopwatch;
 
 import htsjdk.samtools.SAMRecord;
@@ -118,7 +119,7 @@ public class Reader {
       recordsAfterEnd++;
       return;
     }
-    c.output(ReadConverter.makeRead(record));
+    c.output(ReadUtils.makeRead(record));
     recordsProcessed++;
   }
   
@@ -167,7 +168,7 @@ public class Reader {
         recordsAfterEnd++;
         continue;
       }
-      reads.add(ReadConverter.makeRead(record)); 
+      reads.add(ReadUtils.makeRead(record));
       recordsProcessed++;
     }
     timer.stop();
