@@ -15,9 +15,11 @@ package com.google.cloud.genomics.dataflow.readers;
 
 import com.google.api.services.genomics.model.SearchVariantSetsRequest;
 import com.google.api.services.genomics.model.VariantSet;
+import com.google.cloud.dataflow.sdk.transforms.Aggregator;
 import com.google.cloud.dataflow.sdk.transforms.DoFn;
 import com.google.cloud.dataflow.sdk.transforms.PTransform;
 import com.google.cloud.dataflow.sdk.transforms.ParDo;
+import com.google.cloud.dataflow.sdk.transforms.Sum;
 import com.google.cloud.dataflow.sdk.values.PCollection;
 import com.google.cloud.genomics.grpc.Channels;
 import com.google.cloud.genomics.utils.Contig;
@@ -40,6 +42,9 @@ import java.util.List;
  */
 public class VariantStreamer {
 
+  // TODO should be replaced with a better heuristic
+  private static final long SHARD_SIZE = 5000000L; 
+  
   /**
    * Gets VariantSetIds from a given datasetId using the Genomics API.
    */
@@ -79,7 +84,7 @@ public class VariantStreamer {
         .transformAndConcat(new Function<Contig, Iterable<Contig>>() {
             @Override
             public Iterable<Contig> apply(Contig contig) {
-              return contig.getShards(100000000L);
+              return contig.getShards(SHARD_SIZE);
             }
           })
         .transform(new Function<Contig, StreamVariantsRequest>() {
@@ -110,20 +115,26 @@ public class VariantStreamer {
 
   private static class RetrieveVariants extends DoFn<StreamVariantsRequest, List<Variant>> {
 
-    private transient StreamingVariantServiceGrpc.StreamingVariantServiceBlockingStub variantStub;
+    protected Aggregator<Integer> initializedShardCount;
+    protected Aggregator<Integer> finishedShardCount;
 
     @Override
     public void startBundle(Context c) throws IOException {
-      this.variantStub = StreamingVariantServiceGrpc.newBlockingStub(Channels.fromDefaultCreds());
+      initializedShardCount = c.createAggregator("Initialized Shard Count", new Sum.SumIntegerFn());
+      finishedShardCount = c.createAggregator("Finished Shard Count", new Sum.SumIntegerFn());
     }
 
     @Override
-    public void processElement(ProcessContext c) {
+    public void processElement(ProcessContext c) throws IOException {
+      initializedShardCount.addValue(1);
+      StreamingVariantServiceGrpc.StreamingVariantServiceBlockingStub variantStub =
+          StreamingVariantServiceGrpc.newBlockingStub(Channels.fromDefaultCreds());
       Iterator<StreamVariantsResponse> iter = variantStub.streamVariants(c.element());
       while (iter.hasNext()) {
         StreamVariantsResponse variantResponse = iter.next();
         c.output(variantResponse.getVariantsList());
       }
+      finishedShardCount.addValue(1);
     }
   }
 
@@ -133,10 +144,18 @@ public class VariantStreamer {
    */
   private static class ConvergeVariantsList extends DoFn<List<Variant>, Variant> {
 
+    protected Aggregator<Long> itemCount;
+
+    @Override
+    public void startBundle(Context c) {
+      itemCount = c.createAggregator("Number of variants", new Sum.SumLongFn());
+    }
+
     @Override
     public void processElement(ProcessContext c) {
       for (Variant v : c.element()) {
         c.output(v);
+        itemCount.addValue(1L);
       }
     }
   }
