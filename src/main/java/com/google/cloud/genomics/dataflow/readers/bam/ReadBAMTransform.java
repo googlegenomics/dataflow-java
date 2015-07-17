@@ -46,7 +46,7 @@ import java.util.List;
  */
 public class ReadBAMTransform extends PTransform<PCollectionTuple, PCollection<Read>> {
   GenomicsFactory.OfflineAuth auth;
-  ValidationStringency stringency;
+  ReaderOptions options;
 
   public static TupleTag<Contig> CONTIGS_TAG = new TupleTag<>();
   public static TupleTag<String> BAMS_TAG = new TupleTag<>();
@@ -79,11 +79,11 @@ public class ReadBAMTransform extends PTransform<PCollectionTuple, PCollection<R
   public static class ReadFn extends DoFn<BAMShard, Read> {
     GenomicsFactory.OfflineAuth auth;
     Storage.Objects storage;
-    ValidationStringency stringency;
+    ReaderOptions options;
 
-    public ReadFn(GenomicsFactory.OfflineAuth auth, ValidationStringency stringency) {
+    public ReadFn(GenomicsFactory.OfflineAuth auth, ReaderOptions options) {
       this.auth = auth;
-      this.stringency = stringency;
+      this.options = options;
     }
 
     @Override
@@ -93,7 +93,7 @@ public class ReadBAMTransform extends PTransform<PCollectionTuple, PCollection<R
 
     @Override
     public void processElement(ProcessContext c) throws java.lang.Exception {
-      (new Reader(storage, stringency, c.element(), c))
+      (new Reader(storage, options, c.element(), c))
           .process();
     }
   }
@@ -105,9 +105,9 @@ public class ReadBAMTransform extends PTransform<PCollectionTuple, PCollection<R
       Pipeline p, 
       GenomicsFactory.OfflineAuth auth,
       Iterable<Contig> contigs,
-      ValidationStringency stringency,
+      ReaderOptions options,
       List<String> BAMFiles) {
-      ReadBAMTransform readBAMSTransform = new ReadBAMTransform(stringency);
+      ReadBAMTransform readBAMSTransform = new ReadBAMTransform(options);
       readBAMSTransform.setAuth(auth);
       PCollectionTuple tuple = PCollectionTuple
           .of(
@@ -139,7 +139,7 @@ public class ReadBAMTransform extends PTransform<PCollectionTuple, PCollection<R
               .setCoder(SerializableCoder.of(BAMShard.class));
     
     final PCollection<Read> reads = shards.apply(ParDo
-        .of(new ReadFn(auth, stringency)));
+        .of(new ReadFn(auth, options)));
 
     return reads;
   }
@@ -154,8 +154,8 @@ public class ReadBAMTransform extends PTransform<PCollectionTuple, PCollection<R
 
   // non-public methods
 
-  protected ReadBAMTransform(ValidationStringency stringency) {
+  protected ReadBAMTransform(ReaderOptions options) {
     super();
-    this.stringency = stringency;
+    this.options = options;
   }
 }

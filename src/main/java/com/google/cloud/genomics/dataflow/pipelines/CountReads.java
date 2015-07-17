@@ -33,6 +33,7 @@ import com.google.cloud.dataflow.sdk.values.PCollection;
 import com.google.cloud.genomics.dataflow.readers.ReadReader;
 import com.google.cloud.genomics.dataflow.readers.bam.ReadBAMTransform;
 import com.google.cloud.genomics.dataflow.readers.bam.Reader;
+import com.google.cloud.genomics.dataflow.readers.bam.ReaderOptions;
 import com.google.cloud.genomics.dataflow.utils.DataflowWorkarounds;
 import com.google.cloud.genomics.dataflow.utils.GCSOptions;
 import com.google.cloud.genomics.dataflow.utils.GenomicsDatasetOptions;
@@ -88,6 +89,12 @@ public class CountReads {
     boolean isShardBAMReading();
 
     void setShardBAMReading(boolean newValue);
+    
+    @Description("Whether to include unmapped mate pairs of mapped reads to match expectations of Picard tools.")
+    @Default.Boolean(false)
+    boolean isIncludeUnmapped();
+
+    void setIncludeUnmapped(boolean newValue);
 
   }
 
@@ -198,13 +205,15 @@ public class CountReads {
     LOG.info("getReadsFromBAMFile");
 
     final Iterable<Contig> contigs = Contig.parseContigsFromCommandLine(options.getReferences());
-
+    final ReaderOptions readerOptions = new ReaderOptions(
+        ValidationStringency.DEFAULT_STRINGENCY,
+        options.isIncludeUnmapped());
     if (options.isShardBAMReading()) {
       LOG.info("Sharded reading of "+ options.getBAMFilePath());
       return ReadBAMTransform.getReadsFromBAMFilesSharded(p,
           auth,
           contigs,
-          ValidationStringency.DEFAULT_STRINGENCY,
+          readerOptions,
           Collections.singletonList(options.getBAMFilePath()));
     } else {  // For testing and comparing sharded vs. not sharded only
       LOG.info("Unsharded reading of " + options.getBAMFilePath());
@@ -214,7 +223,7 @@ public class CountReads {
                   GCSOptions.Methods.createStorageClient(options, auth),
                   options.getBAMFilePath(),
                   contigs.iterator().next(),
-                  ValidationStringency.DEFAULT_STRINGENCY)));
+                  readerOptions)));
     }
   }
 }
