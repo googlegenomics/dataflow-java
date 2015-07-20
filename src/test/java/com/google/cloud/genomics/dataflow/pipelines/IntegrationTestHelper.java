@@ -30,7 +30,11 @@ import com.google.cloud.dataflow.sdk.options.PipelineOptionsFactory;
 import com.google.cloud.dataflow.sdk.util.GcsUtil;
 import com.google.cloud.dataflow.sdk.util.Transport;
 import com.google.cloud.dataflow.sdk.util.gcsfs.GcsPath;
+import com.google.cloud.genomics.dataflow.readers.bam.BAMIO;
 import com.google.cloud.genomics.dataflow.utils.GenomicsOptions;
+
+import htsjdk.samtools.SamReader;
+import htsjdk.samtools.ValidationStringency;
 
 public class IntegrationTestHelper {
 
@@ -107,6 +111,17 @@ public class IntegrationTestHelper {
    */
   public BufferedReader openOutput(String outputPath) throws IOException {
     return new BufferedReader(Channels.newReader(gcsUtil.open(GcsPath.fromUri(outputPath)), "UTF-8"));
+  }
+  
+  /**
+   * Open test output as BAM file - useful if your test writes out a BAM file
+   * and you want to validate the contents.
+   * @throws IOException 
+   */
+  public SamReader openBAM(String bamFilePath) throws IOException {
+    final GcsOptions gcsOptions = popts.as(GcsOptions.class);
+    final Storage.Objects storage = Transport.newStorageClient(gcsOptions).build().objects();
+    return BAMIO.openBAM(storage, bamFilePath, ValidationStringency.LENIENT, true); 
   }
 
   /**
