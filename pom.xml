@@ -194,16 +194,16 @@
         </exclusion>
       </exclusions>
     </dependency>
-      <dependency>
-          <groupId>com.google.cloud.genomics</groupId>
-        <artifactId>gatk-tools-java</artifactId>
-        <version>1.0</version>
-     </dependency>
+    <dependency>
+      <groupId>com.google.cloud.genomics</groupId>
+      <artifactId>gatk-tools-java</artifactId>
+      <version>1.0</version>
+    </dependency>
     <dependency>
       <groupId>com.google.protobuf</groupId>
       <artifactId>protobuf-java</artifactId>
       <version>3.0.0-alpha-3</version>
-    </dependency>
+    </dependency>   
   </dependencies>
 
   <profiles>
