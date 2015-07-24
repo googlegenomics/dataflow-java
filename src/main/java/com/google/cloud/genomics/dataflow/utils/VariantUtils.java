@@ -79,7 +79,7 @@ public class VariantUtils {
   /**
    * Determine whether the variant is a non-variant segment (a.k.a. non-variant block record).
    * 
-   * For data processed by GATK the value of ALT is "<NON_REF>". See
+   * For data processed by GATK the value of ALT is "&lt;NON_REF&gt;". See
    * https://www.broadinstitute.org/gatk/guide/article?id=4017 for more detail.
    */
   public static final Predicate<Variant> IS_NON_VARIANT_SEGMENT_WITH_GATK_ALT = Predicates.and(

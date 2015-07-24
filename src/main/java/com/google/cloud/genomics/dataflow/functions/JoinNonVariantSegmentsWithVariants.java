@@ -65,9 +65,10 @@ public class JoinNonVariantSegmentsWithVariants {
    * 
    * All variant fields will be returned.
    * 
-   * @param input
-   * @param auth
-   * @return
+   * @param input PCollection of SearchVariantsRequests to process.
+   * @param auth Auth class containing credentials.
+   * @return PCollection of variant-only Variant objects with calls from non-variant-segments
+   *     merged into the variants with which they overlap.
    */
   public static PCollection<Variant> joinVariantsTransform(
       PCollection<SearchVariantsRequest> input, GenomicsFactory.OfflineAuth auth) {
@@ -79,10 +80,11 @@ public class JoinNonVariantSegmentsWithVariants {
    * consider not only calls that have the variant but also those that match the reference at that
    * variant position.
    * 
-   * @param input
-   * @param auth
+   * @param input PCollection of SearchVariantsRequests to process.
+   * @param auth Auth class containing credentials.
    * @param fields Fields to be returned by the partial response.
-   * @return
+   * @return PCollection of variant-only Variant objects with calls from non-variant-segments
+   *     merged into the variants with which they overlap.
    */
   public static PCollection<Variant> joinVariantsTransform(
       PCollection<SearchVariantsRequest> input, GenomicsFactory.OfflineAuth auth, String fields) {

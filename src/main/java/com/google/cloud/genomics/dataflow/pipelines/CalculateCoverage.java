@@ -62,7 +62,7 @@ import java.util.logging.Logger;
  *
  * For each "bucket" in the given input references, this computes the average coverage (rounded to
  * six decimal places) across the bucket that 10%, 20%, 30%, etc. of the input ReadGroupsSets have
- * for each mapping quality of the reads (<10:Low(L), 10-29:Medium(M), >=30:High(H)) as well as
+ * for each mapping quality of the reads (&lt;10:Low(L), 10-29:Medium(M), &gt;=30:High(H)) as well as
  * these same percentiles of ReadGroupSets for all reads regardless of mapping quality (Mapping
  * quality All(A)).
  *
