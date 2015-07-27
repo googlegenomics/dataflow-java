@@ -21,7 +21,7 @@ public class BAMBlockWriter extends BAMFileWriter {
     // Deliberately empty.
   }
   
-  public void publicWriteHeader(final SAMFileHeader header) {
+  public void writeHeader(final SAMFileHeader header) {
     final StringWriter headerTextBuffer = new StringWriter();
     new SAMTextHeaderCodec().encode(headerTextBuffer, header);
     final String headerText = headerTextBuffer.toString();

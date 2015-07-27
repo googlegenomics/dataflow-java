@@ -51,6 +51,7 @@ import com.google.cloud.genomics.dataflow.utils.GenomicsDatasetOptions;
 import com.google.cloud.genomics.dataflow.utils.GenomicsOptions;
 import com.google.cloud.genomics.utils.Contig;
 import com.google.cloud.genomics.utils.GenomicsFactory;
+import com.google.cloud.genomics.utils.ReadUtils;
 import com.google.common.collect.Lists;
 
 import htsjdk.samtools.BAMBlockWriter;
@@ -393,15 +394,13 @@ public class ShardedBAMWriting {
 //          shardContig + ": ");
       int count = 0;
       final BAMBlockWriter bw = new BAMBlockWriter(outputStream, null /*file*/, false /*writeEndBlock*/);
-      bw.setSortOrder(SAMFileHeader.SortOrder.coordinate, true /*presorted*/);
+      bw.setSortOrder(header.getSortOrder(), true /*presorted*/);
       bw.setHeader(header);
       if (isFirstShard) {
-        bw.publicWriteHeader(header);
+        bw.writeHeader(header);
       }
       for (Read read : reads) {
-        SAMRecord samRecord = new SAMRecord(header);
-        samRecord.setReadName(read.getFragmentName());
-        samRecord.setReadString(read.getAlignedSequence());
+        SAMRecord samRecord = ReadUtils.makeSAMRecord(read, header);
         bw.addAlignment(samRecord);
         count++;
       }
