@@ -49,8 +49,8 @@ public abstract class DelegatingStandardCoder<X, Y> extends StandardCoder<X> {
 
   protected abstract X from(Y object) throws CoderException, IOException;
 
-  @Override public final boolean isDeterministic() {
-    return delegate.isDeterministic();
+  public void verifyDeterministic() throws NonDeterministicException {
+    delegate.verifyDeterministic();
   }
 
   protected abstract Y to(X object) throws CoderException, IOException;
