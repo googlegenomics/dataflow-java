@@ -33,22 +33,18 @@ public abstract class GenomicsApiReader<I extends GenericJson, O extends Generic
   // Used for access to the genomics API
   protected final GenomicsFactory.OfflineAuth auth;
   protected final String fields;
-  protected Aggregator<Integer> initializedRequestsCount;
-  protected Aggregator<Integer> unsuccessfulResponsesCount;
-  protected Aggregator<Integer> ioExceptionsCount;
-  protected Aggregator<Long> itemCount;
+  protected Aggregator<Integer, Integer> initializedRequestsCount;
+  protected Aggregator<Integer, Integer> unsuccessfulResponsesCount;
+  protected Aggregator<Integer, Integer> ioExceptionsCount;
+  protected Aggregator<Long, Long> itemCount;
   
   public GenomicsApiReader(GenomicsFactory.OfflineAuth auth, String fields) {
     this.auth = auth;
     this.fields = fields;
-  }
-
-  @Override
-  public void startBundle(Context c) {
-    initializedRequestsCount = c.createAggregator("Genomics API Initialized Request Count", new Sum.SumIntegerFn());
-    unsuccessfulResponsesCount = c.createAggregator("Genomics API Unsuccessful Response Count", new Sum.SumIntegerFn());
-    ioExceptionsCount = c.createAggregator("Genomics API IOException Response Count", new Sum.SumIntegerFn());
-    itemCount = c.createAggregator("Genomics API Item Count", new Sum.SumLongFn());
+    initializedRequestsCount = createAggregator("Genomics API Initialized Request Count", new Sum.SumIntegerFn());
+    unsuccessfulResponsesCount = createAggregator("Genomics API Unsuccessful Response Count", new Sum.SumIntegerFn());
+    ioExceptionsCount = createAggregator("Genomics API IOException Response Count", new Sum.SumIntegerFn());
+    itemCount = createAggregator("Genomics API Item Count", new Sum.SumLongFn());
   }
   
   @Override
