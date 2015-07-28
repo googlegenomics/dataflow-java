@@ -160,7 +160,7 @@ public class JoinNonVariantSegmentsWithVariantsTest {
     DataflowWorkarounds.registerGenomicsCoders(p);
 
     PCollection<Variant> inputVariants =
-        p.apply(Create.of(input)).setCoder(GenericJsonCoder.of(Variant.class));
+        p.apply(Create.of(input).withCoder(GenericJsonCoder.of(Variant.class)));
 
     PCollection<KV<KV<String, Long>, Variant>> binnedVariants =
         inputVariants.apply(ParDo.of(new JoinNonVariantSegmentsWithVariants.BinVariants())).setCoder(

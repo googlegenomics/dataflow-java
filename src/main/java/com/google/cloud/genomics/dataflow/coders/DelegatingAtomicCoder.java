@@ -18,6 +18,7 @@ package com.google.cloud.genomics.dataflow.coders;
 import com.google.cloud.dataflow.sdk.coders.AtomicCoder;
 import com.google.cloud.dataflow.sdk.coders.Coder;
 import com.google.cloud.dataflow.sdk.coders.CoderException;
+import com.google.cloud.dataflow.sdk.coders.Coder.NonDeterministicException;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -43,8 +44,8 @@ public abstract class DelegatingAtomicCoder<X, Y> extends AtomicCoder<X> {
 
   protected abstract X from(Y object) throws CoderException, IOException;
 
-  @Override public final boolean isDeterministic() {
-    return delegate.isDeterministic();
+  public void verifyDeterministic() throws NonDeterministicException {
+    delegate.verifyDeterministic();
   }
 
   protected abstract Y to(X object) throws CoderException, IOException;

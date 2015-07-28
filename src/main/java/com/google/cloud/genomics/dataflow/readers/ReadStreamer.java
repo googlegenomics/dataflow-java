@@ -116,13 +116,12 @@ public class ReadStreamer {
 
   private static class RetrieveReads extends DoFn<StreamReadsRequest, List<Read>> {
 
-    protected Aggregator<Integer> initializedShardCount;
-    protected Aggregator<Integer> finishedShardCount;
+    protected Aggregator<Integer, Integer> initializedShardCount;
+    protected Aggregator<Integer, Integer> finishedShardCount;
 
-    @Override
-    public void startBundle(Context c) throws IOException {
-      initializedShardCount = c.createAggregator("Initialized Shard Count", new Sum.SumIntegerFn());
-      finishedShardCount = c.createAggregator("Finished Shard Count", new Sum.SumIntegerFn());
+    public RetrieveReads() {
+      initializedShardCount = createAggregator("Initialized Shard Count", new Sum.SumIntegerFn());
+      finishedShardCount = createAggregator("Finished Shard Count", new Sum.SumIntegerFn());
     }
 
     @Override
@@ -145,11 +144,10 @@ public class ReadStreamer {
    */
   private static class ConvergeReadsList extends DoFn<List<Read>, Read> {
 
-    protected Aggregator<Long> itemCount;
+    protected Aggregator<Long, Long> itemCount;
 
-    @Override
-    public void startBundle(Context c) {
-      itemCount = c.createAggregator("Number of reads", new Sum.SumLongFn());
+    public ConvergeReadsList() {
+      itemCount = createAggregator("Number of reads", new Sum.SumLongFn());
     }
 
     @Override
