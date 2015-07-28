@@ -115,13 +115,12 @@ public class VariantStreamer {
 
   private static class RetrieveVariants extends DoFn<StreamVariantsRequest, List<Variant>> {
 
-    protected Aggregator<Integer> initializedShardCount;
-    protected Aggregator<Integer> finishedShardCount;
+    protected Aggregator<Integer, Integer> initializedShardCount;
+    protected Aggregator<Integer, Integer> finishedShardCount;
 
-    @Override
-    public void startBundle(Context c) throws IOException {
-      initializedShardCount = c.createAggregator("Initialized Shard Count", new Sum.SumIntegerFn());
-      finishedShardCount = c.createAggregator("Finished Shard Count", new Sum.SumIntegerFn());
+    public RetrieveVariants() {
+      initializedShardCount = createAggregator("Initialized Shard Count", new Sum.SumIntegerFn());
+      finishedShardCount = createAggregator("Finished Shard Count", new Sum.SumIntegerFn());
     }
 
     @Override
@@ -144,11 +143,10 @@ public class VariantStreamer {
    */
   private static class ConvergeVariantsList extends DoFn<List<Variant>, Variant> {
 
-    protected Aggregator<Long> itemCount;
+    protected Aggregator<Long, Long> itemCount;
 
-    @Override
-    public void startBundle(Context c) {
-      itemCount = c.createAggregator("Number of variants", new Sum.SumLongFn());
+    public ConvergeVariantsList() {
+      itemCount = createAggregator("Number of variants", new Sum.SumLongFn());
     }
 
     @Override
