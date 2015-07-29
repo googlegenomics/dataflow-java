@@ -101,23 +101,12 @@ public class VariantStreamer {
    */
   public static List<StreamVariantsRequest> getVariantRequests(final String variantSetId,
       String references) {
-    final Iterable<Contig> contigs = Contig.parseContigsFromCommandLine(references);
-    return FluentIterable.from(contigs)
-        .transformAndConcat(new Function<Contig, Iterable<Contig>>() {
-            @Override
-            public Iterable<Contig> apply(Contig contig) {
-              return contig.getShards(SHARD_SIZE);
-            }
-          })
+    final Iterable<Contig> shards = Contig.getSpecifiedShards(references);
+    return FluentIterable.from(shards)
         .transform(new Function<Contig, StreamVariantsRequest>() {
           @Override
           public StreamVariantsRequest apply(Contig shard) {
-            return StreamVariantsRequest.newBuilder()
-                .setVariantSetId(variantSetId)
-                .setStart(shard.start)
-                .setEnd(shard.end)
-                .setReferenceName(shard.referenceName)
-                .build();
+            return shard.getStreamVariantsRequest(variantSetId);
           }
         }).toList();
   }

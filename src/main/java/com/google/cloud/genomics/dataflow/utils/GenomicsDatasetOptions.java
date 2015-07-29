@@ -46,24 +46,22 @@ public interface GenomicsDatasetOptions extends GenomicsOptions {
       String datasetId = options.getDatasetId();
       Genomics genomics = auth.getGenomics(auth.getDefaultFactory());
 
-      Iterable<Contig> contigs =
-          options.isAllReferences() ? Contig.getContigsInVariantSet(genomics, datasetId, sexChromosomeFilter)
-              : Contig.parseContigsFromCommandLine(options.getReferences());
+      Iterable<Contig> shards =
+          options.isAllReferences() ? Contig.getAllShardsInVariantSet(genomics, datasetId, sexChromosomeFilter, options.getBasesPerShard())
+              : Contig.getSpecifiedShards(options.getReferences(), options.getBasesPerShard());
 
       List<SearchVariantsRequest> requests = Lists.newArrayList();
-      for (Contig contig : contigs) {
-        for (Contig shard : contig.getShards(options.getBasesPerShard())) {
-          LOG.info("Adding request with " + shard.referenceName + " " + shard.start + " to "
-              + shard.end);
-          SearchVariantsRequest request = shard.getVariantsRequest(datasetId);
-          if (options.getPageSize() > 0) {
-            request.setPageSize(options.getPageSize());
-          }
-          if (options.getMaxCalls() > 0) {
-            request.setMaxCalls(options.getMaxCalls());
-          }
-          requests.add(request);
+      for (Contig shard : shards) {
+        LOG.info("Adding request with " + shard.referenceName + " " + shard.start + " to "
+            + shard.end);
+        SearchVariantsRequest request = shard.getVariantsRequest(datasetId);
+        if (options.getPageSize() > 0) {
+          request.setPageSize(options.getPageSize());
         }
+        if (options.getMaxCalls() > 0) {
+          request.setMaxCalls(options.getMaxCalls());
+        }
+        requests.add(request);
       }
       return requests;
     }

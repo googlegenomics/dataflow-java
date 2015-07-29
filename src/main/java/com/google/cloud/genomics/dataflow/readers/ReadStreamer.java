@@ -80,26 +80,14 @@ public class ReadStreamer {
    */
   public static List<StreamReadsRequest> getReadRequests(final String readGroupSetId,
       String references) {
-    final Iterable<Contig> contigs = Contig.parseContigsFromCommandLine(references);
-    return FluentIterable.from(contigs)
-        .transformAndConcat(new Function<Contig, Iterable<Contig>>() {
-          @Override
-          public Iterable<Contig> apply(Contig contig) {
-            return contig.getShards(SHARD_SIZE);
-          }
-        })
+    final Iterable<Contig> shards = Contig.getSpecifiedShards(references, SHARD_SIZE);
+    return FluentIterable.from(shards)
         .transform(new Function<Contig, StreamReadsRequest>() {
           @Override
           public StreamReadsRequest apply(Contig shard) {
-            return StreamReadsRequest.newBuilder()
-            .setReadGroupSetId(readGroupSetId)
-            .setStart(shard.start)
-            .setEnd(shard.end)
-            .setReferenceName(shard.referenceName)
-            .build();
+            return shard.getStreamReadsRequest(readGroupSetId);
           }
         }).toList();
-
   }
 
   /**

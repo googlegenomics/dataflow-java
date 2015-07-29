@@ -273,15 +273,15 @@ public final class AnnotateVariants extends DoFn<Contig, KV<String, VariantAnnot
         validateAnnotationSetsFlag(genomics, opts.getVariantAnnotationSetIds(), "VARIANT");
     validateRefsetForAnnotationSets(genomics, transcriptSetIds);
 
-    Iterable<Contig> contigs = opts.isAllReferences()
-        ? Contig.getContigsInVariantSet(
+    Iterable<Contig> shards = opts.isAllReferences()
+        ? Contig.getAllShardsInVariantSet(
             genomics, opts.getDatasetId(), SexChromosomeFilter.INCLUDE_XY)
-        : Contig.parseContigsFromCommandLine(opts.getReferences());
+        : Contig.getSpecifiedShards(opts.getReferences());
 
     Pipeline p = Pipeline.create(opts);
     DataflowWorkarounds.registerGenomicsCoders(p);
     p.begin()
-      .apply(Create.of(contigs))
+      .apply(Create.of(shards))
       .apply(ParDo.of(new AnnotateVariants(auth,
           opts.getDatasetId(), callSetIds, transcriptSetIds, variantAnnotationSetIds)))
       .apply(GroupByKey.<String, VariantAnnotation>create())
