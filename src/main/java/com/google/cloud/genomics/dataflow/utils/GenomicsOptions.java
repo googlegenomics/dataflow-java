@@ -16,9 +16,9 @@ package com.google.cloud.genomics.dataflow.utils;
 import java.io.IOException;
 import java.security.GeneralSecurityException;
 
-import com.google.cloud.dataflow.sdk.options.DataflowPipelineOptions;
 import com.google.cloud.dataflow.sdk.options.Default;
 import com.google.cloud.dataflow.sdk.options.Description;
+import com.google.cloud.dataflow.sdk.options.GcsOptions;
 import com.google.cloud.genomics.utils.GenomicsFactory;
 import com.google.cloud.genomics.utils.GenomicsFactory.Builder;
 
@@ -28,7 +28,7 @@ import com.google.cloud.genomics.utils.GenomicsFactory.Builder;
  *  Note: All methods defined in this class will be called during command line parsing unless it is
  * annotated with a @JsonIgnore annotation.
  */
-public interface GenomicsOptions extends DataflowPipelineOptions {
+public interface GenomicsOptions extends GcsOptions {
 
   public static class Methods {
 
