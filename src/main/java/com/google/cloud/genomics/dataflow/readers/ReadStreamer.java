@@ -13,6 +13,11 @@
  */
 package com.google.cloud.genomics.dataflow.readers;
 
+import java.io.IOException;
+import java.security.GeneralSecurityException;
+import java.util.Iterator;
+import java.util.List;
+
 import com.google.api.services.genomics.model.ReadGroupSet;
 import com.google.api.services.genomics.model.SearchReadGroupSetsRequest;
 import com.google.cloud.dataflow.sdk.transforms.Aggregator;
@@ -21,10 +26,10 @@ import com.google.cloud.dataflow.sdk.transforms.PTransform;
 import com.google.cloud.dataflow.sdk.transforms.ParDo;
 import com.google.cloud.dataflow.sdk.transforms.Sum;
 import com.google.cloud.dataflow.sdk.values.PCollection;
-import com.google.cloud.genomics.grpc.Channels;
 import com.google.cloud.genomics.utils.Contig;
 import com.google.cloud.genomics.utils.GenomicsFactory;
 import com.google.cloud.genomics.utils.Paginator;
+import com.google.cloud.genomics.utils.grpc.Channels;
 import com.google.common.base.Function;
 import com.google.common.collect.FluentIterable;
 import com.google.common.collect.Lists;
@@ -32,10 +37,6 @@ import com.google.genomics.v1.Read;
 import com.google.genomics.v1.StreamReadsRequest;
 import com.google.genomics.v1.StreamReadsResponse;
 import com.google.genomics.v1.StreamingReadServiceGrpc;
-import java.io.IOException;
-import java.security.GeneralSecurityException;
-import java.util.Iterator;
-import java.util.List;
 
 /**
  * Class with tools for streaming reads using gRPC within dataflow pipelines.
