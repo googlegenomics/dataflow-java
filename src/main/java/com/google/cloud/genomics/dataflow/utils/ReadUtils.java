@@ -79,7 +79,7 @@ public class ReadUtils {
             } else {
               // try to get the ref sequence by fully parsing the MD tag if not already cached
               if (refSeq != null && refSeq.equals(UNINITIALIZED_REFERENCE_SEQUENCE)) {
-                refSeq = com.google.cloud.genomics.grpc.ReadUtils
+                refSeq = com.google.cloud.genomics.utils.grpc.ReadUtils
                     .inferReferenceSequenceByParsingMdFlag(read);
               }
               if (refSeq != null) {
