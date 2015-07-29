@@ -17,6 +17,7 @@
 package com.google.cloud.genomics.dataflow.functions;
 
 import com.google.api.client.util.Lists;
+import com.google.api.client.util.Preconditions;
 import com.google.cloud.dataflow.sdk.transforms.DoFn;
 import com.google.cloud.dataflow.sdk.values.KV;
 import com.google.common.collect.BiMap;
@@ -70,6 +71,16 @@ public class PCoAnalysis extends DoFn<Iterable<KV<KV<String, String>, Long>>,
 
     @Override public String toString() {
       return String.format("%s\t\t%s\t%s", name, graphX, graphY);
+    }
+    
+    public static GraphResult fromString(String tsv) {
+      Preconditions.checkNotNull(tsv);
+      String[] tokens = tsv.split("[\\s\t]+");
+      Preconditions.checkState(3 == tokens.length,
+          "Expected three values in serialized GraphResult but found %d", tokens.length);
+      return new GraphResult(tokens[0],
+          Double.parseDouble(tokens[1]),
+          Double.parseDouble(tokens[2]));
     }
   }
 
