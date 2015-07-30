@@ -82,10 +82,45 @@ public class PCoAnalysis extends DoFn<Iterable<KV<KV<String, String>, Long>>,
           Double.parseDouble(tokens[1]),
           Double.parseDouble(tokens[2]));
     }
+
+    @Override // auto-generated via eclipse
+    public int hashCode() {
+      final int prime = 31;
+      int result = 1;
+      long temp;
+      temp = Double.doubleToLongBits(graphX);
+      result = prime * result + (int) (temp ^ (temp >>> 32));
+      temp = Double.doubleToLongBits(graphY);
+      result = prime * result + (int) (temp ^ (temp >>> 32));
+      result = prime * result + ((name == null) ? 0 : name.hashCode());
+      return result;
+    }
+
+    @Override // auto-generated via eclipse
+    public boolean equals(Object obj) {
+      if (this == obj)
+        return true;
+      if (obj == null)
+        return false;
+      if (getClass() != obj.getClass())
+        return false;
+      GraphResult other = (GraphResult) obj;
+      if (name == null) {
+        if (other.name != null)
+          return false;
+      } else if (!name.equals(other.name))
+        return false;
+      if (Double.doubleToLongBits(graphX) != Double.doubleToLongBits(other.graphX))
+        return false;
+      if (Double.doubleToLongBits(graphY) != Double.doubleToLongBits(other.graphY))
+        return false;
+      return true;
+    }
   }
 
   private static final PCoAnalysis INSTANCE = new PCoAnalysis();
-
+  private BiMap<String, Integer> dataIndicies;
+  
   public static PCoAnalysis of() {
     return INSTANCE;
   }
