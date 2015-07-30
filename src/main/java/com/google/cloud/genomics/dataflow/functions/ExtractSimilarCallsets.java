@@ -19,19 +19,26 @@ import com.google.cloud.dataflow.sdk.transforms.DoFn;
 import com.google.cloud.dataflow.sdk.values.KV;
 import com.google.cloud.genomics.dataflow.utils.CallFilters;
 import com.google.cloud.genomics.dataflow.utils.PairGenerator;
-import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Function;
+import com.google.common.collect.BiMap;
+import com.google.common.collect.FluentIterable;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMultiset;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Multiset;
+import com.google.common.collect.Ordering;
 
 /**
  * Emits a callset pair every time they share a variant.
  */
-public class ExtractSimilarCallsets extends DoFn<Variant, KV<KV<String, String>, Long>> {
+public class ExtractSimilarCallsets extends DoFn<Variant, KV<KV<Integer, Integer>, Long>> {
 
-  private ImmutableMultiset.Builder<KV<String, String>> accumulator;
+  private BiMap<String, Integer> dataIndices;
+  private ImmutableMultiset.Builder<KV<Integer, Integer>> accumulator;
+
+  public ExtractSimilarCallsets(BiMap<String, Integer> dataIndices) {
+    this.dataIndices = dataIndices;
+  }
 
   @Override
   public void startBundle(Context c) {
@@ -40,27 +47,27 @@ public class ExtractSimilarCallsets extends DoFn<Variant, KV<KV<String, String>,
 
   @Override
   public void processElement(ProcessContext context) {
-    for (KV<String, String> pair : PairGenerator.WITH_REPLACEMENT.allPairs(
-        getSamplesWithVariant(context.element()), String.CASE_INSENSITIVE_ORDER)) {
+    FluentIterable<KV<Integer, Integer>> pairs = PairGenerator.WITH_REPLACEMENT.allPairs(
+        getSamplesWithVariant(context.element()), Ordering.natural());
+    for (KV<Integer, Integer> pair : pairs) {
       accumulator.add(pair);
     }
   }
 
   @Override
   public void finishBundle(Context context) {
-    for (Multiset.Entry<KV<String, String>> entry : accumulator.build().entrySet()) {
+    for (Multiset.Entry<KV<Integer, Integer>> entry : accumulator.build().entrySet()) {
       context.output(KV.of(entry.getElement(), Long.valueOf(entry.getCount())));
     }
   }
 
-  @VisibleForTesting
-  static ImmutableList<String> getSamplesWithVariant(Variant variant) {
+  ImmutableList<Integer> getSamplesWithVariant(Variant variant) {
     return ImmutableList.copyOf(Iterables.transform(
-        CallFilters.getSamplesWithVariantOfMinGenotype(variant, 1), new Function<Call, String>() {
+        CallFilters.getSamplesWithVariantOfMinGenotype(variant, 1), new Function<Call, Integer>() {
 
           @Override
-          public String apply(Call call) {
-            return call.getCallSetName();
+          public Integer apply(Call call) {
+            return dataIndices.get(call.getCallSetName());
           }
 
         }));

@@ -23,15 +23,19 @@ import com.google.cloud.dataflow.sdk.transforms.ParDo;
 import com.google.cloud.genomics.dataflow.functions.ExtractSimilarCallsets;
 import com.google.cloud.genomics.dataflow.functions.OutputPCoAFile;
 import com.google.cloud.genomics.dataflow.readers.VariantReader;
+import com.google.cloud.genomics.dataflow.readers.VariantStreamer;
 import com.google.cloud.genomics.dataflow.utils.DataflowWorkarounds;
 import com.google.cloud.genomics.dataflow.utils.GenomicsDatasetOptions;
 import com.google.cloud.genomics.dataflow.utils.GenomicsOptions;
 import com.google.cloud.genomics.utils.Contig.SexChromosomeFilter;
 import com.google.cloud.genomics.utils.GenomicsFactory;
 import com.google.cloud.genomics.utils.Paginator.ShardBoundary;
+import com.google.common.collect.BiMap;
+import com.google.common.collect.HashBiMap;
 
 import java.io.IOException;
 import java.security.GeneralSecurityException;
+import java.util.Collections;
 import java.util.List;
 
 /**
@@ -57,15 +61,21 @@ public class VariantSimilarity {
         GenomicsDatasetOptions.Methods.getVariantRequests(options, auth,
             SexChromosomeFilter.EXCLUDE_XY);
 
+    // Use integer indices instead of string callSetNames to reduce data sizes.
+    List<String> callSetNames = VariantStreamer.getCallSetsNames(options.getDatasetId() , auth);
+    Collections.sort(callSetNames); // Ensure a stable sort order for reproducible results.
+    BiMap<String, Integer> dataIndices = HashBiMap.create();
+    for(String callSetName : callSetNames) {
+      dataIndices.put(callSetName, dataIndices.size());
+    }
+    
     Pipeline p = Pipeline.create(options);
     DataflowWorkarounds.registerGenomicsCoders(p);
     p.begin()
         .apply(Create.of(requests))
-        .apply(
-            ParDo.named("VariantReader").of(
-                new VariantReader(auth, ShardBoundary.STRICT, VARIANT_FIELDS)))
-        .apply(ParDo.named("ExtractSimilarCallsets").of(new ExtractSimilarCallsets()))
-        .apply(new OutputPCoAFile(options.getOutput()));
+        .apply(ParDo.of(new VariantReader(auth, ShardBoundary.STRICT, VARIANT_FIELDS)))
+        .apply(ParDo.of(new ExtractSimilarCallsets(dataIndices)))
+        .apply(new OutputPCoAFile(dataIndices, options.getOutput()));
 
     p.run();
   }
