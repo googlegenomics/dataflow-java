@@ -23,7 +23,7 @@ import java.io.IOException;
 import java.security.GeneralSecurityException;
 import java.util.List;
 
-import org.hamcrest.collection.IsIterableContainingInAnyOrder;
+import org.hamcrest.CoreMatchers;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.BeforeClass;
@@ -54,6 +54,25 @@ import com.google.cloud.genomics.dataflow.functions.PCoAnalysis.GraphResult;
 public class VariantSimilarityITCase {
   
   static final String OUTPUT_SUFFIX = "-00000-of-00001";
+  static final GraphResult[] EXPECTED_RESULT = {
+      new GraphResult("NA12877", 5.18, 0.22),
+      new GraphResult("NA12878", -7.39, -1.7),
+      new GraphResult("NA12879", 5.26, 1.37),
+      new GraphResult("NA12880", -7.41, -2.74),
+      new GraphResult("NA12881", 5.27, -1.06),
+      new GraphResult("NA12882", 5.21, 1.19),
+      new GraphResult("NA12883", -7.57, -3.73),
+      new GraphResult("NA12884", 5.33, 0.95),
+      new GraphResult("NA12885", 5.21, 1.07),
+      new GraphResult("NA12886", 5.28, -0.15),
+      new GraphResult("NA12887", -7.44, 1.69),
+      new GraphResult("NA12888", -7.47, 2.72),
+      new GraphResult("NA12889", -7.34, 1.65),
+      new GraphResult("NA12890", 5.04, -1.61),
+      new GraphResult("NA12891", 5.24, -0.88),
+      new GraphResult("NA12892", -7.64, 2.1),
+      new GraphResult("NA12893", 5.18, -1.18)
+      };
   
   static String outputPrefix;
   static IntegrationTestHelper helper;
@@ -114,27 +133,8 @@ public class VariantSimilarityITCase {
     // Check the pipeline results.
     assertEquals(helper.PLATINUM_GENOMES_NUMBER_OF_SAMPLES, results.size());
     
-    /* TODO place a stable sort on the samples to achieve reproducible results
-    assertThat(results, 
-        IsIterableContainingInAnyOrder.containsInAnyOrder(
-            new GraphResult("NA12887", 7.43, -1.7),
-            new GraphResult("NA12886", -5.29, 0.13),
-            new GraphResult("NA12885", -5.22, -1.08),
-            new GraphResult("NA12878", 7.38, 1.69),
-            new GraphResult("NA12884", -5.34, -0.96),
-            new GraphResult("NA12883", 7.56, 3.72),
-            new GraphResult("NA12881", -5.28, 1.05),
-            new GraphResult("NA12888", 7.46, -2.73),
-            new GraphResult("NA12889", 7.33, -1.66),
-            new GraphResult("NA12891", -5.25, 0.87),
-            new GraphResult("NA12882", -5.22, -1.2),
-            new GraphResult("NA12892", 7.63, -2.11),
-            new GraphResult("NA12890", -5.05, 1.6),
-            new GraphResult("NA12877", -5.19, -0.23),
-            new GraphResult("NA12893", -5.19, 1.17),
-            new GraphResult("NA12880", 7.4, 2.73),
-            new GraphResult("NA12879", -5.27, -1.38)));
-     */
+    assertThat(results,
+        CoreMatchers.allOf(CoreMatchers.hasItems(EXPECTED_RESULT)));
   }
 }
 
