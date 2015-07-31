@@ -13,6 +13,8 @@
  */
 package com.google.cloud.genomics.dataflow.readers;
 
+import com.google.api.services.genomics.model.CallSet;
+import com.google.api.services.genomics.model.SearchCallSetsRequest;
 import com.google.api.services.genomics.model.SearchVariantSetsRequest;
 import com.google.api.services.genomics.model.VariantSet;
 import com.google.cloud.dataflow.sdk.transforms.Aggregator;
@@ -32,6 +34,7 @@ import com.google.genomics.v1.StreamVariantsRequest;
 import com.google.genomics.v1.StreamVariantsResponse;
 import com.google.genomics.v1.StreamingVariantServiceGrpc;
 import com.google.genomics.v1.Variant;
+
 import java.io.IOException;
 import java.security.GeneralSecurityException;
 import java.util.Iterator;
@@ -64,6 +67,25 @@ public class VariantStreamer {
     return output;
   }
 
+  /**
+   * Gets CallSets Names for a given variantSetId using the Genomics API.
+   */
+  public static List<String> getCallSetsNames(String variantSetId, GenomicsFactory.OfflineAuth auth)
+      throws IOException, GeneralSecurityException {
+    List<String> output = Lists.newArrayList();
+    Iterable<CallSet> cs = Paginator.Callsets.create(
+        auth.getGenomics(auth.getDefaultFactory()))
+        .search(new SearchCallSetsRequest().setVariantSetIds(Lists.newArrayList(variantSetId)),
+            "callSets/name,nextPageToken");
+    for (CallSet c : cs) {
+      output.add(c.getName());
+    }
+    if (output.isEmpty()) {
+      throw new IOException("VariantSet " + variantSetId + " does not contain any CallSets");
+    }
+    return output;
+  }
+  
   /**
    * Constructs a StreamVariantsRequest for a variantSetId, assuming that the user wants all
    * to include all references.
