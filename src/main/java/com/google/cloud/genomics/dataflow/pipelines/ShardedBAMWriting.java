@@ -49,16 +49,20 @@ import com.google.cloud.genomics.dataflow.utils.DataflowWorkarounds;
 import com.google.cloud.genomics.dataflow.utils.GCSOptions;
 import com.google.cloud.genomics.dataflow.utils.GenomicsDatasetOptions;
 import com.google.cloud.genomics.dataflow.utils.GenomicsOptions;
+import com.google.cloud.genomics.dataflow.utils.TruncatedOutputStream;
 import com.google.cloud.genomics.utils.Contig;
 import com.google.cloud.genomics.utils.GenomicsFactory;
+import com.google.cloud.genomics.utils.ReadUtils;
 import com.google.common.collect.Lists;
 
+import htsjdk.samtools.BAMBlockWriter;
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SAMRecord;
 import htsjdk.samtools.SAMRecordIterator;
 import htsjdk.samtools.SAMTextHeaderCodec;
 import htsjdk.samtools.SamReader;
 import htsjdk.samtools.ValidationStringency;
+import htsjdk.samtools.util.BlockCompressedStreamConstants;
 import htsjdk.samtools.util.StringLineReader;
 
 import java.io.BufferedWriter;
@@ -168,12 +172,12 @@ public class ShardedBAMWriting {
     final SAMRecordIterator recordIterator = samReader.query(
         firstContig.referenceName, (int)firstContig.start + 1, (int)firstContig.end + 1, false);
    
-    while (recordIterator.hasNext() && result == null) {
+    Contig firstShard = null;
+    while (recordIterator.hasNext()) {
       SAMRecord record = recordIterator.next();
       final int alignmentStart = record.getAlignmentStart();
-      LOG.info("SAM Record starting at " + alignmentStart);
-      if (alignmentStart > firstContig.start && alignmentStart < firstContig.end) {
-        final Contig firstShard = shardFromAlignmentStart(firstContig.referenceName, alignmentStart); 
+      if (firstShard == null && alignmentStart > firstContig.start && alignmentStart < firstContig.end) {
+        firstShard = shardFromAlignmentStart(firstContig.referenceName, alignmentStart); 
         LOG.info("Determined first shard to be " + firstShard);
         result = new HeaderInfo(header, firstShard);
       }
@@ -361,7 +365,6 @@ public class ShardedBAMWriting {
       final Contig shardContig = shard.getKey();
       final Iterable<Read> reads = shard.getValue();
       final boolean isFirstShard = shardContig.equals(headerInfo.firstShard);
-      
       if (isFirstShard) {
         LOG.info("Writing first shard " + shardContig);
       } else {
@@ -369,14 +372,13 @@ public class ShardedBAMWriting {
       }
       
       final String writeResult = writeShard(headerInfo.header, 
-          shardContig, reads, 
-          c.getPipelineOptions().as(ShardedBAMWritingOptions.class), 
+          shardContig, reads, c.getPipelineOptions().as(ShardedBAMWritingOptions.class),
           isFirstShard);
       c.output(writeResult);
       LOG.info("Finished writing " + shardContig);
     }
     
-    String writeShard(@SuppressWarnings("unused") SAMFileHeader header, Contig shardContig, Iterable<Read> reads, 
+    String writeShard(SAMFileHeader header, Contig shardContig, Iterable<Read> reads, 
         ShardedBAMWritingOptions options, boolean isFirstShard) throws IOException {
       final String outputFileName = options.getOutput();
       final String shardName = outputFileName + "-" + shardContig;
@@ -386,17 +388,24 @@ public class ShardedBAMWriting {
               new GcsUtil.GcsUtilFactory().create(options)
                 .create(GcsPath.fromUri(shardName), 
                     "application/octet-stream"));
-      Writer writer = new BufferedWriter(new OutputStreamWriter(outputStream));
-      writer.write("Simulating writing of " + 
-          (isFirstShard ? "first shard " : "") + 
-          shardContig + ": ");
-      int cnt = 0;
-      for (@SuppressWarnings("unused") Read read : reads) {
-        cnt++;
+      int count = 0;
+      // Use a TruncatedOutputStream to avoid writing the empty gzip block that
+      // indicates EOF.
+      final BAMBlockWriter bw = new BAMBlockWriter(new TruncatedOutputStream(
+          outputStream, BlockCompressedStreamConstants.EMPTY_GZIP_BLOCK.length),
+          null /*file*/);
+      bw.setSortOrder(header.getSortOrder(), true /*presorted*/);
+      bw.setHeader(header);
+      if (isFirstShard) {
+        bw.writeHeader(header);
       }
-      writer.write(" wrote " + cnt + " reads\n");
-      writer.close();
-      LOG.info("Wrote " + cnt + " read into " + shardName); 
+      for (Read read : reads) {
+        SAMRecord samRecord = com.google.cloud.genomics.utils.ReadUtils.makeSAMRecord(read, header);
+        bw.addAlignment(samRecord);
+        count++;
+      }
+      bw.close();
+      LOG.info("Wrote " + count + " reads into " + shardName); 
       return shardName;
     }
   }
@@ -420,7 +429,7 @@ public class ShardedBAMWriting {
 
     static String combineShards(ShardedBAMWritingOptions options, String dest,
         Iterable<String> shards) throws IOException {
-      LOG.info("Combinning shards into " + dest);
+      LOG.info("Combining shards into " + dest);
       final Storage.Objects storage = Transport.newStorageClient(
           options
             .as(GCSOptions.class))
@@ -434,6 +443,16 @@ public class ShardedBAMWriting {
       
       ArrayList<String> sortedShardsNames = Lists.newArrayList(shards);
       Collections.sort(sortedShardsNames);
+
+      // Write an EOF block (empty gzip block), and put it at the end.
+      String eofFileName = options.getOutput() + "-EOF";
+      final OutputStream os = Channels.newOutputStream(
+          (new GcsUtil.GcsUtilFactory()).create(options).create(
+              GcsPath.fromUri(eofFileName),
+          "application/octet-stream"));
+      os.write(BlockCompressedStreamConstants.EMPTY_GZIP_BLOCK);
+      os.close();
+      sortedShardsNames.add(eofFileName);
       
       // list of files to concatenate
       ArrayList<SourceObjects> sourceObjects = new ArrayList<SourceObjects>();
