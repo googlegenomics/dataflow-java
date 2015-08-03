@@ -45,7 +45,9 @@ import com.google.cloud.genomics.dataflow.utils.GenomicsDatasetOptions;
 import com.google.cloud.genomics.dataflow.utils.GenomicsOptions;
 import com.google.cloud.genomics.utils.Contig;
 import com.google.cloud.genomics.utils.GenomicsFactory;
+import com.google.cloud.genomics.utils.GenomicsUtils;
 import com.google.cloud.genomics.utils.RetryPolicy;
+import com.google.cloud.genomics.utils.ShardUtils;
 import com.google.common.collect.Lists;
 import com.google.genomics.v1.CigarUnit;
 import com.google.genomics.v1.Read;
@@ -170,7 +172,7 @@ public class CalculateCoverage {
     if (options.getInputDatasetId().isEmpty()) {
       rgsIds = Lists.newArrayList(options.getReadGroupSetIds().split(","));
     } else {
-      rgsIds = ReadStreamer.getReadGroupSetIds(options.getInputDatasetId(), auth);
+      rgsIds = GenomicsUtils.getReadGroupSetIds(options.getInputDatasetId(), auth);
     }
 
     if (rgsIds.size() < options.getNumQuantiles()) {
@@ -490,14 +492,9 @@ public class CalculateCoverage {
 
   private static PCollection<Read> getReadsFromAPI(List<String> rgsIds)
       throws IOException, GeneralSecurityException {
-    List<StreamReadsRequest> requests = Lists.newArrayList();
-    for (String r : rgsIds) {
-      if (options.isAllReferences()) {
-        requests.add(ReadStreamer.getReadRequests(r));
-      } else {
-        requests.addAll(ReadStreamer.getReadRequests(r, options.getReferences()));
-      }
-    }
+    List<StreamReadsRequest> requests = options.isAllReferences() ?
+        ShardUtils.getReadRequests(rgsIds) :
+          ShardUtils.getReadRequests(rgsIds, options.getReferences(), options.getBasesPerShard());
     PCollection<StreamReadsRequest> readRequests = p.begin().apply(Create.of(requests));
     return readRequests.apply(new ReadStreamer.StreamReads());
   }

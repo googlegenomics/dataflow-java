@@ -15,15 +15,16 @@
  */
 package com.google.cloud.genomics.dataflow.readers;
 
+import java.io.IOException;
+import java.util.logging.Logger;
+
 import com.google.api.services.genomics.Genomics;
 import com.google.api.services.genomics.model.SearchVariantsRequest;
 import com.google.api.services.genomics.model.Variant;
+import com.google.cloud.genomics.dataflow.utils.GenomicsDatasetOptions;
 import com.google.cloud.genomics.utils.GenomicsFactory;
 import com.google.cloud.genomics.utils.Paginator;
 import com.google.cloud.genomics.utils.Paginator.ShardBoundary;
-
-import java.io.IOException;
-import java.util.logging.Logger;
 
 public class VariantReader extends GenomicsApiReader<SearchVariantsRequest, Variant> {
   private static final Logger LOG = Logger.getLogger(VariantReader.class.getName());
@@ -54,6 +55,14 @@ public class VariantReader extends GenomicsApiReader<SearchVariantsRequest, Vari
       throws IOException {
     LOG.info("Starting Variants read loop: " + request);
 
+    GenomicsDatasetOptions options = c.getPipelineOptions().as(GenomicsDatasetOptions.class);
+    if (options.getPageSize() > 0) {
+      request.setPageSize(options.getPageSize());
+    }
+    if (options.getMaxCalls() > 0) {
+      request.setMaxCalls(options.getMaxCalls());
+    }
+    
     int numberOfVariants = 0;
     for (Variant variant : Paginator.Variants.create(genomics, shardBoundary).search(request, fields)) {
       c.output(variant);
