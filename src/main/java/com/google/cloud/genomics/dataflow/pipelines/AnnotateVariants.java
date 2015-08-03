@@ -13,6 +13,16 @@
  */
 package com.google.cloud.genomics.dataflow.pipelines;
 
+import htsjdk.samtools.util.IntervalTree;
+import htsjdk.samtools.util.IntervalTree.Node;
+
+import java.io.IOException;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.TimeUnit;
+import java.util.logging.Logger;
+
 import com.google.api.client.util.Strings;
 import com.google.api.services.genomics.Genomics;
 import com.google.api.services.genomics.model.Annotation;
@@ -21,6 +31,7 @@ import com.google.api.services.genomics.model.ListBasesResponse;
 import com.google.api.services.genomics.model.QueryRange;
 import com.google.api.services.genomics.model.RangePosition;
 import com.google.api.services.genomics.model.SearchAnnotationsRequest;
+import com.google.api.services.genomics.model.SearchVariantsRequest;
 import com.google.api.services.genomics.model.Variant;
 import com.google.api.services.genomics.model.VariantAnnotation;
 import com.google.cloud.dataflow.sdk.Pipeline;
@@ -37,11 +48,10 @@ import com.google.cloud.genomics.dataflow.utils.DataflowWorkarounds;
 import com.google.cloud.genomics.dataflow.utils.GenomicsDatasetOptions;
 import com.google.cloud.genomics.dataflow.utils.GenomicsOptions;
 import com.google.cloud.genomics.dataflow.utils.VariantUtils;
-import com.google.cloud.genomics.utils.Contig;
-import com.google.cloud.genomics.utils.Contig.SexChromosomeFilter;
 import com.google.cloud.genomics.utils.GenomicsFactory;
 import com.google.cloud.genomics.utils.Paginator;
 import com.google.cloud.genomics.utils.Paginator.ShardBoundary;
+import com.google.cloud.genomics.utils.ShardUtils;
 import com.google.common.base.Joiner;
 import com.google.common.base.Stopwatch;
 import com.google.common.collect.ArrayListMultimap;
@@ -50,16 +60,6 @@ import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ListMultimap;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Range;
-
-import htsjdk.samtools.util.IntervalTree;
-import htsjdk.samtools.util.IntervalTree.Node;
-
-import java.io.IOException;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
-import java.util.concurrent.TimeUnit;
-import java.util.logging.Logger;
 
 /**
  * Demonstrates a simple variant annotation program which takes
@@ -81,22 +81,20 @@ import java.util.logging.Logger;
  * See http://googlegenomics.readthedocs.org/en/latest/use_cases/annotate_variants/google_genomics_annotation.html
  * for running instructions.
  */
-public final class AnnotateVariants extends DoFn<Contig, KV<String, VariantAnnotation>> {
+public final class AnnotateVariants extends DoFn<SearchVariantsRequest, KV<String, VariantAnnotation>> {
   private static final Logger LOG = Logger.getLogger(AnnotateVariants.class.getName());
   private static final int VARIANTS_PAGE_SIZE = 5000;
   private static final String VARIANT_FIELDS
       = "nextPageToken,variants(id,referenceName,start,end,alternateBases,referenceBases)";
 
   private final GenomicsFactory.OfflineAuth auth;
-  private final String varsetId;
   private final List<String> callSetIds, transcriptSetIds, variantAnnotationSetIds;
   private final Map<Range<Long>, String> refBaseCache;
 
-  public AnnotateVariants(GenomicsFactory.OfflineAuth auth, String varsetId,
+  public AnnotateVariants(GenomicsFactory.OfflineAuth auth,
       List<String> callSetIds, List<String> transcriptSetIds,
       List<String> variantAnnotationSetIds) {
     this.auth = auth;
-    this.varsetId = varsetId;
     this.callSetIds = callSetIds;
     this.transcriptSetIds = transcriptSetIds;
     this.variantAnnotationSetIds = variantAnnotationSetIds;
@@ -105,14 +103,14 @@ public final class AnnotateVariants extends DoFn<Contig, KV<String, VariantAnnot
 
   @Override
   public void processElement(
-      DoFn<Contig, KV<String, VariantAnnotation>>.ProcessContext c) throws Exception {
+      DoFn<SearchVariantsRequest, KV<String, VariantAnnotation>>.ProcessContext c) throws Exception {
     Genomics genomics = auth.getGenomics(auth.getDefaultFactory());
 
-    Contig contig = c.element();
-    LOG.info("processing contig " + contig);
+    SearchVariantsRequest request = c.element();
+    LOG.info("processing contig " + request);
     Iterable<Variant> varIter = FluentIterable
         .from(Paginator.Variants.create(genomics, ShardBoundary.STRICT).search(
-            contig.getVariantsRequest(varsetId)
+            request
               // TODO: Variants-only retrieval is not well support currently. For now
               // we parameterize by CallSet for performance.
               .setCallSetIds(callSetIds)
@@ -124,9 +122,9 @@ public final class AnnotateVariants extends DoFn<Contig, KV<String, VariantAnnot
       return;
     }
 
-    IntervalTree<Annotation> transcripts = retrieveTranscripts(genomics, contig);
+    IntervalTree<Annotation> transcripts = retrieveTranscripts(genomics, request);
     ListMultimap<Range<Long>, Annotation> variantAnnotations =
-        retrieveVariantAnnotations(genomics, contig);
+        retrieveVariantAnnotations(genomics, request);
 
     Stopwatch stopwatch = Stopwatch.createStarted();
     int varCount = 0;
@@ -174,7 +172,7 @@ public final class AnnotateVariants extends DoFn<Contig, KV<String, VariantAnnot
   }
 
   private ListMultimap<Range<Long>, Annotation> retrieveVariantAnnotations(
-      Genomics genomics, Contig contig) {
+      Genomics genomics, SearchVariantsRequest request) {
     Stopwatch stopwatch = Stopwatch.createStarted();
     ListMultimap<Range<Long>, Annotation> annotationMap = ArrayListMultimap.create();
     Iterable<Annotation> annotationIter =
@@ -182,9 +180,9 @@ public final class AnnotateVariants extends DoFn<Contig, KV<String, VariantAnnot
             new SearchAnnotationsRequest()
               .setAnnotationSetIds(variantAnnotationSetIds)
               .setRange(new QueryRange()
-                .setReferenceName(canonicalizeRefName(contig.referenceName))
-                .setStart(contig.start)
-                .setEnd(contig.end)));
+                .setReferenceName(canonicalizeRefName(request.getReferenceName()))
+                .setStart(request.getStart())
+                .setEnd(request.getEnd())));
     for (Annotation annotation : annotationIter) {
       RangePosition pos = annotation.getPosition();
       long start = 0;
@@ -198,7 +196,7 @@ public final class AnnotateVariants extends DoFn<Contig, KV<String, VariantAnnot
     return annotationMap;
   }
 
-  private IntervalTree<Annotation> retrieveTranscripts(Genomics genomics, Contig contig) {
+  private IntervalTree<Annotation> retrieveTranscripts(Genomics genomics, SearchVariantsRequest request) {
     Stopwatch stopwatch = Stopwatch.createStarted();
     IntervalTree<Annotation> transcripts = new IntervalTree<>();
     Iterable<Annotation> transcriptIter =
@@ -206,9 +204,9 @@ public final class AnnotateVariants extends DoFn<Contig, KV<String, VariantAnnot
             new SearchAnnotationsRequest()
               .setAnnotationSetIds(transcriptSetIds)
               .setRange(new QueryRange()
-                .setReferenceName(canonicalizeRefName(contig.referenceName))
-                .setStart(contig.start)
-                .setEnd(contig.end)));
+                .setReferenceName(canonicalizeRefName(request.getReferenceName()))
+                .setStart(request.getStart())
+                .setEnd(request.getEnd())));
     for (Annotation annotation : transcriptIter) {
       RangePosition pos = annotation.getPosition();
       transcripts.put(pos.getStart().intValue(), pos.getEnd().intValue(), annotation);
@@ -273,17 +271,16 @@ public final class AnnotateVariants extends DoFn<Contig, KV<String, VariantAnnot
         validateAnnotationSetsFlag(genomics, opts.getVariantAnnotationSetIds(), "VARIANT");
     validateRefsetForAnnotationSets(genomics, transcriptSetIds);
 
-    Iterable<Contig> contigs = opts.isAllReferences()
-        ? Contig.getContigsInVariantSet(
-            genomics, opts.getDatasetId(), SexChromosomeFilter.INCLUDE_XY)
-        : Contig.parseContigsFromCommandLine(opts.getReferences());
+    List<SearchVariantsRequest> requests = opts.isAllReferences() ?
+        ShardUtils.getPaginatedVariantRequests(opts.getDatasetId(), ShardUtils.SexChromosomeFilter.EXCLUDE_XY,
+            opts.getBasesPerShard(), auth) :
+              ShardUtils.getPaginatedVariantRequests(opts.getDatasetId(), opts.getReferences(), opts.getBasesPerShard());
 
     Pipeline p = Pipeline.create(opts);
     DataflowWorkarounds.registerGenomicsCoders(p);
     p.begin()
-      .apply(Create.of(contigs))
-      .apply(ParDo.of(new AnnotateVariants(auth,
-          opts.getDatasetId(), callSetIds, transcriptSetIds, variantAnnotationSetIds)))
+      .apply(Create.of(requests))
+      .apply(ParDo.of(new AnnotateVariants(auth, callSetIds, transcriptSetIds, variantAnnotationSetIds)))
       .apply(GroupByKey.<String, VariantAnnotation>create())
       .apply(ParDo.of(new DoFn<KV<String, Iterable<VariantAnnotation>>, String>() {
         @Override
