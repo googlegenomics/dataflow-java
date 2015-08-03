@@ -48,6 +48,7 @@ import com.google.cloud.genomics.dataflow.utils.GenomicsOptions;
 import com.google.cloud.genomics.utils.Contig;
 import com.google.cloud.genomics.utils.GenomicsFactory;
 import com.google.cloud.genomics.utils.Paginator;
+import com.google.cloud.genomics.utils.ShardUtils;
 import com.google.common.base.Function;
 import com.google.common.base.Strings;
 import com.google.common.collect.FluentIterable;
@@ -165,7 +166,9 @@ public class CountReads {
   }
 
   private static PCollection<Read> getReadsFromAPI() {
-    List<SearchReadsRequest> requests = getReadRequests(options);
+    List<SearchReadsRequest> requests =
+        ShardUtils.getPaginatedReadRequests(Collections.singletonList(options.getReadGroupSetId()),
+        options.getReferences(), options.getBasesPerShard());
     PCollection<SearchReadsRequest> readRequests = p.begin()
         .apply(Create.of(requests));
     PCollection<Read> reads =
@@ -175,19 +178,6 @@ public class CountReads {
                 .named(ReadReader.class.getSimpleName()));
     return reads;
   }
-
-  private static List<SearchReadsRequest> getReadRequests(CountReadsOptions options) {
-
-    final String readGroupSetId = options.getReadGroupSetId();
-    final Iterable<Contig> shards = Contig.getSpecifiedShards(options.getReferences());
-    return FluentIterable.from(shards).transform(
-        new Function<Contig, SearchReadsRequest>() {
-          @Override
-          public SearchReadsRequest apply(Contig shard) {
-            return shard.getReadsRequest(readGroupSetId);
-          }
-        }).toList();
-   }
 
   private static PCollection<Read> getReadsFromBAMFile() throws IOException {
     LOG.info("getReadsFromBAMFile");

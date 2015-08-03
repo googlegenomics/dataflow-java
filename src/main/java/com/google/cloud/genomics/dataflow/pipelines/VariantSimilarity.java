@@ -15,6 +15,11 @@
  */
 package com.google.cloud.genomics.dataflow.pipelines;
 
+import java.io.IOException;
+import java.security.GeneralSecurityException;
+import java.util.Collections;
+import java.util.List;
+
 import com.google.api.services.genomics.model.SearchVariantsRequest;
 import com.google.cloud.dataflow.sdk.Pipeline;
 import com.google.cloud.dataflow.sdk.options.PipelineOptionsFactory;
@@ -23,20 +28,15 @@ import com.google.cloud.dataflow.sdk.transforms.ParDo;
 import com.google.cloud.genomics.dataflow.functions.ExtractSimilarCallsets;
 import com.google.cloud.genomics.dataflow.functions.OutputPCoAFile;
 import com.google.cloud.genomics.dataflow.readers.VariantReader;
-import com.google.cloud.genomics.dataflow.readers.VariantStreamer;
 import com.google.cloud.genomics.dataflow.utils.DataflowWorkarounds;
 import com.google.cloud.genomics.dataflow.utils.GenomicsDatasetOptions;
 import com.google.cloud.genomics.dataflow.utils.GenomicsOptions;
-import com.google.cloud.genomics.utils.Contig.SexChromosomeFilter;
 import com.google.cloud.genomics.utils.GenomicsFactory;
+import com.google.cloud.genomics.utils.GenomicsUtils;
 import com.google.cloud.genomics.utils.Paginator.ShardBoundary;
+import com.google.cloud.genomics.utils.ShardUtils;
 import com.google.common.collect.BiMap;
 import com.google.common.collect.HashBiMap;
-
-import java.io.IOException;
-import java.security.GeneralSecurityException;
-import java.util.Collections;
-import java.util.List;
 
 /**
  * A pipeline that generates similarity data for variants in a dataset.
@@ -57,12 +57,13 @@ public class VariantSimilarity {
     GenomicsDatasetOptions.Methods.validateOptions(options);
 
     GenomicsFactory.OfflineAuth auth = GenomicsOptions.Methods.getGenomicsAuth(options);
-    List<SearchVariantsRequest> requests =
-        GenomicsDatasetOptions.Methods.getVariantRequests(options, auth,
-            SexChromosomeFilter.EXCLUDE_XY);
+    List<SearchVariantsRequest> requests = options.isAllReferences() ?
+        ShardUtils.getPaginatedVariantRequests(options.getDatasetId(), ShardUtils.SexChromosomeFilter.EXCLUDE_XY,
+            options.getBasesPerShard(), auth) :
+              ShardUtils.getPaginatedVariantRequests(options.getDatasetId(), options.getReferences(), options.getBasesPerShard());
 
     // Use integer indices instead of string callSetNames to reduce data sizes.
-    List<String> callSetNames = VariantStreamer.getCallSetsNames(options.getDatasetId() , auth);
+    List<String> callSetNames = GenomicsUtils.getCallSetsNames(options.getDatasetId() , auth);
     Collections.sort(callSetNames); // Ensure a stable sort order for reproducible results.
     BiMap<String, Integer> dataIndices = HashBiMap.create();
     for(String callSetName : callSetNames) {

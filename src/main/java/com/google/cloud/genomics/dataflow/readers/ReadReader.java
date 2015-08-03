@@ -16,15 +16,16 @@
 
 package com.google.cloud.genomics.dataflow.readers;
 
+import java.io.IOException;
+import java.util.logging.Logger;
+
 import com.google.api.services.genomics.Genomics;
 import com.google.api.services.genomics.model.Read;
 import com.google.api.services.genomics.model.SearchReadsRequest;
+import com.google.cloud.genomics.dataflow.utils.GenomicsOptions;
 import com.google.cloud.genomics.utils.GenomicsFactory;
 import com.google.cloud.genomics.utils.Paginator;
 import com.google.cloud.genomics.utils.Paginator.ShardBoundary;
-
-import java.io.IOException;
-import java.util.logging.Logger;
 
 /**
  * ReadReader is a DoFn that takes SearchReadsRequests, submits them
@@ -60,6 +61,11 @@ public class ReadReader extends GenomicsApiReader<SearchReadsRequest, Read> {
   protected void processApiCall(Genomics genomics, ProcessContext c, SearchReadsRequest request)
       throws IOException {
     LOG.info("Starting Reads read loop");
+    
+    GenomicsOptions options = c.getPipelineOptions().as(GenomicsOptions.class);
+    if (options.getPageSize() > 0) {
+      request.setPageSize(options.getPageSize());
+    }
 
     for (Read read : Paginator.Reads.create(genomics, shardBoundary).search(request, fields)) {
       c.output(read);
