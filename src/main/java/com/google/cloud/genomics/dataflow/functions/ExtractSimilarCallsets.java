@@ -14,7 +14,6 @@
 package com.google.cloud.genomics.dataflow.functions;
 
 import com.google.api.services.genomics.model.Call;
-import com.google.api.services.genomics.model.Variant;
 import com.google.cloud.dataflow.sdk.transforms.DoFn;
 import com.google.cloud.dataflow.sdk.values.KV;
 import com.google.cloud.genomics.dataflow.utils.CallFilters;
@@ -27,49 +26,85 @@ import com.google.common.collect.ImmutableMultiset;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Multiset;
 import com.google.common.collect.Ordering;
+import com.google.genomics.v1.Variant;
+import com.google.genomics.v1.VariantCall;
 
 /**
  * Emits a callset pair every time they share a variant.
  */
-public class ExtractSimilarCallsets extends DoFn<Variant, KV<KV<Integer, Integer>, Long>> {
+public class ExtractSimilarCallsets {
 
-  private BiMap<String, Integer> dataIndices;
-  private ImmutableMultiset.Builder<KV<Integer, Integer>> accumulator;
+  abstract static class ExtractSimilarCallsetsBase<V, C> extends DoFn<V, KV<KV<Integer, Integer>, Long>> {
 
-  public ExtractSimilarCallsets(BiMap<String, Integer> dataIndices) {
-    this.dataIndices = dataIndices;
+    protected BiMap<String, Integer> dataIndices;
+    private ImmutableMultiset.Builder<KV<Integer, Integer>> accumulator;
+
+    public ExtractSimilarCallsetsBase(BiMap<String, Integer> dataIndices) {
+      this.dataIndices = dataIndices;
+    }
+
+    @Override
+    public void startBundle(Context c) {
+      accumulator = ImmutableMultiset.builder();
+    }
+
+    @Override
+    public void processElement(ProcessContext context) {
+      FluentIterable<KV<Integer, Integer>> pairs = PairGenerator.WITH_REPLACEMENT.allPairs(
+          getSamplesWithVariant(context.element()), Ordering.natural());
+      for (KV<Integer, Integer> pair : pairs) {
+        accumulator.add(pair);
+      }
+    }
+
+    @Override
+    public void finishBundle(Context context) {
+      for (Multiset.Entry<KV<Integer, Integer>> entry : accumulator.build().entrySet()) {
+        context.output(KV.of(entry.getElement(), Long.valueOf(entry.getCount())));
+      }
+    }
+
+    protected abstract ImmutableList<Integer> getSamplesWithVariant(V variant);
   }
 
-  @Override
-  public void startBundle(Context c) {
-    accumulator = ImmutableMultiset.builder();
-  }
+  public static class v1 extends ExtractSimilarCallsetsBase<Variant, VariantCall> {
 
-  @Override
-  public void processElement(ProcessContext context) {
-    FluentIterable<KV<Integer, Integer>> pairs = PairGenerator.WITH_REPLACEMENT.allPairs(
-        getSamplesWithVariant(context.element()), Ordering.natural());
-    for (KV<Integer, Integer> pair : pairs) {
-      accumulator.add(pair);
+    public v1(BiMap<String, Integer> dataIndices) {
+      super(dataIndices);
+    }
+
+    @Override
+    protected ImmutableList<Integer> getSamplesWithVariant(Variant variant) {
+      return ImmutableList.copyOf(Iterables.transform(
+          CallFilters.getSamplesWithVariantOfMinGenotype(variant, 1), new Function<VariantCall, Integer>() {
+
+            @Override
+            public Integer apply(VariantCall call) {
+              return dataIndices.get(call.getCallSetName());
+            }
+
+          }));
     }
   }
+  
+  @Deprecated  // Remove this when fully migrated to gRPC.
+  public static class v1beta2 extends ExtractSimilarCallsetsBase<com.google.api.services.genomics.model.Variant, Call> {
 
-  @Override
-  public void finishBundle(Context context) {
-    for (Multiset.Entry<KV<Integer, Integer>> entry : accumulator.build().entrySet()) {
-      context.output(KV.of(entry.getElement(), Long.valueOf(entry.getCount())));
+    public v1beta2(BiMap<String, Integer> dataIndices) {
+      super(dataIndices);
     }
-  }
 
-  ImmutableList<Integer> getSamplesWithVariant(Variant variant) {
-    return ImmutableList.copyOf(Iterables.transform(
-        CallFilters.getSamplesWithVariantOfMinGenotype(variant, 1), new Function<Call, Integer>() {
+    @Override
+    protected ImmutableList<Integer> getSamplesWithVariant(com.google.api.services.genomics.model.Variant variant) {
+      return ImmutableList.copyOf(Iterables.transform(
+          CallFilters.getSamplesWithVariantOfMinGenotype(variant, 1), new Function<Call, Integer>() {
 
-          @Override
-          public Integer apply(Call call) {
-            return dataIndices.get(call.getCallSetName());
-          }
+            @Override
+            public Integer apply(Call call) {
+              return dataIndices.get(call.getCallSetName());
+            }
 
-        }));
+          }));
+    }
   }
 }
