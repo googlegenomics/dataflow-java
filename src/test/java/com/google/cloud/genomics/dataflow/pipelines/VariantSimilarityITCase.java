@@ -27,6 +27,7 @@ import org.hamcrest.CoreMatchers;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.BeforeClass;
+import org.junit.Ignore;
 import org.junit.Test;
 
 import com.google.api.client.util.Lists;
@@ -94,18 +95,19 @@ public class VariantSimilarityITCase {
   }
 
   @Test
-  public void testLocal() throws IOException, GeneralSecurityException {
+  public void testPaginatedLocal() throws IOException, GeneralSecurityException {
     String[] ARGS = {
         "--apiKey=" + helper.API_KEY,
         "--references=" + helper.PLATINUM_GENOMES_BRCA1_REFERENCES,
         "--datasetId=" + helper.PLATINUM_GENOMES_DATASET,
         "--output=" + outputPrefix,
+        "--useStreaming=false"
         };
     testBase(ARGS);
   }
 
   @Test
-  public void testCloud() throws IOException, GeneralSecurityException {
+  public void testPaginatedCloud() throws IOException, GeneralSecurityException {
     String[] ARGS = {
         "--apiKey=" + helper.API_KEY,
         "--references=" + helper.PLATINUM_GENOMES_BRCA1_REFERENCES,
@@ -115,6 +117,38 @@ public class VariantSimilarityITCase {
         "--numWorkers=1",  // Use only a single worker to ensure a single output file.
         "--runner=BlockingDataflowPipelineRunner",
         "--stagingLocation=" + helper.TEST_STAGING_GCS_FOLDER,
+        "--useStreaming=false"
+        };
+    testBase(ARGS);
+  }
+
+  @Ignore
+  // TODO enable this test.  For it to work, we'll need to add alpn to the classpath
+  // and figure out https://github.com/googlegenomics/dataflow-java/issues/119
+  @Test
+  public void testStreamingLocal() throws IOException, GeneralSecurityException {
+    String[] ARGS = {
+        "--apiKey=" + helper.API_KEY,
+        "--references=" + helper.PLATINUM_GENOMES_BRCA1_REFERENCES,
+        "--datasetId=" + helper.PLATINUM_GENOMES_DATASET,
+        "--output=" + outputPrefix,
+        "--useStreaming=true"
+        };
+    testBase(ARGS);
+  }
+
+  @Test
+  public void testStreamingCloud() throws IOException, GeneralSecurityException {
+    String[] ARGS = {
+        "--apiKey=" + helper.API_KEY,
+        "--references=" + helper.PLATINUM_GENOMES_BRCA1_REFERENCES,
+        "--datasetId=" + helper.PLATINUM_GENOMES_DATASET,
+        "--output=" + outputPrefix,
+        "--project=" + helper.TEST_PROJECT,
+        "--numWorkers=1",  // Use only a single worker to ensure a single output file.
+        "--runner=BlockingDataflowPipelineRunner",
+        "--stagingLocation=" + helper.TEST_STAGING_GCS_FOLDER,
+        "--useStreaming=true"
         };
     testBase(ARGS);
   }
