@@ -58,11 +58,6 @@ public class VariantSimilarity {
     = "nextPageToken,variants(start,calls(genotype,callSetName))";
 
   public static interface VariantSimilarityOptions extends GenomicsDatasetOptions, GCSOptions {
-    @Default.Boolean(true)
-    Boolean getUseAlpn();
-
-    void setUseAlpn(Boolean value);
-
     @Default.Boolean(false)
     Boolean getUseStreaming();
 
