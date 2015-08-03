@@ -13,115 +13,27 @@
  */
 package com.google.cloud.genomics.dataflow.readers;
 
-import com.google.api.services.genomics.model.CallSet;
-import com.google.api.services.genomics.model.SearchCallSetsRequest;
-import com.google.api.services.genomics.model.SearchVariantSetsRequest;
-import com.google.api.services.genomics.model.VariantSet;
+import java.io.IOException;
+import java.util.Iterator;
+import java.util.List;
+
 import com.google.cloud.dataflow.sdk.transforms.Aggregator;
 import com.google.cloud.dataflow.sdk.transforms.DoFn;
 import com.google.cloud.dataflow.sdk.transforms.PTransform;
 import com.google.cloud.dataflow.sdk.transforms.ParDo;
 import com.google.cloud.dataflow.sdk.transforms.Sum;
 import com.google.cloud.dataflow.sdk.values.PCollection;
-import com.google.cloud.genomics.grpc.Channels;
-import com.google.cloud.genomics.utils.Contig;
-import com.google.cloud.genomics.utils.GenomicsFactory;
-import com.google.cloud.genomics.utils.Paginator;
-import com.google.common.base.Function;
-import com.google.common.collect.FluentIterable;
-import com.google.common.collect.Lists;
+import com.google.cloud.genomics.utils.grpc.Channels;
 import com.google.genomics.v1.StreamVariantsRequest;
 import com.google.genomics.v1.StreamVariantsResponse;
 import com.google.genomics.v1.StreamingVariantServiceGrpc;
 import com.google.genomics.v1.Variant;
 
-import java.io.IOException;
-import java.security.GeneralSecurityException;
-import java.util.Iterator;
-import java.util.List;
-
 /**
  * Class with tools for streaming variants using gRPC within dataflow pipelines.
  */
 public class VariantStreamer {
-
-  // TODO should be replaced with a better heuristic
-  private static final long SHARD_SIZE = 5000000L; 
   
-  /**
-   * Gets VariantSetIds from a given datasetId using the Genomics API.
-   */
-  public static List<String> getVariantSetIds(String datasetId, GenomicsFactory.OfflineAuth auth)
-      throws IOException, GeneralSecurityException {
-    List<String> output = Lists.newArrayList();
-    Iterable<VariantSet> vs = Paginator.Variantsets.create(
-        auth.getGenomics(auth.getDefaultFactory()))
-        .search(new SearchVariantSetsRequest().setDatasetIds(Lists.newArrayList(datasetId)),
-            "variantSets/id,nextPageToken");
-    for (VariantSet v : vs) {
-      output.add(v.getId());
-    }
-    if (output.isEmpty()) {
-      throw new IOException("Dataset " + datasetId + " does not contain any VariantSets");
-    }
-    return output;
-  }
-
-  /**
-   * Gets CallSets Names for a given variantSetId using the Genomics API.
-   */
-  public static List<String> getCallSetsNames(String variantSetId, GenomicsFactory.OfflineAuth auth)
-      throws IOException, GeneralSecurityException {
-    List<String> output = Lists.newArrayList();
-    Iterable<CallSet> cs = Paginator.Callsets.create(
-        auth.getGenomics(auth.getDefaultFactory()))
-        .search(new SearchCallSetsRequest().setVariantSetIds(Lists.newArrayList(variantSetId)),
-            "callSets/name,nextPageToken");
-    for (CallSet c : cs) {
-      output.add(c.getName());
-    }
-    if (output.isEmpty()) {
-      throw new IOException("VariantSet " + variantSetId + " does not contain any CallSets");
-    }
-    return output;
-  }
-  
-  /**
-   * Constructs a StreamVariantsRequest for a variantSetId, assuming that the user wants all
-   * to include all references.
-   */
-  public static StreamVariantsRequest getVariantRequests(String variantSetId) {
-    return StreamVariantsRequest.newBuilder()
-        .setVariantSetId(variantSetId)
-        .build();
-  }
-
-  /**
-   * Constructs a StreamVariantsRequest for a variantSetId and a set of user provided references.
-   */
-  public static List<StreamVariantsRequest> getVariantRequests(final String variantSetId,
-      String references) {
-    final Iterable<Contig> contigs = Contig.parseContigsFromCommandLine(references);
-    return FluentIterable.from(contigs)
-        .transformAndConcat(new Function<Contig, Iterable<Contig>>() {
-            @Override
-            public Iterable<Contig> apply(Contig contig) {
-              return contig.getShards(SHARD_SIZE);
-            }
-          })
-        .transform(new Function<Contig, StreamVariantsRequest>() {
-          @Override
-          public StreamVariantsRequest apply(Contig shard) {
-            return StreamVariantsRequest.newBuilder()
-                .setVariantSetId(variantSetId)
-                .setStart(shard.start)
-                .setEnd(shard.end)
-                .setReferenceName(shard.referenceName)
-                .build();
-          }
-        }).toList();
-  }
-
   /**
    * PTransform for streaming variants via gRPC.
    */

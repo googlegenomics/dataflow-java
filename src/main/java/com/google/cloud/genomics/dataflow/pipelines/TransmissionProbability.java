@@ -31,9 +31,10 @@ import com.google.cloud.genomics.dataflow.readers.VariantReader;
 import com.google.cloud.genomics.dataflow.utils.DataflowWorkarounds;
 import com.google.cloud.genomics.dataflow.utils.GenomicsDatasetOptions;
 import com.google.cloud.genomics.dataflow.utils.GenomicsOptions;
-import com.google.cloud.genomics.utils.Contig.SexChromosomeFilter;
 import com.google.cloud.genomics.utils.GenomicsFactory;
 import com.google.cloud.genomics.utils.Paginator.ShardBoundary;
+import com.google.cloud.genomics.utils.ShardUtils;
+import com.google.cloud.genomics.utils.ShardUtils.SexChromosomeFilter;
 
 import java.io.IOException;
 import java.security.GeneralSecurityException;
@@ -56,8 +57,10 @@ public class TransmissionProbability {
     GenomicsDatasetOptions.Methods.validateOptions(options);
 
     GenomicsFactory.OfflineAuth auth = GenomicsOptions.Methods.getGenomicsAuth(options);
-    List<SearchVariantsRequest> requests = GenomicsDatasetOptions.Methods.getVariantRequests(
-        options, auth, SexChromosomeFilter.EXCLUDE_XY);
+    List<SearchVariantsRequest> requests = options.isAllReferences() ?
+        ShardUtils.getPaginatedVariantRequests(options.getDatasetId(), ShardUtils.SexChromosomeFilter.EXCLUDE_XY,
+            options.getBasesPerShard(), auth) :
+              ShardUtils.getPaginatedVariantRequests(options.getDatasetId(), options.getReferences(), options.getBasesPerShard());
 
     Pipeline p = Pipeline.create(options);
     DataflowWorkarounds.registerGenomicsCoders(p);
