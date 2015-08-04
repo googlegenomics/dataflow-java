@@ -188,8 +188,8 @@ public class VerifyBamId {
       rgsIds = Lists.newArrayList(options.getReadGroupSetIds().split(","));
       vsIds = Lists.newArrayList(options.getVariantSetIds().split(","));
     } else {
-      rgsIds = ReadUtils.getReadGroupSetIds(options.getInputDatasetId(), auth);
-      vsIds = VariantUtils.getVariantSetIds(options.getInputDatasetId(), auth);
+      rgsIds = ReadStreamer.getReadGroupSetIds(options.getInputDatasetId(), auth);
+      vsIds = VariantStreamer.getVariantSetIds(options.getInputDatasetId(), auth);
     }
     
     List<Contig> contigs;
