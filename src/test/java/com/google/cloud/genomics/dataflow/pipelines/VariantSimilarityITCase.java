@@ -81,7 +81,7 @@ public class VariantSimilarityITCase {
   @BeforeClass
   public static void setUpBeforeClass() throws Exception {
     helper = new IntegrationTestHelper();
-    outputPrefix = helper.TEST_OUTPUT_GCS_FOLDER + "variantSimilarity";
+    outputPrefix = helper.getTestOutputGcsFolder() + "variantSimilarity";
   }
 
   @Before
@@ -97,7 +97,7 @@ public class VariantSimilarityITCase {
   @Test
   public void testPaginatedLocal() throws IOException, GeneralSecurityException {
     String[] ARGS = {
-        "--apiKey=" + helper.API_KEY,
+        "--apiKey=" + helper.getApiKey(),
         "--references=" + helper.PLATINUM_GENOMES_BRCA1_REFERENCES,
         "--datasetId=" + helper.PLATINUM_GENOMES_DATASET,
         "--output=" + outputPrefix,
@@ -109,14 +109,13 @@ public class VariantSimilarityITCase {
   @Test
   public void testPaginatedCloud() throws IOException, GeneralSecurityException {
     String[] ARGS = {
-        "--apiKey=" + helper.API_KEY,
+        "--apiKey=" + helper.getApiKey(),
         "--references=" + helper.PLATINUM_GENOMES_BRCA1_REFERENCES,
         "--datasetId=" + helper.PLATINUM_GENOMES_DATASET,
         "--output=" + outputPrefix,
-        "--project=" + helper.TEST_PROJECT,
-        "--numWorkers=1",  // Use only a single worker to ensure a single output file.
+        "--project=" + helper.getTestProject(),
         "--runner=BlockingDataflowPipelineRunner",
-        "--stagingLocation=" + helper.TEST_STAGING_GCS_FOLDER,
+        "--stagingLocation=" + helper.getTestStagingGcsFolder(),
         "--useStreaming=false"
         };
     testBase(ARGS);
@@ -128,7 +127,7 @@ public class VariantSimilarityITCase {
   @Test
   public void testStreamingLocal() throws IOException, GeneralSecurityException {
     String[] ARGS = {
-        "--apiKey=" + helper.API_KEY,
+        "--apiKey=" + helper.getApiKey(),
         "--references=" + helper.PLATINUM_GENOMES_BRCA1_REFERENCES,
         "--datasetId=" + helper.PLATINUM_GENOMES_DATASET,
         "--output=" + outputPrefix,
@@ -140,14 +139,13 @@ public class VariantSimilarityITCase {
   @Test
   public void testStreamingCloud() throws IOException, GeneralSecurityException {
     String[] ARGS = {
-        "--apiKey=" + helper.API_KEY,
+        "--apiKey=" + helper.getApiKey(),
         "--references=" + helper.PLATINUM_GENOMES_BRCA1_REFERENCES,
         "--datasetId=" + helper.PLATINUM_GENOMES_DATASET,
         "--output=" + outputPrefix,
-        "--project=" + helper.TEST_PROJECT,
-        "--numWorkers=1",  // Use only a single worker to ensure a single output file.
+        "--project=" + helper.getTestProject(),
         "--runner=BlockingDataflowPipelineRunner",
-        "--stagingLocation=" + helper.TEST_STAGING_GCS_FOLDER,
+        "--stagingLocation=" + helper.getTestStagingGcsFolder(),
         "--useStreaming=true"
         };
     testBase(ARGS);
