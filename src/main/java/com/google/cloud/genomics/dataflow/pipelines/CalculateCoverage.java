@@ -496,6 +496,6 @@ public class CalculateCoverage {
         ShardUtils.getReadRequests(rgsIds) :
           ShardUtils.getReadRequests(rgsIds, options.getReferences(), options.getBasesPerShard());
     PCollection<StreamReadsRequest> readRequests = p.begin().apply(Create.of(requests));
-    return readRequests.apply(new ReadStreamer.StreamReads());
+    return readRequests.apply(new ReadStreamer(auth));
   }
 }
