@@ -98,8 +98,8 @@ public class VariantSimilarity {
               options.getBasesPerShard(), auth) :
             ShardUtils.getVariantRequests(options.getDatasetId(), options.getReferences(), options.getBasesPerShard());
       
-      similarCallsets = p.apply(Create.of(requests))
-      .apply(new VariantStreamer.StreamVariants())
+      similarCallsets = p.apply(Create.of(requests))     
+      .apply(new VariantStreamer(auth))
       .apply(ParDo.of(new ExtractSimilarCallsets.v1(dataIndices)));
     } else {
       List<SearchVariantsRequest> requests = options.isAllReferences() ?
