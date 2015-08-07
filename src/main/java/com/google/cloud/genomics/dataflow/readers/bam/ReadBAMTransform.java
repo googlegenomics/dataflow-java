@@ -44,37 +44,9 @@ import java.util.List;
  * Takes a tuple of 2 collections: Contigs and BAM files and transforms them into
  * a collection of reads by reading BAM files in a sharded manner.
  */
-public class ReadBAMTransform extends PTransform<PCollectionTuple, PCollection<Read>> {
+public class ReadBAMTransform extends PTransform<PCollection<BAMShard>, PCollection<Read>> {
   GenomicsFactory.OfflineAuth auth;
   ReaderOptions options;
-
-  public static TupleTag<Contig> CONTIGS_TAG = new TupleTag<>();
-  public static TupleTag<String> BAMS_TAG = new TupleTag<>();
-
-  // ----------------------------------------------------------------
-  // helper classes
-
-  public static class ShardFn extends DoFn<String, BAMShard> {
-    GenomicsFactory.OfflineAuth auth;
-    PCollectionView<Iterable<Contig>> contigsView;
-    Storage.Objects storage;
-
-    public ShardFn(GenomicsFactory.OfflineAuth auth, PCollectionView<Iterable<Contig>> contigsView) {
-      this.auth = auth;
-      this.contigsView = contigsView;
-    }
-
-    @Override
-    public void startBundle(DoFn<String, BAMShard>.Context c) throws IOException {
-      storage = Transport.newStorageClient(c.getPipelineOptions().as(GCSOptions.class)).build().objects();
-    }
-
-    @Override
-    public void processElement(ProcessContext c) throws java.lang.Exception {
-      (new Sharder(storage, c.element(), c.sideInput(contigsView), c))
-          .process();
-    }
-  }
 
   public static class ReadFn extends DoFn<BAMShard, Read> {
     GenomicsFactory.OfflineAuth auth;
@@ -106,38 +78,27 @@ public class ReadBAMTransform extends PTransform<PCollectionTuple, PCollection<R
       GenomicsFactory.OfflineAuth auth,
       Iterable<Contig> contigs,
       ReaderOptions options,
-      List<String> BAMFiles) {
+      String BAMFile,
+      ShardingPolicy shardingPolicy) throws IOException {
       ReadBAMTransform readBAMSTransform = new ReadBAMTransform(options);
       readBAMSTransform.setAuth(auth);
-      PCollectionTuple tuple = PCollectionTuple
-          .of(
-              ReadBAMTransform.BAMS_TAG, 
-                p.apply(
-                    Create.of(BAMFiles))
-                .setCoder(StringUtf8Coder.of()))
-         .and(ReadBAMTransform.CONTIGS_TAG, 
-             p.apply(
-                 Create.of(
-                     contigs))
-             .setCoder(SerializableCoder.of(Contig.class)));
-      return readBAMSTransform.apply(tuple);
+      
+      final Storage.Objects storage = Transport
+          .newStorageClient(p.getOptions().as(GCSOptions.class)).build().objects();
+      
+  
+      final List<BAMShard> shardsList = Sharder.shardBAMFile(storage, BAMFile, contigs,
+         shardingPolicy);
+          
+      PCollection<BAMShard> shards = p.apply(Create
+          .of(shardsList))
+          .setCoder(SerializableCoder.of(BAMShard.class));
+
+      return readBAMSTransform.apply(shards);
   }
 
   @Override
-  public PCollection<Read> apply(PCollectionTuple contigsAndBAMs) {
-
-    final PCollection<Contig> contigs = contigsAndBAMs.get(CONTIGS_TAG);
-    final PCollectionView<Iterable<Contig>> contigsView =
-        contigs.apply(View.<Contig>asIterable());
-
-    final PCollection<String> BAMFileGCSPaths = contigsAndBAMs.get(BAMS_TAG);
-   
-    final PCollection<BAMShard> shards =
-        BAMFileGCSPaths.apply(ParDo
-            .withSideInputs(Arrays.asList(contigsView))
-            .of(new ShardFn(auth, contigsView)))
-              .setCoder(SerializableCoder.of(BAMShard.class));
-    
+  public PCollection<Read> apply(PCollection<BAMShard> shards) {  
     final PCollection<Read> reads = shards.apply(ParDo
         .of(new ReadFn(auth, options)));
 

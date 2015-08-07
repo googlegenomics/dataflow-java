@@ -34,6 +34,7 @@ import com.google.cloud.genomics.dataflow.readers.ReadReader;
 import com.google.cloud.genomics.dataflow.readers.bam.ReadBAMTransform;
 import com.google.cloud.genomics.dataflow.readers.bam.Reader;
 import com.google.cloud.genomics.dataflow.readers.bam.ReaderOptions;
+import com.google.cloud.genomics.dataflow.readers.bam.ShardingPolicy;
 import com.google.cloud.genomics.dataflow.utils.DataflowWorkarounds;
 import com.google.cloud.genomics.dataflow.utils.GCSOptions;
 import com.google.cloud.genomics.dataflow.utils.GenomicsDatasetOptions;
@@ -206,7 +207,7 @@ public class CountReads {
 
     final Iterable<Contig> contigs = Contig.parseContigsFromCommandLine(options.getReferences());
     final ReaderOptions readerOptions = new ReaderOptions(
-        ValidationStringency.DEFAULT_STRINGENCY,
+        ValidationStringency.LENIENT,
         options.isIncludeUnmapped());
     if (options.isShardBAMReading()) {
       LOG.info("Sharded reading of "+ options.getBAMFilePath());
@@ -214,7 +215,8 @@ public class CountReads {
           auth,
           contigs,
           readerOptions,
-          Collections.singletonList(options.getBAMFilePath()));
+          options.getBAMFilePath(),
+          ShardingPolicy.BYTE_SIZE_POLICY);
     } else {  // For testing and comparing sharded vs. not sharded only
       LOG.info("Unsharded reading of " + options.getBAMFilePath());
       return p.apply(
