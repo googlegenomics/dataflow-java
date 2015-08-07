@@ -14,6 +14,7 @@
 package com.google.cloud.genomics.dataflow.readers;
 
 import java.io.IOException;
+import java.security.GeneralSecurityException;
 import java.util.Iterator;
 import java.util.List;
 
@@ -23,31 +24,31 @@ import com.google.cloud.dataflow.sdk.transforms.PTransform;
 import com.google.cloud.dataflow.sdk.transforms.ParDo;
 import com.google.cloud.dataflow.sdk.transforms.Sum;
 import com.google.cloud.dataflow.sdk.values.PCollection;
-import com.google.cloud.genomics.utils.grpc.Channels;
+import com.google.cloud.genomics.utils.GenomicsFactory;
+import com.google.cloud.genomics.utils.grpc.VariantStreamIterator;
 import com.google.genomics.v1.StreamVariantsRequest;
 import com.google.genomics.v1.StreamVariantsResponse;
-import com.google.genomics.v1.StreamingVariantServiceGrpc;
 import com.google.genomics.v1.Variant;
 
 /**
- * Class with tools for streaming variants using gRPC within dataflow pipelines.
+ * PTransform for streaming variants via gRPC.
  */
-public class VariantStreamer {
-  
-  /**
-   * PTransform for streaming variants via gRPC.
-   */
-  public static class StreamVariants extends
-      PTransform<PCollection<StreamVariantsRequest>, PCollection<Variant>> {
+public class VariantStreamer extends
+PTransform<PCollection<StreamVariantsRequest>, PCollection<Variant>> {
 
-    @Override
-    public PCollection<Variant> apply(PCollection<StreamVariantsRequest> input) {
-      return input.apply(ParDo.of(new RetrieveVariants()))
-          .apply(ParDo.of(new ConvergeVariantsList()));
-    }
+  protected final GenomicsFactory.OfflineAuth auth;
+
+  public VariantStreamer(GenomicsFactory.OfflineAuth auth) {
+    this.auth = auth;
   }
 
-  private static class RetrieveVariants extends DoFn<StreamVariantsRequest, List<Variant>> {
+  @Override
+  public PCollection<Variant> apply(PCollection<StreamVariantsRequest> input) {
+    return input.apply(ParDo.of(new RetrieveVariants()))
+        .apply(ParDo.of(new ConvergeVariantsList()));
+  }
+
+  private class RetrieveVariants extends DoFn<StreamVariantsRequest, List<Variant>> {
 
     protected Aggregator<Integer, Integer> initializedShardCount;
     protected Aggregator<Integer, Integer> finishedShardCount;
@@ -58,11 +59,9 @@ public class VariantStreamer {
     }
 
     @Override
-    public void processElement(ProcessContext c) throws IOException {
+    public void processElement(ProcessContext c) throws IOException, GeneralSecurityException {
       initializedShardCount.addValue(1);
-      StreamingVariantServiceGrpc.StreamingVariantServiceBlockingStub variantStub =
-          StreamingVariantServiceGrpc.newBlockingStub(Channels.fromDefaultCreds());
-      Iterator<StreamVariantsResponse> iter = variantStub.streamVariants(c.element());
+      Iterator<StreamVariantsResponse> iter = new VariantStreamIterator(c.element(), auth);
       while (iter.hasNext()) {
         StreamVariantsResponse variantResponse = iter.next();
         c.output(variantResponse.getVariantsList());
@@ -75,7 +74,7 @@ public class VariantStreamer {
    * This step exists to emit the individual variants in a parallel step to the StreamVariants step
    * in order to increase throughput.
    */
-  private static class ConvergeVariantsList extends DoFn<List<Variant>, Variant> {
+  private class ConvergeVariantsList extends DoFn<List<Variant>, Variant> {
 
     protected Aggregator<Long, Long> itemCount;
 
@@ -91,5 +90,4 @@ public class VariantStreamer {
       }
     }
   }
-
 }
