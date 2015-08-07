@@ -13,6 +13,20 @@ by sending an email to ``google-genomics-discuss+subscribe@googlegroups.com`` or
 the `web forum page <https://groups.google.com/forum/#!forum/google-genomics-discuss>`_.
 
 
+Local development
+-----------------
+
+With Maven you can locally install a SNAPSHOT version of the code, to use from other projects 
+directly without having to wait for the Maven repository. Use:
+
+`mvn install`
+
+to run the full tests and do a local install. You can also use
+
+`mvn install -DskipITs`
+
+to run only the unit tests and do a local install. This is faster.
+
 Submitting issues
 -----------------
 
