@@ -21,6 +21,7 @@ import com.google.cloud.dataflow.sdk.transforms.DoFn;
 import com.google.cloud.genomics.utils.Contig;
 import com.google.common.base.Function;
 import com.google.common.collect.Iterables;
+import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 
 import htsjdk.samtools.BAMFileIndexImpl;
@@ -48,13 +49,16 @@ import javax.annotation.Nullable;
  */
 public class Sharder {
   private static final Logger LOG = Logger.getLogger(Sharder.class.getName());
-
-
+  
+  public interface SharderOutput {
+    public void output(BAMShard shard);
+  }
+  
   Storage.Objects storageClient;
   String filePath; 
   Iterable<Contig> requestedContigs;
-  DoFn<String, BAMShard>.ProcessContext c;
-  final ShardingPolicy shardingPolicy = ShardingPolicy.BYTE_SIZE_POLICY;
+  SharderOutput output;
+  final ShardingPolicy shardingPolicy;
   
   SamReader reader;
   SeekableStream indexStream;
@@ -65,11 +69,28 @@ public class Sharder {
   boolean hasIndex;
   HashMap<String, Contig> contigsByReference;
   
+  public static List<BAMShard> shardBAMFile(Objects storageClient, 
+      String filePath, Iterable<Contig> requestedContigs,
+      ShardingPolicy shardingPolicy) throws IOException {
+    final List<BAMShard> shards = Lists.newArrayList();
+    (new Sharder(storageClient, filePath, requestedContigs, shardingPolicy,
+        new SharderOutput() {
+          @Override
+          public void output(BAMShard shard) {
+            shards.add(shard);
+          }
+        }))
+      .process();
+    return shards;
+  }
+  
   public Sharder(Objects storageClient, String filePath, Iterable<Contig> requestedContigs,
-      DoFn<String, BAMShard>.ProcessContext c) {
+      ShardingPolicy shardingPolicy,
+      SharderOutput output) {
     super();
     this.storageClient = storageClient;
     this.filePath = filePath;
+    this.shardingPolicy = shardingPolicy;
     // HTSJDK expects 1-based coordinates - need to shift by 1
     this.requestedContigs = Iterables.transform(requestedContigs,
         new Function<Contig, Contig>() {
@@ -79,7 +100,7 @@ public class Sharder {
             return new Contig(arg0.referenceName, arg0.start + 1, arg0.end + 1);
           }
         });
-    this.c = c;
+    this.output = output;
   }
 
   public void process() throws IOException {
@@ -96,7 +117,7 @@ public class Sharder {
         // No index, so create a shard over all BAM file and pass a contig restrict.
         // We will iterate over all reads for this reference and skip the ones outside contig.
         LOG.info("No index: outputting shard for " + contig);
-        c.output(new BAMShard(filePath, null, contig));
+        output.output(new BAMShard(filePath, null, contig));
         continue;
       }
       createShardsForReference(sequenceRecord, contig);
@@ -128,7 +149,7 @@ public class Sharder {
     }
     if (contigsByReference.size() == 0 || contigsByReference.containsKey("*")) {
       LOG.info("Outputting unmapped reads shard ");
-      c.output(new BAMShard(filePath, null, new Contig("*", 0, -1)));
+      output.output(new BAMShard(filePath, null, new Contig("*", 0, -1)));
     }
     final boolean allReferences =
         contigsByReference.size() == 0 || contigsByReference.containsKey("");
@@ -213,14 +234,14 @@ public class Sharder {
       if (shardingPolicy.shardBigEnough(currentShard)) {
         LOG.info("Shard size is big enough to finalize: " + 
             currentShard.sizeInLoci() + ", " + currentShard.approximateSizeInBytes() + " bytes");
-        c.output(currentShard.finalize(index, Math.min(index.getLastLocusInBin(bin), (int)contig.end)));
+        output.output(currentShard.finalize(index, Math.min(index.getLastLocusInBin(bin), (int)contig.end)));
         currentShard = null;
       }
     }
     if (currentShard != null) {
       LOG.info("Outputting last shard of size " + 
           currentShard.sizeInLoci() + ", " + currentShard.approximateSizeInBytes() + " bytes");
-      c.output(currentShard.finalize(index, (int)contig.end));
+      output.output(currentShard.finalize(index, (int)contig.end));
     }
   }
 }

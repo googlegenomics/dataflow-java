@@ -26,7 +26,7 @@ public interface ShardingPolicy  {
    */
   public boolean shardBigEnough(BAMShard shard);
   
-  static final int MAX_BYTES_PER_SHARD = 10*1024*1024;    // 100MB
+  static final int MAX_BYTES_PER_SHARD = 10*1024*1024;    // 10MB
   public static ShardingPolicy BYTE_SIZE_POLICY =
    new ShardingPolicy() {
       @Override
