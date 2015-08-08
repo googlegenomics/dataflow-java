@@ -47,6 +47,7 @@ import com.google.cloud.genomics.utils.Contig;
 import com.google.cloud.genomics.utils.GenomicsFactory;
 import com.google.cloud.genomics.utils.GenomicsUtils;
 import com.google.cloud.genomics.utils.RetryPolicy;
+import com.google.cloud.genomics.utils.ShardBoundary;
 import com.google.cloud.genomics.utils.ShardUtils;
 import com.google.common.collect.Lists;
 import com.google.genomics.v1.CigarUnit;
@@ -496,6 +497,6 @@ public class CalculateCoverage {
         ShardUtils.getReadRequests(rgsIds) :
           ShardUtils.getReadRequests(rgsIds, options.getReferences(), options.getBasesPerShard());
     PCollection<StreamReadsRequest> readRequests = p.begin().apply(Create.of(requests));
-    return readRequests.apply(new ReadStreamer(auth));
+    return readRequests.apply(new ReadStreamer(auth, ShardBoundary.Requirement.OVERLAPS, null));
   }
 }

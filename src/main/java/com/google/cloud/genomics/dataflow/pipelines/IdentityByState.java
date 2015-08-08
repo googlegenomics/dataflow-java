@@ -38,7 +38,7 @@ import com.google.cloud.genomics.dataflow.utils.GenomicsDatasetOptions;
 import com.google.cloud.genomics.dataflow.utils.GenomicsOptions;
 import com.google.cloud.genomics.dataflow.utils.IdentityByStateOptions;
 import com.google.cloud.genomics.utils.GenomicsFactory;
-import com.google.cloud.genomics.utils.Paginator.ShardBoundary;
+import com.google.cloud.genomics.utils.ShardBoundary;
 import com.google.cloud.genomics.utils.ShardUtils;
 
 /**
@@ -79,7 +79,7 @@ public class IdentityByState {
         ? JoinNonVariantSegmentsWithVariants.joinVariantsTransform(input, auth,
             JoinNonVariantSegmentsWithVariants.VARIANT_JOIN_FIELDS) : input.apply(ParDo.named(
             VariantReader.class.getSimpleName()).of(
-            new VariantReader(auth, ShardBoundary.STRICT, VARIANT_FIELDS)));
+            new VariantReader(auth, ShardBoundary.Requirement.STRICT, VARIANT_FIELDS)));
 
     variants
         .apply(

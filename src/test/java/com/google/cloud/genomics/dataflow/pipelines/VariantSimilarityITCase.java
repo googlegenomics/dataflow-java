@@ -101,7 +101,7 @@ public class VariantSimilarityITCase {
         "--references=" + helper.PLATINUM_GENOMES_BRCA1_REFERENCES,
         "--datasetId=" + helper.PLATINUM_GENOMES_DATASET,
         "--output=" + outputPrefix,
-        "--useStreaming=false"
+        "--useGrpc=false"
         };
     testBase(ARGS);
   }
@@ -116,7 +116,7 @@ public class VariantSimilarityITCase {
         "--project=" + helper.getTestProject(),
         "--runner=BlockingDataflowPipelineRunner",
         "--stagingLocation=" + helper.getTestStagingGcsFolder(),
-        "--useStreaming=false"
+        "--useGrpc=false"
         };
     testBase(ARGS);
   }
@@ -131,7 +131,7 @@ public class VariantSimilarityITCase {
         "--references=" + helper.PLATINUM_GENOMES_BRCA1_REFERENCES,
         "--datasetId=" + helper.PLATINUM_GENOMES_DATASET,
         "--output=" + outputPrefix,
-        "--useStreaming=true"
+        "--useGrpc=true"
         };
     testBase(ARGS);
   }
@@ -146,7 +146,7 @@ public class VariantSimilarityITCase {
         "--project=" + helper.getTestProject(),
         "--runner=BlockingDataflowPipelineRunner",
         "--stagingLocation=" + helper.getTestStagingGcsFolder(),
-        "--useStreaming=true"
+        "--useGrpc=true"
         };
     testBase(ARGS);
   }

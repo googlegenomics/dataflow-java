@@ -25,6 +25,7 @@ import com.google.cloud.dataflow.sdk.Pipeline;
 import com.google.cloud.dataflow.sdk.coders.Proto2Coder;
 import com.google.cloud.dataflow.sdk.coders.SerializableCoder;
 import com.google.cloud.dataflow.sdk.options.Default;
+import com.google.cloud.dataflow.sdk.options.Description;
 import com.google.cloud.dataflow.sdk.options.PipelineOptionsFactory;
 import com.google.cloud.dataflow.sdk.transforms.Create;
 import com.google.cloud.dataflow.sdk.transforms.ParDo;
@@ -40,7 +41,7 @@ import com.google.cloud.genomics.dataflow.utils.GenomicsDatasetOptions;
 import com.google.cloud.genomics.dataflow.utils.GenomicsOptions;
 import com.google.cloud.genomics.utils.GenomicsFactory;
 import com.google.cloud.genomics.utils.GenomicsUtils;
-import com.google.cloud.genomics.utils.Paginator.ShardBoundary;
+import com.google.cloud.genomics.utils.ShardBoundary;
 import com.google.cloud.genomics.utils.ShardUtils;
 import com.google.common.collect.BiMap;
 import com.google.common.collect.HashBiMap;
@@ -58,10 +59,11 @@ public class VariantSimilarity {
     = "nextPageToken,variants(start,calls(genotype,callSetName))";
 
   public static interface VariantSimilarityOptions extends GenomicsDatasetOptions, GCSOptions {
+    @Description("Whether to use the gRPC API endpoint for variants.  Defaults to 'false';")
     @Default.Boolean(false)
-    Boolean getUseStreaming();
+    Boolean getUseGrpc();
 
-    void setUseStreaming(Boolean value);
+    void setUseGrpc(Boolean value);
   }
 
   public static void main(String[] args) throws IOException, GeneralSecurityException {
@@ -92,14 +94,14 @@ public class VariantSimilarity {
     p.begin();
     PCollection<KV<KV<Integer, Integer>, Long>> similarCallsets = null;
 
-    if(options.getUseStreaming()) {
+    if(options.getUseGrpc()) {
       List<StreamVariantsRequest> requests = options.isAllReferences() ?
           ShardUtils.getVariantRequests(options.getDatasetId(), ShardUtils.SexChromosomeFilter.EXCLUDE_XY,
               options.getBasesPerShard(), auth) :
             ShardUtils.getVariantRequests(options.getDatasetId(), options.getReferences(), options.getBasesPerShard());
       
       similarCallsets = p.apply(Create.of(requests))     
-      .apply(new VariantStreamer(auth))
+      .apply(new VariantStreamer(auth, ShardBoundary.Requirement.STRICT, VARIANT_FIELDS))
       .apply(ParDo.of(new ExtractSimilarCallsets.v1(dataIndices)));
     } else {
       List<SearchVariantsRequest> requests = options.isAllReferences() ?
@@ -108,7 +110,7 @@ public class VariantSimilarity {
                 ShardUtils.getPaginatedVariantRequests(options.getDatasetId(), options.getReferences(), options.getBasesPerShard());
 
       similarCallsets = p.apply(Create.of(requests))
-          .apply(ParDo.of(new VariantReader(auth, ShardBoundary.STRICT, VARIANT_FIELDS)))
+          .apply(ParDo.of(new VariantReader(auth, ShardBoundary.Requirement.STRICT, VARIANT_FIELDS)))
           .apply(ParDo.of(new ExtractSimilarCallsets.v1beta2(dataIndices)));
     }
 
