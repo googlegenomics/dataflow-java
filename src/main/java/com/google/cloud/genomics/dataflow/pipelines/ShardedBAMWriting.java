@@ -339,8 +339,7 @@ public class ShardedBAMWriting {
     public static PCollection<String> write(PCollection<KV<Contig, Iterable<Read>>> shardedReads, HeaderInfo headerInfo) {
       final PCollectionTuple tuple = PCollectionTuple
           .of(SHARDED_READS_TAG,shardedReads)
-          .and(HEADER_TAG, p.apply(Create.of(headerInfo))
-             .setCoder(HEADER_INFO_CODER));
+          .and(HEADER_TAG, p.apply(Create.of(headerInfo).withCoder(HEADER_INFO_CODER)));
       return (new WriteReadsTransform()).apply(tuple);
     }
   }
