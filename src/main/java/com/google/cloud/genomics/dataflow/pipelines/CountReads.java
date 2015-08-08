@@ -47,11 +47,9 @@ import com.google.cloud.genomics.dataflow.utils.GenomicsDatasetOptions;
 import com.google.cloud.genomics.dataflow.utils.GenomicsOptions;
 import com.google.cloud.genomics.utils.Contig;
 import com.google.cloud.genomics.utils.GenomicsFactory;
-import com.google.cloud.genomics.utils.Paginator;
+import com.google.cloud.genomics.utils.ShardBoundary;
 import com.google.cloud.genomics.utils.ShardUtils;
-import com.google.common.base.Function;
 import com.google.common.base.Strings;
-import com.google.common.collect.FluentIterable;
 
 /**
  * Simple read counting pipeline, intended as an example for reading data from
@@ -174,7 +172,7 @@ public class CountReads {
     PCollection<Read> reads =
         readRequests.apply(
             ParDo.of(
-                new ReadReader(auth, Paginator.ShardBoundary.STRICT))
+                new ReadReader(auth, ShardBoundary.Requirement.STRICT))
                 .named(ReadReader.class.getSimpleName()));
     return reads;
   }
