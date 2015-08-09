@@ -46,16 +46,18 @@ public class TruncatedOutputStream extends FilterOutputStream {
       // We have more than bytesToTruncate to write, so clear the buffer
       // completely, and write all but bytesToTruncate directly to the stream.
       os.write(buf, 0, count);
-      os.write(data, offset, length - bytesToTruncate);
-      System.arraycopy(data, offset + length - bytesToTruncate, buf, 0, bytesToTruncate);
+      final int bytesToWriteDrirectly = length - bytesToTruncate;
+      os.write(data, offset, bytesToWriteDrirectly);
+      System.arraycopy(data, offset + bytesToWriteDrirectly, buf, 0, bytesToTruncate);
       count = bytesToTruncate;
     } else {
       // Need this many of the current bytes to stay in the buffer to ensure we
       // have at least bytesToTruncate.
-      int keepInBuffer = bytesToTruncate - length;
+      final int keepInBuffer = bytesToTruncate - length;
       // Write the rest to the stream.
-      os.write(buf, 0, count - keepInBuffer);
-      System.arraycopy(buf, count - keepInBuffer, buf, 0, keepInBuffer);
+      final int bytesToDumpFromBuffer = count - keepInBuffer;
+      os.write(buf, 0, bytesToDumpFromBuffer);
+      System.arraycopy(buf, bytesToDumpFromBuffer, buf, 0, keepInBuffer);
       System.arraycopy(data, offset, buf, keepInBuffer, length);
       count = bytesToTruncate;
     }
@@ -74,9 +76,10 @@ public class TruncatedOutputStream extends FilterOutputStream {
   }
   
   private void flushBuffer() throws IOException {
+    final int bytesWeCanSafelyWrite = count - bytesToTruncate;
     if (count > bytesToTruncate) {
-      os.write(buf, 0, count - bytesToTruncate);
-      System.arraycopy(buf, count - bytesToTruncate, buf, 0, bytesToTruncate);
+      os.write(buf, 0, bytesWeCanSafelyWrite);
+      System.arraycopy(buf, bytesWeCanSafelyWrite, buf, 0, bytesToTruncate);
       count = bytesToTruncate;
     }
   }
