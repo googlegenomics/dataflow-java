@@ -50,7 +50,7 @@ import com.google.cloud.genomics.dataflow.utils.GenomicsOptions;
 import com.google.cloud.genomics.dataflow.utils.VariantUtils;
 import com.google.cloud.genomics.utils.GenomicsFactory;
 import com.google.cloud.genomics.utils.Paginator;
-import com.google.cloud.genomics.utils.Paginator.ShardBoundary;
+import com.google.cloud.genomics.utils.ShardBoundary;
 import com.google.cloud.genomics.utils.ShardUtils;
 import com.google.common.base.Joiner;
 import com.google.common.base.Stopwatch;
@@ -109,7 +109,7 @@ public final class AnnotateVariants extends DoFn<SearchVariantsRequest, KV<Strin
     SearchVariantsRequest request = c.element();
     LOG.info("processing contig " + request);
     Iterable<Variant> varIter = FluentIterable
-        .from(Paginator.Variants.create(genomics, ShardBoundary.STRICT).search(
+        .from(Paginator.Variants.create(genomics, ShardBoundary.Requirement.STRICT).search(
             request
               // TODO: Variants-only retrieval is not well support currently. For now
               // we parameterize by CallSet for performance.
@@ -176,7 +176,7 @@ public final class AnnotateVariants extends DoFn<SearchVariantsRequest, KV<Strin
     Stopwatch stopwatch = Stopwatch.createStarted();
     ListMultimap<Range<Long>, Annotation> annotationMap = ArrayListMultimap.create();
     Iterable<Annotation> annotationIter =
-        Paginator.Annotations.create(genomics, ShardBoundary.OVERLAPS).search(
+        Paginator.Annotations.create(genomics, ShardBoundary.Requirement.OVERLAPS).search(
             new SearchAnnotationsRequest()
               .setAnnotationSetIds(variantAnnotationSetIds)
               .setRange(new QueryRange()
@@ -200,7 +200,7 @@ public final class AnnotateVariants extends DoFn<SearchVariantsRequest, KV<Strin
     Stopwatch stopwatch = Stopwatch.createStarted();
     IntervalTree<Annotation> transcripts = new IntervalTree<>();
     Iterable<Annotation> transcriptIter =
-        Paginator.Annotations.create(genomics, ShardBoundary.OVERLAPS).search(
+        Paginator.Annotations.create(genomics, ShardBoundary.Requirement.OVERLAPS).search(
             new SearchAnnotationsRequest()
               .setAnnotationSetIds(transcriptSetIds)
               .setRange(new QueryRange()

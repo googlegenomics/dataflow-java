@@ -25,6 +25,7 @@ import com.google.cloud.dataflow.sdk.transforms.ParDo;
 import com.google.cloud.dataflow.sdk.transforms.Sum;
 import com.google.cloud.dataflow.sdk.values.PCollection;
 import com.google.cloud.genomics.utils.GenomicsFactory;
+import com.google.cloud.genomics.utils.ShardBoundary;
 import com.google.cloud.genomics.utils.grpc.VariantStreamIterator;
 import com.google.genomics.v1.StreamVariantsRequest;
 import com.google.genomics.v1.StreamVariantsResponse;
@@ -37,9 +38,20 @@ public class VariantStreamer extends
 PTransform<PCollection<StreamVariantsRequest>, PCollection<Variant>> {
 
   protected final GenomicsFactory.OfflineAuth auth;
+  protected final ShardBoundary.Requirement shardBoundary;
+  protected final String fields;
 
-  public VariantStreamer(GenomicsFactory.OfflineAuth auth) {
+  /**
+   * Create a streamer that can enforce shard boundary semantics.
+   * 
+   * @param auth The OfflineAuth to use for the request.
+   * @param shardBoundary The shard boundary semantics to enforce.
+   * @param fields Which fields to include in a partial response or null for all.
+   */
+  public VariantStreamer(GenomicsFactory.OfflineAuth auth, ShardBoundary.Requirement shardBoundary, String fields) {
     this.auth = auth;
+    this.shardBoundary = shardBoundary;
+    this.fields = fields;
   }
 
   @Override
@@ -51,25 +63,28 @@ PTransform<PCollection<StreamVariantsRequest>, PCollection<Variant>> {
   private class RetrieveVariants extends DoFn<StreamVariantsRequest, List<Variant>> {
 
     protected Aggregator<Integer, Integer> initializedShardCount;
+    protected Aggregator<Long, Long> itemCount;
     protected Aggregator<Integer, Integer> finishedShardCount;
 
     public RetrieveVariants() {
       initializedShardCount = createAggregator("Initialized Shard Count", new Sum.SumIntegerFn());
+      itemCount = createAggregator("Number of variant lists", new Sum.SumLongFn());
       finishedShardCount = createAggregator("Finished Shard Count", new Sum.SumIntegerFn());
     }
 
     @Override
-    public void processElement(ProcessContext c) throws IOException, GeneralSecurityException {
+    public void processElement(ProcessContext c) throws IOException, GeneralSecurityException, InterruptedException {
       initializedShardCount.addValue(1);
-      Iterator<StreamVariantsResponse> iter = new VariantStreamIterator(c.element(), auth);
+      Iterator<StreamVariantsResponse> iter = new VariantStreamIterator(c.element(), auth, shardBoundary, fields);
       while (iter.hasNext()) {
         StreamVariantsResponse variantResponse = iter.next();
         c.output(variantResponse.getVariantsList());
+        itemCount.addValue(1L);
       }
       finishedShardCount.addValue(1);
     }
   }
-
+  
   /**
    * This step exists to emit the individual variants in a parallel step to the StreamVariants step
    * in order to increase throughput.
