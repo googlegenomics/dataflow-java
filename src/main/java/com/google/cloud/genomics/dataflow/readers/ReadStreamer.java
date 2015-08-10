@@ -25,12 +25,11 @@ import com.google.cloud.dataflow.sdk.transforms.ParDo;
 import com.google.cloud.dataflow.sdk.transforms.Sum;
 import com.google.cloud.dataflow.sdk.values.PCollection;
 import com.google.cloud.genomics.utils.GenomicsFactory;
-import com.google.cloud.genomics.utils.grpc.Channels;
+import com.google.cloud.genomics.utils.ShardBoundary;
 import com.google.cloud.genomics.utils.grpc.ReadStreamIterator;
 import com.google.genomics.v1.Read;
 import com.google.genomics.v1.StreamReadsRequest;
 import com.google.genomics.v1.StreamReadsResponse;
-import com.google.genomics.v1.StreamingReadServiceGrpc;
 
 /**
  * PTransform for streaming reads via gRPC.
@@ -39,9 +38,20 @@ public class ReadStreamer extends
 PTransform<PCollection<StreamReadsRequest>, PCollection<Read>> {
 
   protected final GenomicsFactory.OfflineAuth auth;
+  protected final ShardBoundary.Requirement shardBoundary;
+  protected final String fields;
 
-  public ReadStreamer(GenomicsFactory.OfflineAuth auth) {
+  /**
+   * Create a streamer that can enforce shard boundary semantics.
+   * 
+   * @param auth The OfflineAuth to use for the request.
+   * @param shardBoundary The shard boundary semantics to enforce.
+   * @param fields Which fields to include in a partial response or null for all.
+   */
+  public ReadStreamer(GenomicsFactory.OfflineAuth auth, ShardBoundary.Requirement shardBoundary, String fields) {
     this.auth = auth;
+    this.shardBoundary = shardBoundary;
+    this.fields = fields;
   }
 
   @Override
@@ -64,7 +74,7 @@ PTransform<PCollection<StreamReadsRequest>, PCollection<Read>> {
     @Override
     public void processElement(ProcessContext c) throws IOException, GeneralSecurityException {
       initializedShardCount.addValue(1);
-      Iterator<StreamReadsResponse> iter = new ReadStreamIterator(c.element(), auth);
+      Iterator<StreamReadsResponse> iter = new ReadStreamIterator(c.element(), auth, shardBoundary, fields);
       while (iter.hasNext()) {
         StreamReadsResponse readResponse = iter.next();
         c.output(readResponse.getAlignmentsList());

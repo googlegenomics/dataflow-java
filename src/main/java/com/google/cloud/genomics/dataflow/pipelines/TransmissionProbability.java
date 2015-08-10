@@ -15,6 +15,10 @@
  */
 package com.google.cloud.genomics.dataflow.pipelines;
 
+import java.io.IOException;
+import java.security.GeneralSecurityException;
+import java.util.List;
+
 import com.google.api.services.genomics.model.SearchVariantsRequest;
 import com.google.cloud.dataflow.sdk.Pipeline;
 import com.google.cloud.dataflow.sdk.io.TextIO;
@@ -32,13 +36,8 @@ import com.google.cloud.genomics.dataflow.utils.DataflowWorkarounds;
 import com.google.cloud.genomics.dataflow.utils.GenomicsDatasetOptions;
 import com.google.cloud.genomics.dataflow.utils.GenomicsOptions;
 import com.google.cloud.genomics.utils.GenomicsFactory;
-import com.google.cloud.genomics.utils.Paginator.ShardBoundary;
+import com.google.cloud.genomics.utils.ShardBoundary;
 import com.google.cloud.genomics.utils.ShardUtils;
-import com.google.cloud.genomics.utils.ShardUtils.SexChromosomeFilter;
-
-import java.io.IOException;
-import java.security.GeneralSecurityException;
-import java.util.List;
 
 /**
  * A pipeline that calculates the transmission probability of each allele in parents.
@@ -75,7 +74,7 @@ public class TransmissionProbability {
     p.begin()
         .apply(Create.of(requests))
         .apply(ParDo.named("VariantReader")
-            .of(new VariantReader(auth, ShardBoundary.STRICT, VARIANT_FIELDS)))
+            .of(new VariantReader(auth, ShardBoundary.Requirement.STRICT, VARIANT_FIELDS)))
         .apply(ParDo.named("ExtractFamilyVariantStatus")
             .of(new ExtractAlleleTransmissionStatus()))
         .apply(GroupByKey.<Allele, Boolean>create())
