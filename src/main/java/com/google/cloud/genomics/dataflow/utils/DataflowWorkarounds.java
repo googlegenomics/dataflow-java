@@ -69,7 +69,7 @@ public class DataflowWorkarounds {
    */
   @SuppressWarnings({"unchecked", "rawtypes"})
   public static void registerGenomicsCoders(Pipeline p) {
-    LOG.info("Registering coders for genomics classes");
+    LOG.fine("Registering coders for genomics classes");
     
     List<ClassLoader> classLoadersList = new LinkedList<ClassLoader>();
     classLoadersList.add(ClasspathHelper.contextClassLoader());
@@ -94,7 +94,7 @@ public class DataflowWorkarounds {
             FilterBuilder.prefix("com.google.api.services.genomics.model"))));
     
     for (Class clazz : reflections.getSubTypesOf(GenericJson.class)) {
-      LOG.info("Registering coder for " + clazz.getSimpleName());
+      LOG.finer("Registering coder for " + clazz.getSimpleName());
       DataflowWorkarounds.registerCoder(p, clazz, GenericJsonCoder.of(clazz));
     }
   }
