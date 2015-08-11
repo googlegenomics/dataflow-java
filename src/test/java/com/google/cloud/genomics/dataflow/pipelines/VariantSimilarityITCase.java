@@ -27,6 +27,7 @@ import org.hamcrest.CoreMatchers;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.BeforeClass;
+import org.junit.Ignore;
 import org.junit.Test;
 
 import com.google.api.client.util.Lists;
@@ -80,7 +81,7 @@ public class VariantSimilarityITCase {
   @BeforeClass
   public static void setUpBeforeClass() throws Exception {
     helper = new IntegrationTestHelper();
-    outputPrefix = helper.TEST_OUTPUT_GCS_FOLDER + "variantSimilarity";
+    outputPrefix = helper.getTestOutputGcsFolder() + "variantSimilarity";
   }
 
   @Before
@@ -94,27 +95,58 @@ public class VariantSimilarityITCase {
   }
 
   @Test
-  public void testLocal() throws IOException, GeneralSecurityException {
+  public void testPaginatedLocal() throws IOException, GeneralSecurityException {
     String[] ARGS = {
-        "--apiKey=" + helper.API_KEY,
+        "--apiKey=" + helper.getApiKey(),
         "--references=" + helper.PLATINUM_GENOMES_BRCA1_REFERENCES,
         "--datasetId=" + helper.PLATINUM_GENOMES_DATASET,
         "--output=" + outputPrefix,
+        "--useGrpc=false"
         };
     testBase(ARGS);
   }
 
   @Test
-  public void testCloud() throws IOException, GeneralSecurityException {
+  public void testPaginatedCloud() throws IOException, GeneralSecurityException {
     String[] ARGS = {
-        "--apiKey=" + helper.API_KEY,
+        "--apiKey=" + helper.getApiKey(),
         "--references=" + helper.PLATINUM_GENOMES_BRCA1_REFERENCES,
         "--datasetId=" + helper.PLATINUM_GENOMES_DATASET,
         "--output=" + outputPrefix,
-        "--project=" + helper.TEST_PROJECT,
-        "--numWorkers=1",  // Use only a single worker to ensure a single output file.
+        "--project=" + helper.getTestProject(),
         "--runner=BlockingDataflowPipelineRunner",
-        "--stagingLocation=" + helper.TEST_STAGING_GCS_FOLDER,
+        "--stagingLocation=" + helper.getTestStagingGcsFolder(),
+        "--useGrpc=false"
+        };
+    testBase(ARGS);
+  }
+
+  @Ignore
+  // TODO enable this test.  For it to work, we'll need to add alpn to the classpath
+  // and figure out https://github.com/googlegenomics/dataflow-java/issues/119
+  @Test
+  public void testStreamingLocal() throws IOException, GeneralSecurityException {
+    String[] ARGS = {
+        "--apiKey=" + helper.getApiKey(),
+        "--references=" + helper.PLATINUM_GENOMES_BRCA1_REFERENCES,
+        "--datasetId=" + helper.PLATINUM_GENOMES_DATASET,
+        "--output=" + outputPrefix,
+        "--useGrpc=true"
+        };
+    testBase(ARGS);
+  }
+
+  @Test
+  public void testStreamingCloud() throws IOException, GeneralSecurityException {
+    String[] ARGS = {
+        "--apiKey=" + helper.getApiKey(),
+        "--references=" + helper.PLATINUM_GENOMES_BRCA1_REFERENCES,
+        "--datasetId=" + helper.PLATINUM_GENOMES_DATASET,
+        "--output=" + outputPrefix,
+        "--project=" + helper.getTestProject(),
+        "--runner=BlockingDataflowPipelineRunner",
+        "--stagingLocation=" + helper.getTestStagingGcsFolder(),
+        "--useGrpc=true"
         };
     testBase(ARGS);
   }

@@ -15,19 +15,20 @@
  */
 package com.google.cloud.genomics.dataflow.readers;
 
-import com.google.api.services.genomics.Genomics;
-import com.google.api.services.genomics.model.SearchVariantsRequest;
-import com.google.api.services.genomics.model.Variant;
-import com.google.cloud.genomics.utils.GenomicsFactory;
-import com.google.cloud.genomics.utils.Paginator;
-import com.google.cloud.genomics.utils.Paginator.ShardBoundary;
-
 import java.io.IOException;
 import java.util.logging.Logger;
 
+import com.google.api.services.genomics.Genomics;
+import com.google.api.services.genomics.model.SearchVariantsRequest;
+import com.google.api.services.genomics.model.Variant;
+import com.google.cloud.genomics.dataflow.utils.GenomicsDatasetOptions;
+import com.google.cloud.genomics.utils.GenomicsFactory;
+import com.google.cloud.genomics.utils.Paginator;
+import com.google.cloud.genomics.utils.ShardBoundary;
+
 public class VariantReader extends GenomicsApiReader<SearchVariantsRequest, Variant> {
   private static final Logger LOG = Logger.getLogger(VariantReader.class.getName());
-  private final ShardBoundary shardBoundary;
+  private final ShardBoundary.Requirement shardBoundary;
 
   /**
    * Create a VariantReader using a auth and fields parameter. All fields not specified under 
@@ -36,7 +37,7 @@ public class VariantReader extends GenomicsApiReader<SearchVariantsRequest, Vari
    * @param auth Auth class containing credentials.
    * @param variantFields Fields to return in responses.
    */
-  public VariantReader(GenomicsFactory.OfflineAuth auth, ShardBoundary shardBoundary, String variantFields) {
+  public VariantReader(GenomicsFactory.OfflineAuth auth, ShardBoundary.Requirement shardBoundary, String variantFields) {
     super(auth, variantFields);
     this.shardBoundary = shardBoundary;
   }
@@ -45,7 +46,7 @@ public class VariantReader extends GenomicsApiReader<SearchVariantsRequest, Vari
    * Create a VariantReader with no fields parameter, all information will be returned.
    * @param auth Auth class containing credentials.
    */
-  public VariantReader(GenomicsFactory.OfflineAuth auth, ShardBoundary shardBoundary) {
+  public VariantReader(GenomicsFactory.OfflineAuth auth, ShardBoundary.Requirement shardBoundary) {
     this(auth, shardBoundary, null);
   }
 
@@ -54,6 +55,14 @@ public class VariantReader extends GenomicsApiReader<SearchVariantsRequest, Vari
       throws IOException {
     LOG.info("Starting Variants read loop: " + request);
 
+    GenomicsDatasetOptions options = c.getPipelineOptions().as(GenomicsDatasetOptions.class);
+    if (options.getPageSize() > 0) {
+      request.setPageSize(options.getPageSize());
+    }
+    if (options.getMaxCalls() > 0) {
+      request.setMaxCalls(options.getMaxCalls());
+    }
+    
     int numberOfVariants = 0;
     for (Variant variant : Paginator.Variants.create(genomics, shardBoundary).search(request, fields)) {
       c.output(variant);
