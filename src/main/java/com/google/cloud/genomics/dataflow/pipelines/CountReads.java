@@ -13,7 +13,14 @@
  */
 package com.google.cloud.genomics.dataflow.pipelines;
 
-import static com.google.common.collect.Lists.newArrayList;
+import htsjdk.samtools.ValidationStringency;
+
+import java.io.IOException;
+import java.math.BigInteger;
+import java.security.GeneralSecurityException;
+import java.util.Collections;
+import java.util.List;
+import java.util.logging.Logger;
 
 import com.google.api.services.genomics.model.Read;
 import com.google.api.services.genomics.model.SearchReadsRequest;
@@ -41,22 +48,9 @@ import com.google.cloud.genomics.dataflow.utils.GenomicsDatasetOptions;
 import com.google.cloud.genomics.dataflow.utils.GenomicsOptions;
 import com.google.cloud.genomics.utils.Contig;
 import com.google.cloud.genomics.utils.GenomicsFactory;
-import com.google.cloud.genomics.utils.Paginator;
-import com.google.common.base.Function;
-import com.google.common.base.Splitter;
+import com.google.cloud.genomics.utils.ShardBoundary;
+import com.google.cloud.genomics.utils.ShardUtils;
 import com.google.common.base.Strings;
-import com.google.common.collect.Iterables;
-import com.google.common.collect.Lists;
-import com.fasterxml.jackson.annotation.JsonIgnore;
-import htsjdk.samtools.ValidationStringency;
-
-import java.io.IOException;
-import java.math.BigInteger;
-import java.security.GeneralSecurityException;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import java.util.logging.Logger;
 
 /**
  * Simple read counting pipeline, intended as an example for reading data from
@@ -171,36 +165,18 @@ public class CountReads {
   }
 
   private static PCollection<Read> getReadsFromAPI() {
-    List<SearchReadsRequest> requests = getReadRequests(options);
+    List<SearchReadsRequest> requests =
+        ShardUtils.getPaginatedReadRequests(Collections.singletonList(options.getReadGroupSetId()),
+        options.getReferences(), options.getBasesPerShard());
     PCollection<SearchReadsRequest> readRequests = p.begin()
         .apply(Create.of(requests));
     PCollection<Read> reads =
         readRequests.apply(
             ParDo.of(
-                new ReadReader(auth, Paginator.ShardBoundary.STRICT))
+                new ReadReader(auth, ShardBoundary.Requirement.STRICT))
                 .named(ReadReader.class.getSimpleName()));
     return reads;
   }
-
-  private static List<SearchReadsRequest> getReadRequests(CountReadsOptions options) {
-
-    final String readGroupSetId = options.getReadGroupSetId();
-    final Iterable<Contig> contigs = Contig.parseContigsFromCommandLine(options.getReferences());
-    return Lists.newArrayList(Iterables.transform(
-        Iterables.concat(Iterables.transform(contigs,
-          new Function<Contig, Iterable<Contig>>() {
-            @Override
-            public Iterable<Contig> apply(Contig contig) {
-              return contig.getShards();
-            }
-          })),
-        new Function<Contig, SearchReadsRequest>() {
-          @Override
-          public SearchReadsRequest apply(Contig shard) {
-            return shard.getReadsRequest(readGroupSetId);
-          }
-        }));
-   }
 
   private static PCollection<Read> getReadsFromBAMFile() throws IOException {
     LOG.info("getReadsFromBAMFile");

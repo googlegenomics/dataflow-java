@@ -79,7 +79,7 @@ public class ReadUtils {
             } else {
               // try to get the ref sequence by fully parsing the MD tag if not already cached
               if (refSeq != null && refSeq.equals(UNINITIALIZED_REFERENCE_SEQUENCE)) {
-                refSeq = com.google.cloud.genomics.grpc.ReadUtils
+                refSeq = com.google.cloud.genomics.utils.grpc.ReadUtils
                     .inferReferenceSequenceByParsingMdFlag(read);
               }
               if (refSeq != null) {
@@ -173,23 +173,4 @@ public class ReadUtils {
           return r.getProperPlacement();
         }
       };
-
-  /**
-   * Gets ReadGroupSetIds from a given datasetId using the Genomics API.
-   */
-  public static List<String> getReadGroupSetIds(String datasetId, GenomicsFactory.OfflineAuth auth)
-      throws IOException, GeneralSecurityException {
-    List<String> output = Lists.newArrayList();
-    Iterable<ReadGroupSet> rgs = Paginator.ReadGroupSets.create(
-        auth.getGenomics(auth.getDefaultFactory()))
-        .search(new SearchReadGroupSetsRequest().setDatasetIds(Lists.newArrayList(datasetId)),
-            "readGroupSets/id,nextPageToken");
-    for (ReadGroupSet r : rgs) {
-      output.add(r.getId());
-    }
-    if (output.isEmpty()) {
-      throw new IOException("Dataset " + datasetId + " does not contain any ReadGroupSets");
-    }
-    return output;
-  }
 }

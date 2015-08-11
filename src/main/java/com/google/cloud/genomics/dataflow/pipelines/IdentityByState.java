@@ -37,9 +37,9 @@ import com.google.cloud.genomics.dataflow.utils.DataflowWorkarounds;
 import com.google.cloud.genomics.dataflow.utils.GenomicsDatasetOptions;
 import com.google.cloud.genomics.dataflow.utils.GenomicsOptions;
 import com.google.cloud.genomics.dataflow.utils.IdentityByStateOptions;
-import com.google.cloud.genomics.utils.Contig.SexChromosomeFilter;
 import com.google.cloud.genomics.utils.GenomicsFactory;
-import com.google.cloud.genomics.utils.Paginator.ShardBoundary;
+import com.google.cloud.genomics.utils.ShardBoundary;
+import com.google.cloud.genomics.utils.ShardUtils;
 
 /**
  * A pipeline that computes Identity by State (IBS) for each pair of individuals in a dataset.
@@ -62,9 +62,10 @@ public class IdentityByState {
     GenomicsDatasetOptions.Methods.validateOptions(options);
 
     GenomicsFactory.OfflineAuth auth = GenomicsOptions.Methods.getGenomicsAuth(options);
-    List<SearchVariantsRequest> requests =
-        GenomicsDatasetOptions.Methods.getVariantRequests(options, auth,
-            SexChromosomeFilter.EXCLUDE_XY);
+    List<SearchVariantsRequest> requests = options.isAllReferences() ?
+        ShardUtils.getPaginatedVariantRequests(options.getDatasetId(), ShardUtils.SexChromosomeFilter.EXCLUDE_XY,
+            options.getBasesPerShard(), auth) :
+              ShardUtils.getPaginatedVariantRequests(options.getDatasetId(), options.getReferences(), options.getBasesPerShard());
 
     Pipeline p = Pipeline.create(options);
     DataflowWorkarounds.registerGenomicsCoders(p);
@@ -78,7 +79,7 @@ public class IdentityByState {
         ? JoinNonVariantSegmentsWithVariants.joinVariantsTransform(input, auth,
             JoinNonVariantSegmentsWithVariants.VARIANT_JOIN_FIELDS) : input.apply(ParDo.named(
             VariantReader.class.getSimpleName()).of(
-            new VariantReader(auth, ShardBoundary.STRICT, VARIANT_FIELDS)));
+            new VariantReader(auth, ShardBoundary.Requirement.STRICT, VARIANT_FIELDS)));
 
     variants
         .apply(
