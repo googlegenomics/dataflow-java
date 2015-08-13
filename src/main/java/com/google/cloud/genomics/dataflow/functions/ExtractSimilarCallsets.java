@@ -34,14 +34,9 @@ import com.google.genomics.v1.VariantCall;
  */
 public class ExtractSimilarCallsets {
 
-  abstract static class ExtractSimilarCallsetsBase<V, C> extends DoFn<V, KV<KV<Integer, Integer>, Long>> {
+  abstract static class ExtractSimilarCallsetsBase<V, C> extends DoFn<V, KV<KV<String, String>, Long>> {
 
-    protected BiMap<String, Integer> dataIndices;
-    private ImmutableMultiset.Builder<KV<Integer, Integer>> accumulator;
-
-    public ExtractSimilarCallsetsBase(BiMap<String, Integer> dataIndices) {
-      this.dataIndices = dataIndices;
-    }
+    private ImmutableMultiset.Builder<KV<String, String>> accumulator;
 
     @Override
     public void startBundle(Context c) {
@@ -50,37 +45,33 @@ public class ExtractSimilarCallsets {
 
     @Override
     public void processElement(ProcessContext context) {
-      FluentIterable<KV<Integer, Integer>> pairs = PairGenerator.WITH_REPLACEMENT.allPairs(
+      FluentIterable<KV<String, String>> pairs = PairGenerator.WITH_REPLACEMENT.allPairs(
           getSamplesWithVariant(context.element()), Ordering.natural());
-      for (KV<Integer, Integer> pair : pairs) {
+      for (KV<String, String> pair : pairs) {
         accumulator.add(pair);
       }
     }
 
     @Override
     public void finishBundle(Context context) {
-      for (Multiset.Entry<KV<Integer, Integer>> entry : accumulator.build().entrySet()) {
+      for (Multiset.Entry<KV<String, String>> entry : accumulator.build().entrySet()) {
         context.output(KV.of(entry.getElement(), Long.valueOf(entry.getCount())));
       }
     }
 
-    protected abstract ImmutableList<Integer> getSamplesWithVariant(V variant);
+    protected abstract ImmutableList<String> getSamplesWithVariant(V variant);
   }
 
   public static class v1 extends ExtractSimilarCallsetsBase<Variant, VariantCall> {
 
-    public v1(BiMap<String, Integer> dataIndices) {
-      super(dataIndices);
-    }
-
     @Override
-    protected ImmutableList<Integer> getSamplesWithVariant(Variant variant) {
+    protected ImmutableList<String> getSamplesWithVariant(Variant variant) {
       return ImmutableList.copyOf(Iterables.transform(
-          CallFilters.getSamplesWithVariantOfMinGenotype(variant, 1), new Function<VariantCall, Integer>() {
+          CallFilters.getSamplesWithVariantOfMinGenotype(variant, 1), new Function<VariantCall, String>() {
 
             @Override
-            public Integer apply(VariantCall call) {
-              return dataIndices.get(call.getCallSetName());
+            public String apply(VariantCall call) {
+              return call.getCallSetName();
             }
 
           }));
@@ -90,18 +81,14 @@ public class ExtractSimilarCallsets {
   @Deprecated  // Remove this when fully migrated to gRPC.
   public static class v1beta2 extends ExtractSimilarCallsetsBase<com.google.api.services.genomics.model.Variant, Call> {
 
-    public v1beta2(BiMap<String, Integer> dataIndices) {
-      super(dataIndices);
-    }
-
     @Override
-    protected ImmutableList<Integer> getSamplesWithVariant(com.google.api.services.genomics.model.Variant variant) {
+    protected ImmutableList<String> getSamplesWithVariant(com.google.api.services.genomics.model.Variant variant) {
       return ImmutableList.copyOf(Iterables.transform(
-          CallFilters.getSamplesWithVariantOfMinGenotype(variant, 1), new Function<Call, Integer>() {
+          CallFilters.getSamplesWithVariantOfMinGenotype(variant, 1), new Function<Call, String>() {
 
             @Override
-            public Integer apply(Call call) {
-              return dataIndices.get(call.getCallSetName());
+            public String apply(Call call) {
+              return call.getCallSetName();
             }
 
           }));
