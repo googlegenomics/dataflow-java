@@ -17,9 +17,11 @@ import java.io.IOException;
 import java.security.GeneralSecurityException;
 import java.util.Iterator;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 
 import com.google.cloud.dataflow.sdk.transforms.Aggregator;
 import com.google.cloud.dataflow.sdk.transforms.DoFn;
+import com.google.cloud.dataflow.sdk.transforms.Max;
 import com.google.cloud.dataflow.sdk.transforms.PTransform;
 import com.google.cloud.dataflow.sdk.transforms.ParDo;
 import com.google.cloud.dataflow.sdk.transforms.Sum;
@@ -27,6 +29,7 @@ import com.google.cloud.dataflow.sdk.values.PCollection;
 import com.google.cloud.genomics.utils.GenomicsFactory;
 import com.google.cloud.genomics.utils.ShardBoundary;
 import com.google.cloud.genomics.utils.grpc.ReadStreamIterator;
+import com.google.common.base.Stopwatch;
 import com.google.genomics.v1.Read;
 import com.google.genomics.v1.StreamReadsRequest;
 import com.google.genomics.v1.StreamReadsResponse;
@@ -65,20 +68,26 @@ PTransform<PCollection<StreamReadsRequest>, PCollection<Read>> {
 
     protected Aggregator<Integer, Integer> initializedShardCount;
     protected Aggregator<Integer, Integer> finishedShardCount;
+    protected Aggregator<Long, Long> shardTimeMaxSec;
 
     public RetrieveReads() {
       initializedShardCount = createAggregator("Initialized Shard Count", new Sum.SumIntegerFn());
       finishedShardCount = createAggregator("Finished Shard Count", new Sum.SumIntegerFn());
+      shardTimeMaxSec = createAggregator("Maximum Shard Processing Time (sec)", new Max.MaxLongFn());
     }
 
     @Override
     public void processElement(ProcessContext c) throws IOException, GeneralSecurityException {
       initializedShardCount.addValue(1);
+      shardTimeMaxSec.addValue(0L);
+      Stopwatch stopWatch = Stopwatch.createStarted();
       Iterator<StreamReadsResponse> iter = new ReadStreamIterator(c.element(), auth, shardBoundary, fields);
       while (iter.hasNext()) {
         StreamReadsResponse readResponse = iter.next();
         c.output(readResponse.getAlignmentsList());
       }
+      stopWatch.stop();
+      shardTimeMaxSec.addValue(stopWatch.elapsed(TimeUnit.SECONDS));
       finishedShardCount.addValue(1);
     }
   }
