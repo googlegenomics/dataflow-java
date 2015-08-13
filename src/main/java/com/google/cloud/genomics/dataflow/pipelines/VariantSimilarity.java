@@ -76,7 +76,6 @@ public class VariantSimilarity {
 
     GenomicsFactory.OfflineAuth auth = GenomicsOptions.Methods.getGenomicsAuth(options);
 
-    // Use integer indices instead of string callSetNames to reduce data sizes.
     List<String> callSetNames = GenomicsUtils.getCallSetsNames(options.getDatasetId() , auth);
     Collections.sort(callSetNames); // Ensure a stable sort order for reproducible results.
     BiMap<String, Integer> dataIndices = HashBiMap.create();
@@ -92,7 +91,7 @@ public class VariantSimilarity {
         Proto2Coder.of(StreamVariantsRequest.class));
 
     p.begin();
-    PCollection<KV<KV<Integer, Integer>, Long>> similarCallsets = null;
+    PCollection<KV<KV<String, String>, Long>> similarCallsets = null;
 
     if(options.getUseGrpc()) {
       List<StreamVariantsRequest> requests = options.isAllReferences() ?
@@ -102,7 +101,7 @@ public class VariantSimilarity {
       
       similarCallsets = p.apply(Create.of(requests))     
       .apply(new VariantStreamer(auth, ShardBoundary.Requirement.STRICT, VARIANT_FIELDS))
-      .apply(ParDo.of(new ExtractSimilarCallsets.v1(dataIndices)));
+      .apply(ParDo.of(new ExtractSimilarCallsets.v1()));
     } else {
       List<SearchVariantsRequest> requests = options.isAllReferences() ?
           ShardUtils.getPaginatedVariantRequests(options.getDatasetId(), ShardUtils.SexChromosomeFilter.EXCLUDE_XY,
@@ -111,7 +110,7 @@ public class VariantSimilarity {
 
       similarCallsets = p.apply(Create.of(requests))
           .apply(ParDo.of(new VariantReader(auth, ShardBoundary.Requirement.STRICT, VARIANT_FIELDS)))
-          .apply(ParDo.of(new ExtractSimilarCallsets.v1beta2(dataIndices)));
+          .apply(ParDo.of(new ExtractSimilarCallsets.v1beta2()));
     }
 
     similarCallsets.apply(new OutputPCoAFile(dataIndices, options.getOutput()));
