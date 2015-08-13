@@ -37,10 +37,10 @@ import java.util.List;
  * The input data must be for a similarity matrix which will be symmetric. This is not
  * the same as Principal Component Analysis.
 */
-public class OutputPCoAFile extends PTransform<PCollection<KV<KV<Integer, Integer>, Long>>, PDone> {
+public class OutputPCoAFile extends PTransform<PCollection<KV<KV<String, String>, Long>>, PDone> {
 
-  private static final Combine.CombineFn<KV<KV<Integer, Integer>, Long>,
-      List<KV<KV<Integer, Integer>, Long>>, Iterable<KV<KV<Integer, Integer>, Long>>> TO_LIST =
+  private static final Combine.CombineFn<KV<KV<String, String>, Long>,
+      List<KV<KV<String, String>, Long>>, Iterable<KV<KV<String, String>, Long>>> TO_LIST =
       toList();
 
   private static <X> Combine.CombineFn<X, List<X>, Iterable<X>> toList() {
@@ -79,12 +79,13 @@ public class OutputPCoAFile extends PTransform<PCollection<KV<KV<Integer, Intege
   }
 
   @Override
-  public PDone apply(PCollection<KV<KV<Integer, Integer>, Long>> similarPairs) {
+  public PDone apply(PCollection<KV<KV<String, String>, Long>> similarPairs) {
     return similarPairs
-        .apply(Sum.<KV<Integer, Integer>>longsPerKey())
+        .apply(Sum.<KV<String, String>>longsPerKey())
         .apply(Combine.globally(TO_LIST))
-        .apply(ParDo.of(new PCoAnalysis(dataIndices)))
-        .apply(ParDo.of(new DoFn<Iterable<PCoAnalysis.GraphResult>, String>() {
+        .apply(ParDo.named("PCoAAnalysis").of(new PCoAnalysis(dataIndices)))
+        .apply(ParDo.named("FormatGraphData")
+            .of(new DoFn<Iterable<PCoAnalysis.GraphResult>, String>() {
               @Override
               public void processElement(ProcessContext c) throws Exception {
                 Iterable<PCoAnalysis.GraphResult> graphResults = c.element();
