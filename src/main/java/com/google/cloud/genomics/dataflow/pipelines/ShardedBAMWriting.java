@@ -43,6 +43,7 @@ import com.google.cloud.dataflow.sdk.values.PCollectionTuple;
 import com.google.cloud.dataflow.sdk.values.PCollectionView;
 import com.google.cloud.dataflow.sdk.values.TupleTag;
 import com.google.cloud.genomics.dataflow.readers.bam.BAMIO;
+import com.google.cloud.genomics.dataflow.readers.bam.BAMShard;
 import com.google.cloud.genomics.dataflow.readers.bam.ReadBAMTransform;
 import com.google.cloud.genomics.dataflow.readers.bam.ReaderOptions;
 import com.google.cloud.genomics.dataflow.readers.bam.ShardingPolicy;
@@ -54,9 +55,11 @@ import com.google.cloud.genomics.dataflow.utils.TruncatedOutputStream;
 import com.google.cloud.genomics.utils.Contig;
 import com.google.cloud.genomics.utils.GenomicsFactory;
 import com.google.cloud.genomics.utils.ReadUtils;
+import com.google.common.base.Stopwatch;
 import com.google.common.collect.Lists;
 
 import htsjdk.samtools.BAMBlockWriter;
+import htsjdk.samtools.BAMIndexer;
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SAMRecord;
 import htsjdk.samtools.SAMRecordIterator;
@@ -76,6 +79,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 import java.util.logging.Logger;
 
 /**
@@ -177,7 +181,7 @@ public class ShardedBAMWriting {
     final SAMRecordIterator recordIterator = samReader.query(
         firstContig.referenceName, (int)firstContig.start + 1, (int)firstContig.end + 1, false);
     Contig firstShard = null;
-    while (recordIterator.hasNext()) {
+    while (recordIterator.hasNext() && result == null) {
       SAMRecord record = recordIterator.next();
       final int alignmentStart = record.getAlignmentStart();
       if (firstShard == null && alignmentStart > firstContig.start && alignmentStart < firstContig.end) {
@@ -196,6 +200,14 @@ public class ShardedBAMWriting {
     return result;
   }
 
+  private static final ShardingPolicy READ_SHARDING_POLICY = ShardingPolicy.BYTE_SIZE_POLICY;
+     /* new ShardingPolicy() {
+        @Override
+        public boolean shardBigEnough(BAMShard shard) {
+          return shard.sizeInLoci() > 10000000;
+        }
+      };*/
+      
   private static PCollection<Read> getReadsFromBAMFile() throws IOException {
     LOG.info("Sharded reading of "+ options.getBAMFilePath());
 
@@ -208,7 +220,7 @@ public class ShardedBAMWriting {
         contigs,
         readerOptions,
         options.getBAMFilePath(),
-        ShardingPolicy.BYTE_SIZE_POLICY);
+        READ_SHARDING_POLICY);
   }
 
   public static class ShardReadsTransform extends PTransform<PCollection<Read>,
@@ -486,7 +498,8 @@ public class ShardedBAMWriting {
               idx, endIdx);
           final String intermediateCombineResultName = dest + "-" +
               String.format("%02d",stageNumber) + "-" + 
-              String.format("%02d",idx);
+              String.format("%02d",idx) + "- " +
+              String.format("%02d",endIdx);
           final String combineResult = composeAndCleanupShards(storage,
               combinableShards, intermediateCombineResultName);
           combinedShards.add(combineResult);
@@ -498,9 +511,43 @@ public class ShardedBAMWriting {
       LOG.info("Combining a final group of " + sortedShardsNames.size() + " shards");
       final String combineResult = composeAndCleanupShards(storage,
           sortedShardsNames, dest);
-      
+      generateIndex(options, storage, combineResult);
       return combineResult;
     }
+    
+   static void generateIndex(ShardedBAMWritingOptions options, 
+       Storage.Objects storage, String bamFilePath) throws IOException {
+      final String baiFilePath = bamFilePath + ".bai";
+      Stopwatch timer = Stopwatch.createStarted();
+      LOG.info("Generating BAM index: " + baiFilePath);
+      LOG.info("Reading BAM file: " + bamFilePath);
+      final SamReader reader = BAMIO.openBAM(storage, bamFilePath, ValidationStringency.LENIENT, true);      
+      
+      final OutputStream outputStream =
+          Channels.newOutputStream(
+              new GcsUtil.GcsUtilFactory().create(options)
+                .create(GcsPath.fromUri(baiFilePath),
+                    "application/octet-stream"));
+      BAMIndexer indexer = new BAMIndexer(outputStream, reader.getFileHeader());
+
+      long processedReads = 0;
+
+      // create and write the content
+      for (SAMRecord rec : reader) {
+          if (++processedReads % 1000000 == 0) {
+            dumpStats(processedReads, timer);
+          }
+          indexer.processAlignment(rec);
+      }
+      indexer.finish();
+      dumpStats(processedReads, timer);
+    }
+   
+     static void dumpStats(long processedReads, Stopwatch timer) {
+       LOG.info("Processed " + processedReads + " records in " + timer + 
+           ". Speed: " + (processedReads*1000)/timer.elapsed(TimeUnit.MILLISECONDS) + " reads/sec");
+
+     }
   }
   
   static String composeAndCleanupShards(Storage.Objects storage, 
@@ -515,7 +562,7 @@ public class ShardedBAMWriting {
     ArrayList<SourceObjects> sourceObjects = new ArrayList<SourceObjects>();
     for (String shard : shardNames) {
         final GcsPath shardPath = GcsPath.fromUri(shard);
-        LOG.info("Adding shard " + shardPath);
+        LOG.info("Adding shard " + shardPath + " for result " + dest);
         sourceObjects.add( new SourceObjects().setName(shardPath.getObject()) );
     }
 
@@ -529,7 +576,7 @@ public class ShardedBAMWriting {
     LOG.info("Combine result is " + combineResult);
     for (SourceObjects sourceObject : sourceObjects) {
       final String shardToDelete = sourceObject.getName();
-      LOG.info("Cleaning up shard  " + shardToDelete);
+      LOG.info("Cleaning up shard  " + shardToDelete + " for result " + dest);
       storage.delete(destPath.getBucket(), shardToDelete).execute();
     }
     

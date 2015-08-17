@@ -43,13 +43,18 @@ public class BAMIO {
     ReaderAndIndex result = new ReaderAndIndex();
     result.index = openIndexForPath(storageClient, gcsStoragePath);
     result.reader = openBAMReader(
-        openBAMFile(storageClient, gcsStoragePath,result.index), stringency);
+        openBAMFile(storageClient, gcsStoragePath,result.index), stringency, false);
     return result;
   }
   
-  public static SamReader openBAM(Storage.Objects storageClient, String gcsStoragePath, ValidationStringency stringency) throws IOException {
+  public static SamReader openBAM(Storage.Objects storageClient, String gcsStoragePath, 
+      ValidationStringency stringency, boolean includeFileSource) throws IOException {
     return openBAMReader(openBAMFile(storageClient, gcsStoragePath,
-        openIndexForPath(storageClient, gcsStoragePath)), stringency);
+        openIndexForPath(storageClient, gcsStoragePath)), stringency, includeFileSource);
+  }
+  
+  public static SamReader openBAM(Storage.Objects storageClient, String gcsStoragePath, ValidationStringency stringency) throws IOException {
+    return openBAM(storageClient, gcsStoragePath, stringency, false);
   }
       
   private static SeekableStream openIndexForPath(Storage.Objects storageClient,String gcsStoragePath) {
@@ -74,9 +79,14 @@ public class BAMIO {
     return samInputResource;
   }
   
-  private static SamReader openBAMReader(SamInputResource resource, ValidationStringency stringency) {
-    SamReaderFactory samReaderFactory = SamReaderFactory.makeDefault().validationStringency(stringency)
+  private static SamReader openBAMReader(SamInputResource resource, ValidationStringency stringency, boolean includeFileSource) {
+    SamReaderFactory samReaderFactory = SamReaderFactory
+        .makeDefault()
+        .validationStringency(stringency)
         .enable(SamReaderFactory.Option.CACHE_FILE_BASED_INDEXES);
+    if (includeFileSource) {
+      samReaderFactory.enable(SamReaderFactory.Option.INCLUDE_SOURCE_IN_RECORDS);
+    }
     final SamReader samReader = samReaderFactory.open(resource);
     return samReader;
   }

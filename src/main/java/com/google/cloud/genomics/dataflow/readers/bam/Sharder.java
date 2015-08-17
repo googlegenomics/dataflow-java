@@ -178,6 +178,7 @@ public class Sharder {
   }
   
   void createShardsForReference(SAMSequenceRecord reference, Contig contig) {
+    LOG.info("Creating shard for: " + contig);
     final BitSet overlappingBins = GenomicIndexUtil.regionToBins(
         (int) contig.start, (int) contig.end);
     if (overlappingBins == null) {
@@ -185,6 +186,7 @@ public class Sharder {
       return;
     }
     
+   
     BAMShard currentShard = null;
     for (int binIndex = overlappingBins.nextSetBit(0); binIndex >= 0; binIndex = overlappingBins.nextSetBit(binIndex + 1)) {
       final Bin bin = index.getBinData(reference.getSequenceIndex(), binIndex);
@@ -234,13 +236,16 @@ public class Sharder {
       if (shardingPolicy.shardBigEnough(currentShard)) {
         LOG.info("Shard size is big enough to finalize: " + 
             currentShard.sizeInLoci() + ", " + currentShard.approximateSizeInBytes() + " bytes");
-        output.output(currentShard.finalize(index, Math.min(index.getLastLocusInBin(bin), (int)contig.end)));
+        final BAMShard bamShard = currentShard.finalize(index, Math.min(index.getLastLocusInBin(bin), (int)contig.end));
+        LOG.info("Outputting shard: " + bamShard.contig);
+        output.output(bamShard);
         currentShard = null;
       }
     }
     if (currentShard != null) {
       LOG.info("Outputting last shard of size " + 
-          currentShard.sizeInLoci() + ", " + currentShard.approximateSizeInBytes() + " bytes");
+          currentShard.sizeInLoci() + ", " + currentShard.approximateSizeInBytes() + " bytes " 
+          + currentShard.contig);
       output.output(currentShard.finalize(index, (int)contig.end));
     }
   }
