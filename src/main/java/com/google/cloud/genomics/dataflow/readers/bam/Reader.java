@@ -110,10 +110,10 @@ public class Reader {
         LOG.info("Processing unmapped");
         iterator = reader.queryUnmapped();
       } else if (shard.span != null) {
-        LOG.info("Processing span");
+        LOG.info("Processing span for " + shard.contig);
         iterator = reader.indexing().iterator(shard.span);
       } else if (shard.contig.referenceName != null && !shard.contig.referenceName.isEmpty()) {
-        LOG.info("Processing all bases for " + shard.contig.referenceName);
+        LOG.info("Processing all bases for " + shard.contig);
         iterator = reader.query(shard.contig.referenceName, (int) shard.contig.start,
             (int) shard.contig.end, false);
       } 
@@ -181,7 +181,7 @@ public class Reader {
     LOG.info("Processed " + recordsProcessed + 
         " in " + timer + 
         ". Speed: " + (recordsProcessed*1000)/timer.elapsed(TimeUnit.MILLISECONDS) + " reads/sec"
-        + ", skipped other sequences " + mismatchedSequence 
+        + ", filtered out by reference and mapping " + mismatchedSequence 
         + ", skippedBefore " + recordsBeforeStart
         + ", skipped after " + recordsAfterEnd);
   }
