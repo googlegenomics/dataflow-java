@@ -184,20 +184,28 @@ public class JoinNonVariantSegmentsWithVariants {
 
       for (Variant record : records) {
         if (!VariantUtils.IS_NON_VARIANT_SEGMENT.apply(record)) {
+          Variant updatedRecord = null;
           // TODO: determine and implement the correct criteria for overlaps of non-SNP variants
           if (VariantUtils.IS_SNP.apply(record)) {
             for (Iterator<Variant> iterator = blockRecords.iterator(); iterator.hasNext();) {
               Variant blockRecord = iterator.next();
               if (JoinNonVariantSegmentsWithVariants.isOverlapping(blockRecord, record)) {
-                record.getCalls().addAll(blockRecord.getCalls());
+                if(null == updatedRecord) {
+                  updatedRecord = record.clone();
+                }
+                updatedRecord.getCalls().addAll(blockRecord.getCalls());
               } else {
                 // Remove the current element from the iterator and the list since it is
-                // left of the genomic region we are currently working on due to our sort..
+                // left of the genomic region we are currently working on due to our sort.
                 iterator.remove();
               }
             }
           }
-          context.output(record);
+          if(null == updatedRecord) {
+            context.output(record);
+          } else {
+            context.output(updatedRecord);
+          }
         } else {
           blockRecords.add(record);
         }
