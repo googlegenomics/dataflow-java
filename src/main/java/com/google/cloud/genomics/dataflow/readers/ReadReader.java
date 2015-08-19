@@ -58,16 +58,16 @@ public class ReadReader extends GenomicsApiReader<SearchReadsRequest, Read> {
   }
 
   @Override
-  protected void processApiCall(Genomics genomics, ProcessContext c, SearchReadsRequest request)
+  protected void processApiCall(Genomics genomics, ProcessContext c, final SearchReadsRequest request)
       throws IOException {
-    LOG.info("Starting Reads read loop");
-    
+    SearchReadsRequest updatedRequest = request.clone();
     GenomicsOptions options = c.getPipelineOptions().as(GenomicsOptions.class);
     if (options.getPageSize() > 0) {
-      request.setPageSize(options.getPageSize());
+      updatedRequest.setPageSize(options.getPageSize());
     }
+    LOG.info("Starting Reads read loop: " + updatedRequest);
 
-    for (Read read : Paginator.Reads.create(genomics, shardBoundary).search(request, fields)) {
+    for (Read read : Paginator.Reads.create(genomics, shardBoundary).search(updatedRequest, fields)) {
       c.output(read);
       itemCount.addValue(1L);
     }

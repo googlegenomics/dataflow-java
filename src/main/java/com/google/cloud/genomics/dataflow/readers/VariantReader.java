@@ -51,26 +51,26 @@ public class VariantReader extends GenomicsApiReader<SearchVariantsRequest, Vari
   }
 
   @Override
-  protected void processApiCall(Genomics genomics, ProcessContext c, SearchVariantsRequest request)
+  protected void processApiCall(Genomics genomics, ProcessContext c, final SearchVariantsRequest request)
       throws IOException {
-    LOG.info("Starting Variants read loop: " + request);
-
+    SearchVariantsRequest updatedRequest = request.clone();
     GenomicsDatasetOptions options = c.getPipelineOptions().as(GenomicsDatasetOptions.class);
     if (options.getPageSize() > 0) {
-      request.setPageSize(options.getPageSize());
+      updatedRequest.setPageSize(options.getPageSize());
     }
     if (options.getMaxCalls() > 0) {
-      request.setMaxCalls(options.getMaxCalls());
+      updatedRequest.setMaxCalls(options.getMaxCalls());
     }
+    LOG.info("Starting Variants read loop: " + updatedRequest);
     
     int numberOfVariants = 0;
-    for (Variant variant : Paginator.Variants.create(genomics, shardBoundary).search(request, fields)) {
+    for (Variant variant : Paginator.Variants.create(genomics, shardBoundary).search(updatedRequest, fields)) {
       c.output(variant);
       ++numberOfVariants;
       itemCount.addValue(1L);
     }
 
-    LOG.info("Read " + numberOfVariants + " variants at: " + request.getReferenceName() + "-" + "["
-        + request.getStart() + ", " + request.getEnd() + "]");
+    LOG.info("Read " + numberOfVariants + " variants at: " + updatedRequest.getReferenceName() + "-" + "["
+        + updatedRequest.getStart() + ", " + updatedRequest.getEnd() + "]");
   }
 }
