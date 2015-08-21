@@ -20,11 +20,13 @@ import com.google.api.services.storage.Storage;
 import com.google.cloud.dataflow.sdk.Pipeline;
 import com.google.cloud.dataflow.sdk.coders.SerializableCoder;
 import com.google.cloud.dataflow.sdk.coders.StringUtf8Coder;
+import com.google.cloud.dataflow.sdk.transforms.Aggregator;
 import com.google.cloud.dataflow.sdk.transforms.Create;
 import com.google.cloud.dataflow.sdk.transforms.DoFn;
 import com.google.cloud.dataflow.sdk.transforms.PTransform;
 import com.google.cloud.dataflow.sdk.transforms.ParDo;
 import com.google.cloud.dataflow.sdk.transforms.View;
+import com.google.cloud.dataflow.sdk.transforms.Sum.SumIntegerFn;
 import com.google.cloud.dataflow.sdk.util.Transport;
 import com.google.cloud.dataflow.sdk.values.PCollection;
 import com.google.cloud.dataflow.sdk.values.PCollectionTuple;
@@ -52,10 +54,20 @@ public class ReadBAMTransform extends PTransform<PCollection<BAMShard>, PCollect
     GenomicsFactory.OfflineAuth auth;
     Storage.Objects storage;
     ReaderOptions options;
+    Aggregator<Integer, Integer> recordCountAggregator;
+    Aggregator<Integer, Integer> readCountAggregator;
+    Aggregator<Integer, Integer> skippedStartCountAggregator;
+    Aggregator<Integer, Integer> skippedEndCountAggregator;
+    Aggregator<Integer, Integer> skippedRefMismatchAggregator;
 
     public ReadFn(GenomicsFactory.OfflineAuth auth, ReaderOptions options) {
       this.auth = auth;
       this.options = options;
+      recordCountAggregator = createAggregator("Processed records", new SumIntegerFn());
+      readCountAggregator = createAggregator("Reads generated", new SumIntegerFn());
+      skippedStartCountAggregator = createAggregator("Skipped start", new SumIntegerFn());
+      skippedEndCountAggregator = createAggregator("Skipped end", new SumIntegerFn());
+      skippedRefMismatchAggregator = createAggregator("Ref mismatch", new SumIntegerFn());
     }
 
     @Override
@@ -65,8 +77,13 @@ public class ReadBAMTransform extends PTransform<PCollection<BAMShard>, PCollect
 
     @Override
     public void processElement(ProcessContext c) throws java.lang.Exception {
-      (new Reader(storage, options, c.element(), c))
-          .process();
+      final Reader reader = new Reader(storage, options, c.element(), c);
+      reader.process();
+      recordCountAggregator.addValue(reader.recordsProcessed);
+      skippedStartCountAggregator.addValue(reader.recordsBeforeStart);
+      skippedEndCountAggregator.addValue(reader.recordsAfterEnd);
+      skippedRefMismatchAggregator.addValue(reader.mismatchedSequence);
+      readCountAggregator.addValue(reader.readsGenerated);
     }
   }
 

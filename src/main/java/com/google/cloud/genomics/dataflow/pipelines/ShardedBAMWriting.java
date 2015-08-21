@@ -28,11 +28,14 @@ import com.google.cloud.dataflow.sdk.io.TextIO;
 import com.google.cloud.dataflow.sdk.options.Default;
 import com.google.cloud.dataflow.sdk.options.Description;
 import com.google.cloud.dataflow.sdk.options.PipelineOptionsFactory;
+import com.google.cloud.dataflow.sdk.transforms.Aggregator;
 import com.google.cloud.dataflow.sdk.transforms.Create;
 import com.google.cloud.dataflow.sdk.transforms.DoFn;
 import com.google.cloud.dataflow.sdk.transforms.GroupByKey;
 import com.google.cloud.dataflow.sdk.transforms.PTransform;
 import com.google.cloud.dataflow.sdk.transforms.ParDo;
+import com.google.cloud.dataflow.sdk.transforms.Sum;
+import com.google.cloud.dataflow.sdk.transforms.Sum.SumIntegerFn;
 import com.google.cloud.dataflow.sdk.transforms.View;
 import com.google.cloud.dataflow.sdk.util.GcsUtil;
 import com.google.cloud.dataflow.sdk.util.Transport;
@@ -238,13 +241,33 @@ public class ShardedBAMWriting {
   }
 
   public static class KeyReadsFn extends DoFn<Read, KV<Contig,Read>> {
+    private Aggregator<Integer, Integer> readCountAggregator;
+    private Aggregator<Integer, Integer> unmappedReadCountAggregator;
+    private long lociPerShard;
+    
+    public KeyReadsFn() {
+      readCountAggregator = createAggregator("Keyed reads", new SumIntegerFn());
+      unmappedReadCountAggregator = createAggregator("Keyed unmapped reads", new SumIntegerFn());
+    }
+    
+    @Override
+    public void startBundle(Context c) {
+      lociPerShard = c.getPipelineOptions()
+          .as(ShardedBAMWritingOptions.class)
+          .getLociPerWritingShard();
+    }
     @Override
     public void processElement(DoFn<Read, KV<Contig, Read>>.ProcessContext c)
         throws Exception {
       final Read read = c.element();
-      c.output(KV.of(shardKeyForRead(read, 
-          c.getPipelineOptions().as(ShardedBAMWritingOptions.class).getLociPerWritingShard()), 
-          read));
+      c.output(
+          KV.of(
+              shardKeyForRead(read, lociPerShard), 
+              read));
+      readCountAggregator.addValue(1);
+      if (isUnmapped(read)) {
+        unmappedReadCountAggregator.addValue(1);
+      }
     }
   }
 
@@ -291,6 +314,17 @@ public class ShardedBAMWriting {
         }
       });
 
+  static boolean isUnmapped(Read read) {
+    if (read.getAlignment() == null || read.getAlignment().getPosition() == null) {
+      return true;
+    }
+    final String reference = read.getAlignment().getPosition().getReferenceName();
+    if (reference == null || reference.isEmpty() || reference.equals("*")) {
+      return true;
+    }
+    return false;
+  }
+      
   static Contig shardKeyForRead(Read read, long lociPerShard) {
     String referenceName = null;
     Long alignmentStart = null;
@@ -301,14 +335,17 @@ public class ShardedBAMWriting {
       }
     }
     // If this read is unmapped but its mate is mapped, group them together
-    if (referenceName == null || alignmentStart == null) {
+    if (referenceName == null || referenceName.isEmpty() ||
+        referenceName.equals("*") || alignmentStart == null) {
       if (read.getNextMatePosition() != null) {
         referenceName = read.getNextMatePosition().getReferenceName();
         alignmentStart = read.getNextMatePosition().getPosition();
       }
     }
-    if (referenceName == null || alignmentStart == null) {
+    if (referenceName == null || referenceName.isEmpty()) {
       referenceName = "*";
+    }
+    if (alignmentStart == null) {
       alignmentStart = new Long(0);
     }
     return shardFromAlignmentStart(referenceName, alignmentStart, lociPerShard);
@@ -363,9 +400,13 @@ public class ShardedBAMWriting {
   public static class WriteShardFn extends DoFn<KV<Contig, Iterable<Read>>, String> {
     final PCollectionView<HeaderInfo> headerView;
     Storage.Objects storage;
+    Aggregator<Integer, Integer> readCountAggregator;
+    Aggregator<Integer, Integer> unmappedReadCountAggregator;
 
     public WriteShardFn(final PCollectionView<HeaderInfo> headerView) {
       this.headerView = headerView;
+      readCountAggregator = createAggregator("Written reads", new SumIntegerFn());
+      unmappedReadCountAggregator = createAggregator("Written unmapped reads", new SumIntegerFn());
     }
 
     @Override
@@ -422,6 +463,7 @@ public class ShardedBAMWriting {
                 .create(GcsPath.fromUri(shardName),
                     "application/octet-stream"));
       int count = 0;
+      int countUnmapped = 0;
       // Use a TruncatedOutputStream to avoid writing the empty gzip block that
       // indicates EOF.
       final BAMBlockWriter bw = new BAMBlockWriter(new TruncatedOutputStream(
@@ -439,11 +481,20 @@ public class ShardedBAMWriting {
       }
       for (Read read : reads) {
         SAMRecord samRecord = ReadUtils.makeSAMRecord(read, header);
+        if (samRecord.getReadUnmappedFlag()) {
+          if (!samRecord.getMateUnmappedFlag()) {
+            samRecord.setReferenceName(samRecord.getMateReferenceName());
+            samRecord.setAlignmentStart(samRecord.getMateAlignmentStart());
+          }
+          countUnmapped++;
+        }
         bw.addAlignment(samRecord);
         count++;
       }
       bw.close();
-      LOG.info("Wrote " + count + " reads into " + shardName);
+      LOG.info("Wrote " + count + " reads, " + countUnmapped + " umapped, into " + shardName);
+      readCountAggregator.addValue(count);
+      unmappedReadCountAggregator.addValue(countUnmapped);
       return shardName;
     }
   }
