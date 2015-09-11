@@ -73,9 +73,9 @@ public class CountReadsITCase {
   
   private void testLocalBase(String outputFilename, String contig, String bamFilename, long expectedCount,
       boolean includeUnmapped) throws Exception {
-    final String OUTPUT = helper.TEST_OUTPUT_GCS_FOLDER + outputFilename;
+    final String OUTPUT = helper.getTestOutputGcsFolder()+ outputFilename;
     String[] ARGS = {
-        "--apiKey=" + helper.API_KEY,
+        "--apiKey=" + helper.getApiKey(),
         "--output=" + OUTPUT,
         "--references=" + contig,
         "--includeUnmapped=" + includeUnmapped,
@@ -124,14 +124,14 @@ public class CountReadsITCase {
   }
 
   private void testCloudBase(String outputFilename, String contig, String bamFilename, long expectedCount) throws Exception {
-    final String OUTPUT = helper.TEST_OUTPUT_GCS_FOLDER + outputFilename;
+    final String OUTPUT = helper.getTestOutputGcsFolder() + outputFilename;
     String[] ARGS = {
-        "--apiKey=" + helper.API_KEY,
-        "--project=" + helper.TEST_PROJECT,
+        "--apiKey=" + helper.getApiKey(),
+        "--project=" + helper.getTestProject(),
         "--output=" + OUTPUT,
         "--numWorkers=2",
         "--runner=BlockingDataflowPipelineRunner",
-        "--stagingLocation=" + helper.TEST_STAGING_GCS_FOLDER,
+        "--stagingLocation=" + helper.getTestStagingGcsFolder(),
         "--references=" + contig,
         "--BAMFilePath=" + bamFilename
     };
@@ -165,14 +165,14 @@ public class CountReadsITCase {
   }
 
   public void testCloudWithAPIBase(String outputFilename, String contig, String readGroupSetId, long expectedCount) throws Exception {
-    final String OUTPUT = helper.TEST_OUTPUT_GCS_FOLDER + outputFilename;
+    final String OUTPUT = helper.getTestOutputGcsFolder() + outputFilename;
     String[] ARGS = {
-        "--apiKey=" + helper.API_KEY,
-        "--project=" + helper.TEST_PROJECT,
+        "--apiKey=" + helper.getApiKey(),
+        "--project=" + helper.getTestProject(),
         "--output=" + OUTPUT,
         "--numWorkers=2",
         "--runner=BlockingDataflowPipelineRunner",
-        "--stagingLocation=" + helper.TEST_STAGING_GCS_FOLDER,
+        "--stagingLocation=" + helper.getTestStagingGcsFolder(),
         "--references=" + contig,
         "--readGroupSetId=" + readGroupSetId
     };

@@ -13,22 +13,11 @@
  */
 package com.google.cloud.genomics.dataflow.utils;
 
-import java.io.IOException;
-import java.security.GeneralSecurityException;
-import java.util.List;
-import java.util.logging.Logger;
-
 import com.google.api.client.repackaged.com.google.common.base.Strings;
-import com.google.api.services.genomics.Genomics;
-import com.google.api.services.genomics.model.SearchVariantsRequest;
 import com.google.cloud.dataflow.sdk.options.Default;
 import com.google.cloud.dataflow.sdk.options.Description;
 import com.google.cloud.dataflow.sdk.util.gcsfs.GcsPath;
-import com.google.cloud.genomics.utils.Contig;
-import com.google.cloud.genomics.utils.Contig.SexChromosomeFilter;
-import com.google.cloud.genomics.utils.GenomicsFactory;
 import com.google.common.base.Preconditions;
-import com.google.common.collect.Lists;
 
 /**
  * A common options class for all pipelines that operate over a single dataset and write their
@@ -36,37 +25,6 @@ import com.google.common.collect.Lists;
  */
 public interface GenomicsDatasetOptions extends GenomicsOptions {
   public static class Methods {
-
-    private static final Logger LOG = Logger.getLogger(GenomicsDatasetOptions.class.getName());
-
-    // TODO: If needed, add getReadRequests method
-    public static List<SearchVariantsRequest> getVariantRequests(GenomicsDatasetOptions options,
-        GenomicsFactory.OfflineAuth auth, SexChromosomeFilter sexChromosomeFilter) throws IOException,
-        GeneralSecurityException {
-      String datasetId = options.getDatasetId();
-      Genomics genomics = auth.getGenomics(auth.getDefaultFactory());
-
-      Iterable<Contig> contigs =
-          options.isAllReferences() ? Contig.getContigsInVariantSet(genomics, datasetId, sexChromosomeFilter)
-              : Contig.parseContigsFromCommandLine(options.getReferences());
-
-      List<SearchVariantsRequest> requests = Lists.newArrayList();
-      for (Contig contig : contigs) {
-        for (Contig shard : contig.getShards(options.getBasesPerShard())) {
-          LOG.info("Adding request with " + shard.referenceName + " " + shard.start + " to "
-              + shard.end);
-          SearchVariantsRequest request = shard.getVariantsRequest(datasetId);
-          if (options.getPageSize() > 0) {
-            request.setPageSize(options.getPageSize());
-          }
-          if (options.getMaxCalls() > 0) {
-            request.setMaxCalls(options.getMaxCalls());
-          }
-          requests.add(request);
-        }
-      }
-      return requests;
-    }
 
     public static void validateOptions(GenomicsDatasetOptions options) {
       Preconditions.checkArgument(0 < options.getBinSize(), "binSize must be greater than zero");
@@ -120,16 +78,18 @@ public interface GenomicsDatasetOptions extends GenomicsOptions {
   boolean isAllReferences();
   void setAllReferences(boolean allReferences);
 
-  @Description("Comma separated tuples of reference:start:end,... Defaults to " + Contig.BRCA1)
-  @Default.String(Contig.BRCA1)
+  @Description("Comma separated tuples of reference:start:end,... "
+  + "Defaults to '17:41196311:41277499' for BRCA1.")
+  @Default.String("17:41196311:41277499")
   String getReferences();
   void setReferences(String references);
 
   @Description("The maximum number of bases per shard.")
-  @Default.Long(Contig.DEFAULT_NUMBER_OF_BASES_PER_SHARD)
+  @Default.Long(1000000)
   long getBasesPerShard();
   void setBasesPerShard(long basesPerShard);
 
+  @Deprecated // Remove this option when fully migrated to gRPC.
   @Description("The maximum number of calls to return. However, at least one variant will always "
       + "be returned, even if it has more calls than this limit.  If unspecified, the default "
       + "number of calls will be returned.")

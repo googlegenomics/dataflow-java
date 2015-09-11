@@ -18,6 +18,8 @@ import java.util.List;
 
 import com.google.api.services.genomics.model.Call;
 import com.google.api.services.genomics.model.Variant;
+import com.google.genomics.v1.VariantCall;
+import com.google.genomics.v1.VariantCall.Builder;
 
 public class DataUtils {
 
@@ -25,6 +27,13 @@ public class DataUtils {
     return new Call().setCallSetName(name).setGenotype(Arrays.asList(alleles));
   }
 
+  public static VariantCall makeVariantCall(String name, Integer... alleles) {
+    return VariantCall.newBuilder()
+        .setCallSetName(name)
+        .addAllGenotype(Arrays.asList(alleles))
+        .build();
+  }
+  
   public static Variant makeSimpleVariant(Call... calls) {
     return new Variant().setCalls(Arrays.asList(calls));
   }

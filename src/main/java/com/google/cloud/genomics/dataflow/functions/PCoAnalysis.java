@@ -16,24 +16,19 @@
 
 package com.google.cloud.genomics.dataflow.functions;
 
-import com.google.api.client.util.Lists;
-import com.google.api.client.util.Preconditions;
-import com.google.cloud.dataflow.sdk.transforms.DoFn;
-import com.google.cloud.dataflow.sdk.values.KV;
-import com.google.cloud.genomics.dataflow.functions.PCoAnalysis.GraphResult;
-import com.google.cloud.genomics.dataflow.utils.GenomicsDatasetOptions;
-import com.google.cloud.genomics.utils.GenomicsFactory;
-import com.google.common.collect.BiMap;
-import com.google.common.collect.HashBiMap;
-import com.google.common.collect.ImmutableList;
+import java.io.Serializable;
+import java.util.Collection;
+import java.util.List;
 
 import Jama.EigenvalueDecomposition;
 import Jama.Matrix;
 
-import java.io.Serializable;
-import java.util.Collection;
-import java.util.List;
-import java.util.Map;
+import com.google.api.client.util.Lists;
+import com.google.api.client.util.Preconditions;
+import com.google.cloud.dataflow.sdk.transforms.DoFn;
+import com.google.cloud.dataflow.sdk.values.KV;
+import com.google.common.collect.BiMap;
+import com.google.common.collect.ImmutableList;
 
 /**
  * This function runs a Principal Coordinate Analysis inside of a SeqDo.
@@ -47,16 +42,17 @@ import java.util.Map;
  * The input data to this algorithm must be for a similarity matrix - and the
  * resulting matrix must be symmetric.
  *
- * Input: KV(KV(dataIndex, dataIndex), count of how similar the data pair is)
+ * Input: KV(KV(dataName, dataName), count of how similar the data pair is)
  * Output: GraphResults - an x/y pair and a label
  *
  * Example input for a tiny dataset of size 2:
  *
- * KV(KV(0, 0), 5)
- * KV(KV(1, 1), 5)
- * KV(KV(1, 0), 2)
+ * KV(KV(data1, data1), 5)
+ * KV(KV(data1, data2), 2)
+ * KV(KV(data2, data2), 5)
+ * KV(KV(data2, data1), 2)
  */
-public class PCoAnalysis extends DoFn<Iterable<KV<KV<Integer, Integer>, Long>>,
+public class PCoAnalysis extends DoFn<Iterable<KV<KV<String, String>, Long>>,
     Iterable<PCoAnalysis.GraphResult>> {
 
   public static class GraphResult implements Serializable {
@@ -198,17 +194,14 @@ public class PCoAnalysis extends DoFn<Iterable<KV<KV<Integer, Integer>, Long>>,
     return results;
   }
 
-  @Override
-  public void processElement(ProcessContext context) {
-    Collection<KV<KV<Integer, Integer>, Long>> element = ImmutableList.copyOf(context.element());
+  @Override public void processElement(ProcessContext context) {
+    Collection<KV<KV<String, String>, Long>> element = ImmutableList.copyOf(context.element());
 
-    // Transform the data into a matrix
     int dataSize = dataIndices.size();
     double[][] matrixData = new double[dataSize][dataSize];
-    for (KV<KV<Integer, Integer>, Long> entry : element) {
-      int d1 = entry.getKey().getKey();
-      int d2 = entry.getKey().getValue();
-
+    for (KV<KV<String, String>, Long> entry : element) {
+      int d1 = dataIndices.get(entry.getKey().getKey());
+      int d2 = dataIndices.get(entry.getKey().getValue());
       double value = entry.getValue();
       matrixData[d1][d2] = value;
       if (d1 != d2) {
