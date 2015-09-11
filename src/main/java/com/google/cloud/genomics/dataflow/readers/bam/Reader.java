@@ -56,10 +56,11 @@ public class Reader {
   
   Filter filter;
   
-  int recordsBeforeStart = 0;
-  int recordsAfterEnd = 0;
-  int mismatchedSequence = 0;
-  int recordsProcessed = 0;
+  public int recordsBeforeStart = 0;
+  public int recordsAfterEnd = 0;
+  public int mismatchedSequence = 0;
+  public int recordsProcessed = 0;
+  public int readsGenerated = 0;
   
   public Reader(Objects storageClient, ReaderOptions options, BAMShard shard, DoFn<BAMShard, Read>.ProcessContext c) {
     super();
@@ -110,10 +111,10 @@ public class Reader {
         LOG.info("Processing unmapped");
         iterator = reader.queryUnmapped();
       } else if (shard.span != null) {
-        LOG.info("Processing span");
+        LOG.info("Processing span for " + shard.contig);
         iterator = reader.indexing().iterator(shard.span);
       } else if (shard.contig.referenceName != null && !shard.contig.referenceName.isEmpty()) {
-        LOG.info("Processing all bases for " + shard.contig.referenceName);
+        LOG.info("Processing all bases for " + shard.contig);
         iterator = reader.query(shard.contig.referenceName, (int) shard.contig.start,
             (int) shard.contig.end, false);
       } 
@@ -160,6 +161,7 @@ public class Reader {
   }
   
   void processRecord(SAMRecord record) {
+    recordsProcessed++;
     if (!passesFilter(record)) {
       mismatchedSequence++;
       return;
@@ -168,20 +170,20 @@ public class Reader {
       recordsBeforeStart++;
       return;
     }
-    if (record.getAlignmentStart() >= shard.contig.end) {
+    if (record.getAlignmentStart() > shard.contig.end) {
       recordsAfterEnd++;
       return;
     }
     c.output(ReadUtils.makeRead(record));
-    recordsProcessed++;
+    readsGenerated++;
   }
   
   void dumpStats() {
     timer.stop();
-    LOG.info("Processed " + recordsProcessed + 
+    LOG.info("Processed " + recordsProcessed + " outputted " + readsGenerated +
         " in " + timer + 
         ". Speed: " + (recordsProcessed*1000)/timer.elapsed(TimeUnit.MILLISECONDS) + " reads/sec"
-        + ", skipped other sequences " + mismatchedSequence 
+        + ", filtered out by reference and mapping " + mismatchedSequence 
         + ", skippedBefore " + recordsBeforeStart
         + ", skipped after " + recordsAfterEnd);
   }
@@ -219,7 +221,7 @@ public class Reader {
         recordsBeforeStart++;
         continue;
       }
-      if (record.getAlignmentStart() >= contig.end) {
+      if (record.getAlignmentStart() > contig.end) {
         recordsAfterEnd++;
         continue;
       }
