@@ -15,6 +15,10 @@
  */
 package com.google.cloud.genomics.dataflow.pipelines;
 
+import java.io.IOException;
+import java.security.GeneralSecurityException;
+import java.util.List;
+
 import com.google.api.services.genomics.model.SearchVariantsRequest;
 import com.google.cloud.dataflow.sdk.Pipeline;
 import com.google.cloud.dataflow.sdk.io.TextIO;
@@ -31,13 +35,9 @@ import com.google.cloud.genomics.dataflow.readers.VariantReader;
 import com.google.cloud.genomics.dataflow.utils.DataflowWorkarounds;
 import com.google.cloud.genomics.dataflow.utils.GenomicsDatasetOptions;
 import com.google.cloud.genomics.dataflow.utils.GenomicsOptions;
-import com.google.cloud.genomics.utils.Contig.SexChromosomeFilter;
 import com.google.cloud.genomics.utils.GenomicsFactory;
-import com.google.cloud.genomics.utils.Paginator.ShardBoundary;
-
-import java.io.IOException;
-import java.security.GeneralSecurityException;
-import java.util.List;
+import com.google.cloud.genomics.utils.ShardBoundary;
+import com.google.cloud.genomics.utils.ShardUtils;
 
 /**
  * A pipeline that calculates the transmission probability of each allele in parents.
@@ -56,8 +56,10 @@ public class TransmissionProbability {
     GenomicsDatasetOptions.Methods.validateOptions(options);
 
     GenomicsFactory.OfflineAuth auth = GenomicsOptions.Methods.getGenomicsAuth(options);
-    List<SearchVariantsRequest> requests = GenomicsDatasetOptions.Methods.getVariantRequests(
-        options, auth, SexChromosomeFilter.EXCLUDE_XY);
+    List<SearchVariantsRequest> requests = options.isAllReferences() ?
+        ShardUtils.getPaginatedVariantRequests(options.getDatasetId(), ShardUtils.SexChromosomeFilter.EXCLUDE_XY,
+            options.getBasesPerShard(), auth) :
+              ShardUtils.getPaginatedVariantRequests(options.getDatasetId(), options.getReferences(), options.getBasesPerShard());
 
     Pipeline p = Pipeline.create(options);
     DataflowWorkarounds.registerGenomicsCoders(p);
@@ -72,7 +74,7 @@ public class TransmissionProbability {
     p.begin()
         .apply(Create.of(requests))
         .apply(ParDo.named("VariantReader")
-            .of(new VariantReader(auth, ShardBoundary.STRICT, VARIANT_FIELDS)))
+            .of(new VariantReader(auth, ShardBoundary.Requirement.STRICT, VARIANT_FIELDS)))
         .apply(ParDo.named("ExtractFamilyVariantStatus")
             .of(new ExtractAlleleTransmissionStatus()))
         .apply(GroupByKey.<Allele, Boolean>create())

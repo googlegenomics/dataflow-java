@@ -15,13 +15,14 @@
  */
 package com.google.cloud.genomics.dataflow.pipelines;
 
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertTrue;
+
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.Writer;
 import java.nio.channels.Channels;
 import java.security.GeneralSecurityException;
-
-import org.junit.Assert;
 
 import com.google.api.services.storage.Storage;
 import com.google.cloud.dataflow.sdk.options.GcsOptions;
@@ -29,36 +30,68 @@ import com.google.cloud.dataflow.sdk.options.PipelineOptionsFactory;
 import com.google.cloud.dataflow.sdk.util.GcsUtil;
 import com.google.cloud.dataflow.sdk.util.Transport;
 import com.google.cloud.dataflow.sdk.util.gcsfs.GcsPath;
+import com.google.cloud.genomics.dataflow.readers.bam.BAMIO;
 import com.google.cloud.genomics.dataflow.utils.GenomicsOptions;
+
+import htsjdk.samtools.SamReader;
+import htsjdk.samtools.ValidationStringency;
 
 public class IntegrationTestHelper {
 
   // Test configuration constants
-  final String API_KEY = System.getenv("GOOGLE_API_KEY");
-  final String TEST_PROJECT = System.getenv("TEST_PROJECT");
-  final String TEST_OUTPUT_GCS_FOLDER = System.getenv("TEST_OUTPUT_GCS_FOLDER");
-  final String TEST_STAGING_GCS_FOLDER = System.getenv("TEST_STAGING_GCS_FOLDER");
+  private final String API_KEY = System.getenv("GOOGLE_API_KEY");
+  private final String TEST_PROJECT = System.getenv("TEST_PROJECT");
+  private final String TEST_OUTPUT_GCS_FOLDER = System.getenv("TEST_OUTPUT_GCS_FOLDER");
+  private final String TEST_STAGING_GCS_FOLDER = System.getenv("TEST_STAGING_GCS_FOLDER");
 
   // Variant test configuration constants
-  static final String PLATINUM_GENOMES_DATASET = "3049512673186936334";
-  static final String PLATINUM_GENOMES_BRCA1_REFERENCES = "chr17:41196311:41277499";
-  static final int PLATINUM_GENOMES_NUMBER_OF_SAMPLES = 17;
+  public static final String PLATINUM_GENOMES_DATASET = "3049512673186936334";
+  public static final String PLATINUM_GENOMES_BRCA1_REFERENCES = "chr17:41196311:41277499";
+  public static final int PLATINUM_GENOMES_NUMBER_OF_SAMPLES = 17;
 
-  GenomicsOptions popts = PipelineOptionsFactory.create().as(GenomicsOptions.class);
+  private GenomicsOptions popts = PipelineOptionsFactory.create().as(GenomicsOptions.class);
   GcsUtil gcsUtil;
   
   public IntegrationTestHelper() {
-    Assert.assertNotNull("You must set the GOOGLE_API_KEY environment variable for this test.", API_KEY);
-    Assert.assertNotNull("You must set the TEST_PROJECT environment variable for this test.", TEST_PROJECT);
-    Assert.assertNotNull("You must set the TEST_OUTPUT_GCS_FOLDER environment variable for this test.", TEST_OUTPUT_GCS_FOLDER);
-    Assert.assertNotNull("You must set the TEST_STAGING_GCS_FOLDER environment variable for this test.", TEST_STAGING_GCS_FOLDER);
-    Assert.assertTrue("TEST_OUTPUT_GCS_FOLDER must end with '/'", TEST_OUTPUT_GCS_FOLDER.endsWith("/"));
-    Assert.assertTrue("TEST_OUTPUT_GCS_FOLDER must start with 'gs://'", TEST_OUTPUT_GCS_FOLDER.startsWith("gs://"));
-    Assert.assertTrue("TEST_STAGING_GCS_FOLDER must start with 'gs://'", TEST_STAGING_GCS_FOLDER.startsWith("gs://"));
+    assertNotNull("You must set the GOOGLE_API_KEY environment variable for this test.", API_KEY);
+    assertNotNull("You must set the TEST_PROJECT environment variable for this test.", TEST_PROJECT);
+    assertNotNull("You must set the TEST_OUTPUT_GCS_FOLDER environment variable for this test.", TEST_OUTPUT_GCS_FOLDER);
+    assertNotNull("You must set the TEST_STAGING_GCS_FOLDER environment variable for this test.", TEST_STAGING_GCS_FOLDER);
+    assertTrue("TEST_OUTPUT_GCS_FOLDER must end with '/'", TEST_OUTPUT_GCS_FOLDER.endsWith("/"));
+    assertTrue("TEST_OUTPUT_GCS_FOLDER must start with 'gs://'", TEST_OUTPUT_GCS_FOLDER.startsWith("gs://"));
+    assertTrue("TEST_STAGING_GCS_FOLDER must start with 'gs://'", TEST_STAGING_GCS_FOLDER.startsWith("gs://"));
     // we don't care how TEST_STAGING_GCS_FOLDER ends, so no check for it.
     
     popts.setApiKey(API_KEY);
     gcsUtil = new GcsUtil.GcsUtilFactory().create(popts);
+  }
+
+  /**
+   * @return the API_KEY
+   */
+  public String getApiKey() {
+    return API_KEY;
+  }
+
+  /**
+   * @return the TEST_PROJECT
+   */
+  public String getTestProject() {
+    return TEST_PROJECT;
+  }
+
+  /**
+   * @return the TEST_OUTPUT_GCS_FOLDER
+   */
+  public String getTestOutputGcsFolder() {
+    return TEST_OUTPUT_GCS_FOLDER;
+  }
+
+  /**
+   * @return the TEST_STAGING_GCS_FOLDER
+   */
+  public String getTestStagingGcsFolder() {
+    return TEST_STAGING_GCS_FOLDER;
   }
 
   /**
@@ -78,6 +111,17 @@ public class IntegrationTestHelper {
    */
   public BufferedReader openOutput(String outputPath) throws IOException {
     return new BufferedReader(Channels.newReader(gcsUtil.open(GcsPath.fromUri(outputPath)), "UTF-8"));
+  }
+  
+  /**
+   * Open test output as BAM file - useful if your test writes out a BAM file
+   * and you want to validate the contents.
+   * @throws IOException 
+   */
+  public SamReader openBAM(String bamFilePath) throws IOException {
+    final GcsOptions gcsOptions = popts.as(GcsOptions.class);
+    final Storage.Objects storage = Transport.newStorageClient(gcsOptions).build().objects();
+    return BAMIO.openBAM(storage, bamFilePath, ValidationStringency.LENIENT, true); 
   }
 
   /**
