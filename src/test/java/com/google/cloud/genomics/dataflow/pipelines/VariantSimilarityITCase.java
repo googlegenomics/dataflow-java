@@ -31,6 +31,7 @@ import org.junit.Ignore;
 import org.junit.Test;
 
 import com.google.api.client.util.Lists;
+import com.google.cloud.dataflow.sdk.util.gcsfs.GcsPath;
 import com.google.cloud.genomics.dataflow.functions.PCoAnalysis.GraphResult;
 
 /**
@@ -53,8 +54,7 @@ import com.google.cloud.genomics.dataflow.functions.PCoAnalysis.GraphResult;
  * See also http://maven.apache.org/surefire/maven-failsafe-plugin/examples/single-test.html
  */
 public class VariantSimilarityITCase {
-  
-  static final String OUTPUT_SUFFIX = "-00000-of-00001";
+
   static final GraphResult[] EXPECTED_RESULT = {
       new GraphResult("NA12877", 5.18, 0.22),
       new GraphResult("NA12878", -7.39, -1.7),
@@ -84,14 +84,11 @@ public class VariantSimilarityITCase {
     outputPrefix = helper.getTestOutputGcsFolder() + "variantSimilarity";
   }
 
-  @Before
-  public void setUp() throws Exception {
-    helper.touchOutput(outputPrefix + OUTPUT_SUFFIX);
-  }
-
   @After
   public void tearDown() throws Exception {
-    helper.deleteOutput(outputPrefix + OUTPUT_SUFFIX);
+    for (GcsPath path : helper.gcsUtil.expand(GcsPath.fromUri(outputPrefix + "*"))) {
+      helper.deleteOutput(path.toString());
+    }
   }
 
   @Test
@@ -156,10 +153,12 @@ public class VariantSimilarityITCase {
     VariantSimilarity.main(ARGS);
    
     // Download the pipeline results.
-    BufferedReader reader = helper.openOutput(outputPrefix + OUTPUT_SUFFIX);
     List<GraphResult> results = Lists.newArrayList();
-    for (String line = reader.readLine(); line != null; line = reader.readLine()) {
-      results.add(GraphResult.fromString(line));
+    for (GcsPath path : helper.gcsUtil.expand(GcsPath.fromUri(outputPrefix + "*"))) {
+      BufferedReader reader = helper.openOutput(path.toString());
+      for (String line = reader.readLine(); line != null; line = reader.readLine()) {
+        results.add(GraphResult.fromString(line));
+      }
     }
 
     // Check the pipeline results.

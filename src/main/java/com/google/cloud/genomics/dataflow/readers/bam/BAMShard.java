@@ -106,7 +106,12 @@ public class BAMShard implements Serializable {
 
   @Override
   public String toString() {
-    return file + ": " + contig.toString() + ", locus size = " + sizeInLoci() + 
-        ", span size = " + approximateSizeInBytes();
+    String str = file + ": " + contig.toString() + ", locus size = " + sizeInLoci();
+    if (cachedSizeInBytes >= 0) {
+      // Only return this as part of the string if it's already cached and calculated.
+      // Otherwise calling this function causes the object to be mutated.
+      str += ", span size = " + cachedSizeInBytes;
+    }
+    return str;
   }
 }
