@@ -180,9 +180,11 @@ public class Reader {
   
   void dumpStats() {
     timer.stop();
+    long elapsed = timer.elapsed(TimeUnit.MILLISECONDS);
+    if (elapsed == 0) elapsed = 1;
     LOG.info("Processed " + recordsProcessed + " outputted " + readsGenerated +
         " in " + timer + 
-        ". Speed: " + (recordsProcessed*1000)/timer.elapsed(TimeUnit.MILLISECONDS) + " reads/sec"
+        ". Speed: " + (recordsProcessed*1000)/elapsed + " reads/sec"
         + ", filtered out by reference and mapping " + mismatchedSequence 
         + ", skippedBefore " + recordsBeforeStart
         + ", skipped after " + recordsAfterEnd);
