@@ -314,6 +314,18 @@
           </execution>
         </executions>
       </plugin>
+
+      <!--
+      Use a newer version of the plugin to avoid long build times on
+      machines with slow Unix group lookups
+      https://www.mail-archive.com/issues@maven.apache.org/msg95302.html
+      -->
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-jar-plugin</artifactId>
+        <version>2.6</version>
+      </plugin>
+
     </plugins>
   </build>
 
