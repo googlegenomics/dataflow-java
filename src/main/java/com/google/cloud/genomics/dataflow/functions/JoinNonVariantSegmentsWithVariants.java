@@ -183,8 +183,8 @@ public class JoinNonVariantSegmentsWithVariants {
       List<Variant> blockRecords = new LinkedList<>();
 
       for (Variant record : records) {
-        Variant updatedRecord = record.clone();
-        if (!VariantUtils.IS_NON_VARIANT_SEGMENT.apply(updatedRecord)) {
+        if (!VariantUtils.IS_NON_VARIANT_SEGMENT.apply(record)) {
+          Variant updatedRecord = record.clone();
           // TODO: determine and implement the correct criteria for overlaps of non-SNP variants
           if (VariantUtils.IS_SNP.apply(updatedRecord)) {
             for (Iterator<Variant> iterator = blockRecords.iterator(); iterator.hasNext();) {
@@ -200,7 +200,7 @@ public class JoinNonVariantSegmentsWithVariants {
           }
           context.output(updatedRecord);
         } else {
-          blockRecords.add(updatedRecord);
+          blockRecords.add(record);
         }
       }
     }
