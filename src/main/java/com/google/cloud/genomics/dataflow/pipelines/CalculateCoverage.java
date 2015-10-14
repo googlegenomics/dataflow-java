@@ -170,9 +170,10 @@ public class CalculateCoverage {
     // Grab one ReferenceSetId to be used within the pipeline to confirm that all ReadGroupSets
     // are associated with the same ReferenceSet.
     String referenceSetId = GenomicsUtils.getReferenceSetId(rgsIds.get(0), auth);
-    if(Strings.isNullOrEmpty(referenceSetId)) {
+    if (Strings.isNullOrEmpty(referenceSetId)) {
       throw new IllegalArgumentException("No ReferenceSetId associated with ReadGroupSetId "
-          + rgsIds.get(0) + ". All ReadGroupSets in given input must have an associated ReferenceSet.");  
+          + rgsIds.get(0)
+          + ". All ReadGroupSets in given input must have an associated ReferenceSet.");
     }
 
     // Create our destination AnnotationSet for the associated ReferenceSet.
@@ -207,9 +208,10 @@ public class CalculateCoverage {
     public void processElement(DoFn<String, String>.ProcessContext c) throws Exception {
       String readGroupSetId = c.element();
       String referenceSetId = GenomicsUtils.getReferenceSetId(readGroupSetId, auth);
-      if(Strings.isNullOrEmpty(referenceSetId)) {
+      if (Strings.isNullOrEmpty(referenceSetId)) {
         throw new IllegalArgumentException("No ReferenceSetId associated with ReadGroupSetId "
-            + readGroupSetId + ". All ReadGroupSets in given input must have an associated ReferenceSet.");        
+            + readGroupSetId
+            + ". All ReadGroupSets in given input must have an associated ReferenceSet.");
       }
       if (!referenceSetIdForAllReadGroupSets.equals(referenceSetId)) {
         throw new IllegalArgumentException("ReadGroupSets in given input must all be associated with"
