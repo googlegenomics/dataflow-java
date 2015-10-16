@@ -13,15 +13,19 @@
  */
 package com.google.cloud.genomics.dataflow.pipelines;
 
+import java.io.IOException;
+import java.security.GeneralSecurityException;
+import java.util.HashMap;
+import java.util.List;
+
+import com.google.api.client.util.Strings;
 import com.google.api.services.genomics.Genomics;
 import com.google.api.services.genomics.model.Annotation;
 import com.google.api.services.genomics.model.AnnotationSet;
 import com.google.api.services.genomics.model.BatchCreateAnnotationsRequest;
 import com.google.api.services.genomics.model.Position;
 import com.google.api.services.genomics.model.RangePosition;
-import com.google.api.services.genomics.model.ReadGroupSet;
 import com.google.cloud.dataflow.sdk.Pipeline;
-import com.google.cloud.dataflow.sdk.coders.Proto2Coder;
 import com.google.cloud.dataflow.sdk.coders.SerializableCoder;
 import com.google.cloud.dataflow.sdk.options.Default;
 import com.google.cloud.dataflow.sdk.options.Description;
@@ -38,7 +42,7 @@ import com.google.cloud.dataflow.sdk.values.KV;
 import com.google.cloud.dataflow.sdk.values.PCollection;
 import com.google.cloud.genomics.dataflow.coders.GenericJsonCoder;
 import com.google.cloud.genomics.dataflow.model.PosRgsMq;
-import com.google.cloud.genomics.dataflow.readers.ReadStreamer;
+import com.google.cloud.genomics.dataflow.readers.ReadGroupStreamer;
 import com.google.cloud.genomics.dataflow.utils.DataflowWorkarounds;
 import com.google.cloud.genomics.dataflow.utils.GCSOptions;
 import com.google.cloud.genomics.dataflow.utils.GenomicsDatasetOptions;
@@ -48,17 +52,10 @@ import com.google.cloud.genomics.utils.GenomicsFactory;
 import com.google.cloud.genomics.utils.GenomicsUtils;
 import com.google.cloud.genomics.utils.RetryPolicy;
 import com.google.cloud.genomics.utils.ShardBoundary;
-import com.google.cloud.genomics.utils.ShardUtils;
+import com.google.cloud.genomics.utils.ShardUtils.SexChromosomeFilter;
 import com.google.common.collect.Lists;
 import com.google.genomics.v1.CigarUnit;
 import com.google.genomics.v1.Read;
-import com.google.genomics.v1.StreamReadsRequest;
-
-import java.io.IOException;
-import java.security.GeneralSecurityException;
-import java.util.HashMap;
-import java.util.List;
-import java.util.logging.Logger;
 
 /**
  * Class for calculating read depth coverage for a given data set.
@@ -82,7 +79,6 @@ public class CalculateCoverage {
   private static CoverageOptions options;
   private static Pipeline p;
   private static GenomicsFactory.OfflineAuth auth;
-  private static final Logger LOG = Logger.getLogger(CalculateCoverage.class.getName());
 
   /**
    * Options required to run this pipeline.
@@ -140,11 +136,6 @@ public class CalculateCoverage {
     int getNumQuantiles();
 
     void setNumQuantiles(int numQuantiles);
-
-    @Default.Boolean(true)
-    Boolean getUseAlpn();
-
-    void setUseAlpn(Boolean value);
   }
 
   public static void main(String[] args) throws GeneralSecurityException, IOException {
@@ -155,15 +146,10 @@ public class CalculateCoverage {
     GenomicsDatasetOptions.Methods.validateOptions(options);
     auth = GenomicsOptions.Methods.getGenomicsAuth(options);
 
-    // Must call getUseAlpn in order for it to be serialized.
-    LOG.info("use_alpn: " + options.getUseAlpn().toString());
-
     p = Pipeline.create(options);
     DataflowWorkarounds.registerGenomicsCoders(p);
     DataflowWorkarounds.registerCoder(p, PosRgsMq.class, GenericJsonCoder.of(PosRgsMq.class));
     DataflowWorkarounds.registerCoder(p, Read.class, SerializableCoder.of(Read.class));
-    DataflowWorkarounds.registerCoder(p, StreamReadsRequest.class,
-        Proto2Coder.of(StreamReadsRequest.class));
 
     if (options.getInputDatasetId().isEmpty() && options.getReadGroupSetIds().isEmpty()) {
       throw new IllegalArgumentException("InputDatasetId or ReadGroupSetIds must be specified");
@@ -181,9 +167,23 @@ public class CalculateCoverage {
           + " the number of requested quantiles.");
     }
 
-    AnnotationSet annotationSet = createAnnotationSet(checkReferenceSetIds(rgsIds));
+    // Grab one ReferenceSetId to be used within the pipeline to confirm that all ReadGroupSets
+    // are associated with the same ReferenceSet.
+    String referenceSetId = GenomicsUtils.getReferenceSetId(rgsIds.get(0), auth);
+    if (Strings.isNullOrEmpty(referenceSetId)) {
+      throw new IllegalArgumentException("No ReferenceSetId associated with ReadGroupSetId "
+          + rgsIds.get(0)
+          + ". All ReadGroupSets in given input must have an associated ReferenceSet.");
+    }
 
-    PCollection<Read> reads = getReadsFromAPI(rgsIds);
+    // Create our destination AnnotationSet for the associated ReferenceSet.
+    AnnotationSet annotationSet = createAnnotationSet(referenceSetId);
+
+    PCollection<Read> reads = p.begin()
+        .apply(Create.of(rgsIds))
+        .apply(ParDo.of(new CheckMatchingReferenceSet(referenceSetId, auth)))
+        .apply(new ReadGroupStreamer(auth, ShardBoundary.Requirement.STRICT, null, SexChromosomeFilter.INCLUDE_XY));
+
     PCollection<KV<PosRgsMq, Double>> coverageMeans = reads.apply(new CalculateCoverageMean());
     PCollection<KV<Position, KV<PosRgsMq.MappingQuality, List<Double>>>> quantiles
         = coverageMeans.apply(new CalculateQuantiles(options.getNumQuantiles()));
@@ -193,18 +193,31 @@ public class CalculateCoverage {
 
     p.run();
   }
+  
+  static class CheckMatchingReferenceSet extends DoFn<String, String> {
+    private final String referenceSetIdForAllReadGroupSets;
+    private final GenomicsFactory.OfflineAuth auth;
 
-  /**
-   * This step exists to emit the individual reads in a parallel step to the StreamReads step in
-   * order to increase throughput.
-   */
-  static class ConvergeList extends DoFn<List<Read>, Read> {
+    public CheckMatchingReferenceSet(String referenceSetIdForAllReadGroupSets,
+        GenomicsFactory.OfflineAuth auth) {
+      this.referenceSetIdForAllReadGroupSets = referenceSetIdForAllReadGroupSets;
+      this.auth = auth;
+    }
 
     @Override
-    public void processElement(ProcessContext c) {
-      for (Read r : c.element()) {
-        c.output(r);
+    public void processElement(DoFn<String, String>.ProcessContext c) throws Exception {
+      String readGroupSetId = c.element();
+      String referenceSetId = GenomicsUtils.getReferenceSetId(readGroupSetId, auth);
+      if (Strings.isNullOrEmpty(referenceSetId)) {
+        throw new IllegalArgumentException("No ReferenceSetId associated with ReadGroupSetId "
+            + readGroupSetId
+            + ". All ReadGroupSets in given input must have an associated ReferenceSet.");
       }
+      if (!referenceSetIdForAllReadGroupSets.equals(referenceSetId)) {
+        throw new IllegalArgumentException("ReadGroupSets in given input must all be associated with"
+            + " the same ReferenceSetId : " + referenceSetId);
+      }
+      c.output(readGroupSetId);
     }
   }
 
@@ -446,23 +459,6 @@ public class CalculateCoverage {
     }
   }
 
-  private static String checkReferenceSetIds(List<String> readGroupSetIds)
-      throws GeneralSecurityException, IOException {
-    String referenceSetId = null;
-    for (String rgsId : readGroupSetIds) {
-      Genomics.Readgroupsets.Get rgsRequest = auth.getGenomics(auth.getDefaultFactory())
-          .readgroupsets().get(rgsId).setFields("referenceSetId");
-      ReadGroupSet rgs = rgsRequest.execute();
-      if (referenceSetId == null) {
-        referenceSetId = rgs.getReferenceSetId();
-      } else if (!rgs.getReferenceSetId().equals(referenceSetId)) {
-        throw new IllegalArgumentException("ReferenceSetIds must be the same for all"
-          + " ReadGroupSets in given input.");
-      }
-    }
-    return referenceSetId;
-  }
-
   private static AnnotationSet createAnnotationSet(String referenceSetId)
       throws GeneralSecurityException, IOException {
     if (referenceSetId == null) {
@@ -481,7 +477,7 @@ public class CalculateCoverage {
     if (!options.isAllReferences()) {
       as.setName("Read Depth for " + options.getReferences());
     } else {
-      as.setName("Read Depth");
+      as.setName("Read Depth for all references");
     }
     as.setReferenceSetId(referenceSetId);
     as.setType("GENERIC");
@@ -489,14 +485,5 @@ public class CalculateCoverage {
         .annotationSets().create(as);
     AnnotationSet asWithId = asRequest.execute();
     return asWithId;
-  }
-
-  private static PCollection<Read> getReadsFromAPI(List<String> rgsIds)
-      throws IOException, GeneralSecurityException {
-    List<StreamReadsRequest> requests = options.isAllReferences() ?
-        ShardUtils.getReadRequests(rgsIds) :
-          ShardUtils.getReadRequests(rgsIds, options.getReferences(), options.getBasesPerShard());
-    PCollection<StreamReadsRequest> readRequests = p.begin().apply(Create.of(requests));
-    return readRequests.apply(new ReadStreamer(auth, ShardBoundary.Requirement.OVERLAPS, null));
   }
 }
