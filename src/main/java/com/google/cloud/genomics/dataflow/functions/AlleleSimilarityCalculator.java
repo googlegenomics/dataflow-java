@@ -22,7 +22,7 @@ import com.google.cloud.dataflow.sdk.transforms.DoFn;
 import com.google.cloud.dataflow.sdk.values.KV;
 import com.google.cloud.genomics.dataflow.utils.CallFilters;
 import com.google.cloud.genomics.dataflow.utils.PairGenerator;
-import com.google.cloud.genomics.dataflow.utils.VariantUtils;
+import com.google.cloud.genomics.utils.VariantUtils;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Maps;
 

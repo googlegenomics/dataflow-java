@@ -11,7 +11,7 @@
  * or implied. See the License for the specific language governing permissions and limitations under
  * the License.
  */
-package com.google.cloud.genomics.dataflow.functions;
+package com.google.cloud.genomics.dataflow.functions.grpc;
 
 import java.util.Arrays;
 import java.util.Collections;
@@ -20,23 +20,24 @@ import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 
-import com.google.api.client.repackaged.com.google.common.annotations.VisibleForTesting;
 import com.google.api.client.util.Lists;
-import com.google.api.services.genomics.model.SearchVariantsRequest;
-import com.google.api.services.genomics.model.Variant;
 import com.google.cloud.dataflow.sdk.transforms.DoFn;
 import com.google.cloud.dataflow.sdk.transforms.GroupByKey;
 import com.google.cloud.dataflow.sdk.transforms.ParDo;
 import com.google.cloud.dataflow.sdk.values.KV;
 import com.google.cloud.dataflow.sdk.values.PCollection;
-import com.google.cloud.genomics.dataflow.readers.VariantReader;
+import com.google.cloud.genomics.dataflow.readers.VariantStreamer;
 import com.google.cloud.genomics.dataflow.utils.GenomicsDatasetOptions;
 import com.google.cloud.genomics.utils.GenomicsFactory;
 import com.google.cloud.genomics.utils.ShardBoundary;
-import com.google.cloud.genomics.utils.VariantUtils;
+import com.google.cloud.genomics.utils.grpc.VariantUtils;
+import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Function;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Ordering;
+import com.google.genomics.v1.StreamVariantsRequest;
+import com.google.genomics.v1.Variant;
+import com.google.genomics.v1.Variant.Builder;
 
 /**
  * The transforms in this class convert data with non-variant segments (such as data that was in
@@ -53,10 +54,10 @@ import com.google.common.collect.Ordering;
 public class JoinNonVariantSegmentsWithVariants {
 
   public static final String VARIANT_JOIN_FIELDS =
-      "nextPageToken,variants(referenceName,start,end,referenceBases,alternateBases,calls(genotype,callSetName))";
+      "variants(referenceName,start,end,referenceBases,alternateBases,calls(genotype,callSetName))";
 
-  private static final List<String> REQUIRED_FIELDS = Arrays.asList("nextPageToken",
-      "referenceName", "start", "end", "referenceBases", "alternateBases");
+  private static final List<String> REQUIRED_FIELDS = Arrays.asList("referenceName", "start",
+      "end", "referenceBases", "alternateBases");
 
   /**
    * Use this transform for correct handling of data with non-variant segments in DataFlow jobs that
@@ -71,7 +72,7 @@ public class JoinNonVariantSegmentsWithVariants {
    *     merged into the variants with which they overlap.
    */
   public static PCollection<Variant> joinVariantsTransform(
-      PCollection<SearchVariantsRequest> input, GenomicsFactory.OfflineAuth auth) {
+      PCollection<StreamVariantsRequest> input, GenomicsFactory.OfflineAuth auth) {
     return joinVariants(input, auth, null);
   }
 
@@ -87,7 +88,7 @@ public class JoinNonVariantSegmentsWithVariants {
    *     merged into the variants with which they overlap.
    */
   public static PCollection<Variant> joinVariantsTransform(
-      PCollection<SearchVariantsRequest> input, GenomicsFactory.OfflineAuth auth, String fields) {
+      PCollection<StreamVariantsRequest> input, GenomicsFactory.OfflineAuth auth, String fields) {
     for (String field : REQUIRED_FIELDS) {
       Preconditions
           .checkArgument(
@@ -98,12 +99,10 @@ public class JoinNonVariantSegmentsWithVariants {
     return joinVariants(input, auth, fields);
   }
 
-  private static PCollection<Variant> joinVariants(PCollection<SearchVariantsRequest> input,
+  private static PCollection<Variant> joinVariants(PCollection<StreamVariantsRequest> input,
       GenomicsFactory.OfflineAuth auth, String fields) {
     return input
-        .apply(
-            ParDo.named(VariantReader.class.getSimpleName()).of(
-                new VariantReader(auth, ShardBoundary.Requirement.STRICT, fields)))
+        .apply(new VariantStreamer(auth, ShardBoundary.Requirement.STRICT, fields))
         .apply(ParDo.of(new JoinNonVariantSegmentsWithVariants.BinVariants()))
         // TODO check that windowing function is not splitting these groups
         .apply(GroupByKey.<KV<String, Long>, Variant>create())
@@ -122,10 +121,10 @@ public class JoinNonVariantSegmentsWithVariants {
       .nullsFirst().onResultOf(new Function<Variant, String>() {
         @Override
         public String apply(Variant variant) {
-          if (null == variant.getAlternateBases() || variant.getAlternateBases().isEmpty()) {
+          if (null == variant.getAlternateBasesList() || variant.getAlternateBasesList().isEmpty()) {
             return null;
           }
-          return variant.getAlternateBases().get(0);
+          return variant.getAlternateBases(0);
         }
       });
 
@@ -184,13 +183,13 @@ public class JoinNonVariantSegmentsWithVariants {
 
       for (Variant record : records) {
         if (!VariantUtils.IS_NON_VARIANT_SEGMENT.apply(record)) {
-          Variant updatedRecord = record.clone();
+          Builder updatedRecord = Variant.newBuilder(record);
           // TODO: determine and implement the correct criteria for overlaps of non-SNP variants
-          if (VariantUtils.IS_SNP.apply(updatedRecord)) {
+          if (VariantUtils.IS_SNP.apply(record)) {
             for (Iterator<Variant> iterator = blockRecords.iterator(); iterator.hasNext();) {
               Variant blockRecord = iterator.next();
-              if (JoinNonVariantSegmentsWithVariants.isOverlapping(blockRecord, updatedRecord)) {
-                updatedRecord.getCalls().addAll(blockRecord.getCalls());
+              if (JoinNonVariantSegmentsWithVariants.isOverlapping(blockRecord, record)) {
+                updatedRecord.addAllCalls(blockRecord.getCallsList());
               } else {
                 // Remove the current element from the iterator and the list since it is
                 // left of the genomic region we are currently working on due to our sort..
@@ -198,7 +197,7 @@ public class JoinNonVariantSegmentsWithVariants {
               }
             }
           }
-          context.output(updatedRecord);
+          context.output(updatedRecord.build());
         } else {
           blockRecords.add(record);
         }
