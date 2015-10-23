@@ -203,7 +203,7 @@ public class Reader {
     SamReader samReader = BAMIO.openBAM(storageClient, storagePath, options.getStringency());
     SAMRecordIterator iterator =  samReader.queryOverlapping(contig.referenceName, 
         (int) contig.start + 1,
-        (int) contig.end + 1);
+        (int) contig.end);
     List<Read> reads = new ArrayList<Read>(); 
     
     int recordsBeforeStart = 0;

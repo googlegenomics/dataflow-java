@@ -97,7 +97,7 @@ public class Sharder {
           @Override
           @Nullable
           public Contig apply(@Nullable Contig arg0) {
-            return new Contig(arg0.referenceName, arg0.start + 1, arg0.end + 1);
+            return new Contig(arg0.referenceName, arg0.start + 1, arg0.end);
           }
         });
     this.output = output;
