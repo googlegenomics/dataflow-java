@@ -13,7 +13,6 @@
  */
 package com.google.cloud.genomics.dataflow.functions.grpc;
 
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.Iterator;
@@ -26,16 +25,11 @@ import com.google.cloud.dataflow.sdk.transforms.GroupByKey;
 import com.google.cloud.dataflow.sdk.transforms.ParDo;
 import com.google.cloud.dataflow.sdk.values.KV;
 import com.google.cloud.dataflow.sdk.values.PCollection;
-import com.google.cloud.genomics.dataflow.readers.VariantStreamer;
 import com.google.cloud.genomics.dataflow.utils.GenomicsDatasetOptions;
-import com.google.cloud.genomics.utils.GenomicsFactory;
-import com.google.cloud.genomics.utils.ShardBoundary;
 import com.google.cloud.genomics.utils.grpc.VariantUtils;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Function;
-import com.google.common.base.Preconditions;
 import com.google.common.collect.Ordering;
-import com.google.genomics.v1.StreamVariantsRequest;
 import com.google.genomics.v1.Variant;
 import com.google.genomics.v1.Variant.Builder;
 
@@ -53,58 +47,22 @@ import com.google.genomics.v1.Variant.Builder;
  */
 public class JoinNonVariantSegmentsWithVariants {
 
-  public static final String VARIANT_JOIN_FIELDS =
-      "variants(referenceName,start,end,referenceBases,alternateBases,calls(genotype,callSetName))";
-
-  private static final List<String> REQUIRED_FIELDS = Arrays.asList("referenceName", "start",
-      "end", "referenceBases", "alternateBases");
-
   /**
    * Use this transform for correct handling of data with non-variant segments in DataFlow jobs that
    * consider not only calls that have the variant but also those that match the reference at that
    * variant position.
    * 
-   * All variant fields will be returned.
-   * 
-   * @param input PCollection of SearchVariantsRequests to process.
-   * @param auth Auth class containing credentials.
+   * @param input PCollection of variants to process.
    * @return PCollection of variant-only Variant objects with calls from non-variant-segments
    *     merged into the variants with which they overlap.
    */
-  public static PCollection<Variant> joinVariantsTransform(
-      PCollection<StreamVariantsRequest> input, GenomicsFactory.OfflineAuth auth) {
-    return joinVariants(input, auth, null);
+  public static PCollection<Variant> joinVariantsTransform(PCollection<Variant> input) {
+    return joinVariants(input);
   }
 
-  /**
-   * Use this transform for correct handling of data with non-variant segments in DataFlow jobs that
-   * consider not only calls that have the variant but also those that match the reference at that
-   * variant position.
-   * 
-   * @param input PCollection of SearchVariantsRequests to process.
-   * @param auth Auth class containing credentials.
-   * @param fields Fields to be returned by the partial response.
-   * @return PCollection of variant-only Variant objects with calls from non-variant-segments
-   *     merged into the variants with which they overlap.
-   */
-  public static PCollection<Variant> joinVariantsTransform(
-      PCollection<StreamVariantsRequest> input, GenomicsFactory.OfflineAuth auth, String fields) {
-    for (String field : REQUIRED_FIELDS) {
-      Preconditions
-          .checkArgument(
-              fields.contains(field),
-              "Required field missing: '%s' Add this field to the list of Variants fields returned in the partial response.",
-              field);
-    }
-    return joinVariants(input, auth, fields);
-  }
-
-  private static PCollection<Variant> joinVariants(PCollection<StreamVariantsRequest> input,
-      GenomicsFactory.OfflineAuth auth, String fields) {
+  private static PCollection<Variant> joinVariants(PCollection<Variant> input) {
     return input
-        .apply(new VariantStreamer(auth, ShardBoundary.Requirement.STRICT, fields))
         .apply(ParDo.of(new JoinNonVariantSegmentsWithVariants.BinVariants()))
-        // TODO check that windowing function is not splitting these groups
         .apply(GroupByKey.<KV<String, Long>, Variant>create())
         .apply(ParDo.of(new JoinNonVariantSegmentsWithVariants.MergeVariants()));
   }
