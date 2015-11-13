@@ -81,7 +81,7 @@ PTransform<PCollection<StreamReadsRequest>, PCollection<Read>> {
       initializedShardCount.addValue(1);
       shardTimeMaxSec.addValue(0L);
       Stopwatch stopWatch = Stopwatch.createStarted();
-      Iterator<StreamReadsResponse> iter = new ReadStreamIterator(c.element(), auth, shardBoundary, fields);
+      Iterator<StreamReadsResponse> iter = ReadStreamIterator.enforceShardBoundary(auth, c.element(), shardBoundary, fields);
       while (iter.hasNext()) {
         StreamReadsResponse readResponse = iter.next();
         c.output(readResponse.getAlignmentsList());

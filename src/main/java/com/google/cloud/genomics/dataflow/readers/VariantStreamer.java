@@ -87,7 +87,7 @@ PTransform<PCollection<StreamVariantsRequest>, PCollection<Variant>> {
       initializedShardCount.addValue(1);
       shardTimeMaxSec.addValue(0L);
       Stopwatch stopWatch = Stopwatch.createStarted();
-      Iterator<StreamVariantsResponse> iter = new VariantStreamIterator(c.element(), auth, shardBoundary, fields);
+      Iterator<StreamVariantsResponse> iter = VariantStreamIterator.enforceShardBoundary(auth, c.element(), shardBoundary, fields);
       while (iter.hasNext()) {
         StreamVariantsResponse variantResponse = iter.next();
         c.output(variantResponse.getVariantsList());
