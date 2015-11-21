@@ -26,7 +26,6 @@ import com.google.api.services.genomics.model.BatchCreateAnnotationsRequest;
 import com.google.api.services.genomics.model.Position;
 import com.google.api.services.genomics.model.RangePosition;
 import com.google.cloud.dataflow.sdk.Pipeline;
-import com.google.cloud.dataflow.sdk.coders.SerializableCoder;
 import com.google.cloud.dataflow.sdk.options.Default;
 import com.google.cloud.dataflow.sdk.options.Description;
 import com.google.cloud.dataflow.sdk.options.PipelineOptionsFactory;
@@ -43,7 +42,6 @@ import com.google.cloud.dataflow.sdk.values.PCollection;
 import com.google.cloud.genomics.dataflow.coders.GenericJsonCoder;
 import com.google.cloud.genomics.dataflow.model.PosRgsMq;
 import com.google.cloud.genomics.dataflow.readers.ReadGroupStreamer;
-import com.google.cloud.genomics.dataflow.utils.DataflowWorkarounds;
 import com.google.cloud.genomics.dataflow.utils.GCSOptions;
 import com.google.cloud.genomics.dataflow.utils.GenomicsDatasetOptions;
 import com.google.cloud.genomics.dataflow.utils.GenomicsOptions;
@@ -147,9 +145,7 @@ public class CalculateCoverage {
     auth = GenomicsOptions.Methods.getGenomicsAuth(options);
 
     p = Pipeline.create(options);
-    DataflowWorkarounds.registerGenomicsCoders(p);
-    DataflowWorkarounds.registerCoder(p, PosRgsMq.class, GenericJsonCoder.of(PosRgsMq.class));
-    DataflowWorkarounds.registerCoder(p, Read.class, SerializableCoder.of(Read.class));
+    p.getCoderRegistry().setFallbackCoderProvider(GenericJsonCoder.PROVIDER);
 
     if (options.getInputDatasetId().isEmpty() && options.getReadGroupSetIds().isEmpty()) {
       throw new IllegalArgumentException("InputDatasetId or ReadGroupSetIds must be specified");

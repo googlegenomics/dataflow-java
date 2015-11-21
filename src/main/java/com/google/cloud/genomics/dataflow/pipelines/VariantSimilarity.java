@@ -31,11 +31,11 @@ import com.google.cloud.dataflow.sdk.transforms.Create;
 import com.google.cloud.dataflow.sdk.transforms.ParDo;
 import com.google.cloud.dataflow.sdk.values.KV;
 import com.google.cloud.dataflow.sdk.values.PCollection;
+import com.google.cloud.genomics.dataflow.coders.GenericJsonCoder;
 import com.google.cloud.genomics.dataflow.functions.ExtractSimilarCallsets;
 import com.google.cloud.genomics.dataflow.functions.OutputPCoAFile;
 import com.google.cloud.genomics.dataflow.readers.VariantReader;
 import com.google.cloud.genomics.dataflow.readers.VariantStreamer;
-import com.google.cloud.genomics.dataflow.utils.DataflowWorkarounds;
 import com.google.cloud.genomics.dataflow.utils.GCSOptions;
 import com.google.cloud.genomics.dataflow.utils.GenomicsDatasetOptions;
 import com.google.cloud.genomics.dataflow.utils.GenomicsOptions;
@@ -84,11 +84,6 @@ public class VariantSimilarity {
     }
 
     Pipeline p = Pipeline.create(options);
-    DataflowWorkarounds.registerGenomicsCoders(p);
-    DataflowWorkarounds.registerCoder(p, Variant.class,
-        SerializableCoder.of(Variant.class));
-    DataflowWorkarounds.registerCoder(p, StreamVariantsRequest.class,
-        Proto2Coder.of(StreamVariantsRequest.class));
 
     p.begin();
     PCollection<KV<KV<String, String>, Long>> similarCallsets = null;
@@ -103,6 +98,7 @@ public class VariantSimilarity {
       .apply(new VariantStreamer(auth, ShardBoundary.Requirement.STRICT, VARIANT_FIELDS))
       .apply(ParDo.of(new ExtractSimilarCallsets.v1()));
     } else {
+      p.getCoderRegistry().setFallbackCoderProvider(GenericJsonCoder.PROVIDER);
       List<SearchVariantsRequest> requests = options.isAllReferences() ?
           ShardUtils.getPaginatedVariantRequests(options.getDatasetId(), ShardUtils.SexChromosomeFilter.EXCLUDE_XY,
               options.getBasesPerShard(), auth) :
