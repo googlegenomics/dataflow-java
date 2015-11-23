@@ -89,7 +89,7 @@ public class GenericJsonCoder<T extends GenericJson> extends DelegatingAtomicCod
           return (Coder<T>) SerializableCoder.of((Class<? extends Serializable>) rawType);
         } else {
           throw new CannotProvideCoderException("Class " + rawType
-              + " does not implement GenericJson");
+              + " does not implement GenericJson or Serialized");
         }
       }
       return (Coder<T>) GenericJsonCoder.of((Class<? extends GenericJson>) rawType);
