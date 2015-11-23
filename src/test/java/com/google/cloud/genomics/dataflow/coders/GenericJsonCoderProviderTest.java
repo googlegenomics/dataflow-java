@@ -53,7 +53,7 @@ public class GenericJsonCoderProviderTest {
         containsString(NotGenericJsonClass.class.getCanonicalName()),
         containsString("No CoderFactory has been registered"),
         containsString("does not have a @DefaultCoder annotation"),
-        containsString("does not implement GenericJson")));
+        containsString("does not implement GenericJson or Serialized")));
     Coder<?> coder = registry.getDefaultCoder(NotGenericJsonClass.class);
   }
 }
