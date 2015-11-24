@@ -42,9 +42,9 @@ import com.google.cloud.dataflow.sdk.transforms.DoFn;
 import com.google.cloud.dataflow.sdk.transforms.GroupByKey;
 import com.google.cloud.dataflow.sdk.transforms.ParDo;
 import com.google.cloud.dataflow.sdk.values.KV;
+import com.google.cloud.genomics.dataflow.coders.GenericJsonCoder;
 import com.google.cloud.genomics.dataflow.utils.AnnotationUtils;
 import com.google.cloud.genomics.dataflow.utils.AnnotationUtils.VariantEffect;
-import com.google.cloud.genomics.dataflow.utils.DataflowWorkarounds;
 import com.google.cloud.genomics.dataflow.utils.GenomicsDatasetOptions;
 import com.google.cloud.genomics.dataflow.utils.GenomicsOptions;
 import com.google.cloud.genomics.utils.GenomicsFactory;
@@ -277,7 +277,8 @@ public final class AnnotateVariants extends DoFn<SearchVariantsRequest, KV<Strin
               ShardUtils.getPaginatedVariantRequests(opts.getDatasetId(), opts.getReferences(), opts.getBasesPerShard());
 
     Pipeline p = Pipeline.create(opts);
-    DataflowWorkarounds.registerGenomicsCoders(p);
+    p.getCoderRegistry().setFallbackCoderProvider(GenericJsonCoder.PROVIDER);
+
     p.begin()
       .apply(Create.of(requests))
       .apply(ParDo.of(new AnnotateVariants(auth, callSetIds, transcriptSetIds, variantAnnotationSetIds)))

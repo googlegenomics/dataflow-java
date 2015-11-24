@@ -15,7 +15,6 @@ package com.google.cloud.genomics.dataflow.pipelines;
 
 import com.google.api.services.genomics.model.Read;
 import com.google.api.services.storage.Storage;
-
 import com.google.cloud.dataflow.sdk.Pipeline;
 import com.google.cloud.dataflow.sdk.coders.Coder;
 import com.google.cloud.dataflow.sdk.coders.DelegateCoder;
@@ -27,11 +26,11 @@ import com.google.cloud.dataflow.sdk.options.PipelineOptionsFactory;
 import com.google.cloud.dataflow.sdk.util.Transport;
 import com.google.cloud.dataflow.sdk.values.KV;
 import com.google.cloud.dataflow.sdk.values.PCollection;
+import com.google.cloud.genomics.dataflow.coders.GenericJsonCoder;
 import com.google.cloud.genomics.dataflow.readers.bam.BAMIO;
 import com.google.cloud.genomics.dataflow.readers.bam.ReadBAMTransform;
 import com.google.cloud.genomics.dataflow.readers.bam.ReaderOptions;
 import com.google.cloud.genomics.dataflow.readers.bam.ShardingPolicy;
-import com.google.cloud.genomics.dataflow.utils.DataflowWorkarounds;
 import com.google.cloud.genomics.dataflow.utils.GCSOptions;
 import com.google.cloud.genomics.dataflow.utils.GenomicsDatasetOptions;
 import com.google.cloud.genomics.dataflow.utils.GenomicsOptions;
@@ -85,8 +84,8 @@ public class ShardedBAMWriting {
     auth = GenomicsOptions.Methods.getGenomicsAuth(options);
     pipeline = Pipeline.create(options);
     // Register coders.
-    DataflowWorkarounds.registerGenomicsCoders(pipeline);
-    DataflowWorkarounds.registerCoder(pipeline, Contig.class, CONTIG_CODER);
+    pipeline.getCoderRegistry().setFallbackCoderProvider(GenericJsonCoder.PROVIDER);
+    pipeline.getCoderRegistry().registerCoder(Contig.class, CONTIG_CODER);
     // Process options.
     contigs = Contig.parseContigsFromCommandLine(options.getReferences());
     // Get header info.

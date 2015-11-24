@@ -27,13 +27,13 @@ import com.google.cloud.dataflow.sdk.transforms.Create;
 import com.google.cloud.dataflow.sdk.transforms.ParDo;
 import com.google.cloud.dataflow.sdk.values.KV;
 import com.google.cloud.dataflow.sdk.values.PCollection;
+import com.google.cloud.genomics.dataflow.coders.GenericJsonCoder;
 import com.google.cloud.genomics.dataflow.functions.AlleleSimilarityCalculator;
 import com.google.cloud.genomics.dataflow.functions.CallSimilarityCalculatorFactory;
 import com.google.cloud.genomics.dataflow.functions.FormatIBSData;
 import com.google.cloud.genomics.dataflow.functions.IBSCalculator;
 import com.google.cloud.genomics.dataflow.functions.JoinNonVariantSegmentsWithVariants;
 import com.google.cloud.genomics.dataflow.readers.VariantReader;
-import com.google.cloud.genomics.dataflow.utils.DataflowWorkarounds;
 import com.google.cloud.genomics.dataflow.utils.GenomicsDatasetOptions;
 import com.google.cloud.genomics.dataflow.utils.GenomicsOptions;
 import com.google.cloud.genomics.dataflow.utils.IdentityByStateOptions;
@@ -68,7 +68,7 @@ public class IdentityByState {
               ShardUtils.getPaginatedVariantRequests(options.getDatasetId(), options.getReferences(), options.getBasesPerShard());
 
     Pipeline p = Pipeline.create(options);
-    DataflowWorkarounds.registerGenomicsCoders(p);
+    p.getCoderRegistry().setFallbackCoderProvider(GenericJsonCoder.PROVIDER);
     PCollection<SearchVariantsRequest> input = p.begin().apply(Create.of(requests));
 
     PCollection<Variant> variants =

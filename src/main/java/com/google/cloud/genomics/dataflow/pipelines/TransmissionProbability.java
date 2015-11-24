@@ -28,11 +28,11 @@ import com.google.cloud.dataflow.sdk.transforms.DoFn;
 import com.google.cloud.dataflow.sdk.transforms.GroupByKey;
 import com.google.cloud.dataflow.sdk.transforms.ParDo;
 import com.google.cloud.dataflow.sdk.values.KV;
+import com.google.cloud.genomics.dataflow.coders.GenericJsonCoder;
 import com.google.cloud.genomics.dataflow.functions.CalculateTransmissionProbability;
 import com.google.cloud.genomics.dataflow.functions.ExtractAlleleTransmissionStatus;
 import com.google.cloud.genomics.dataflow.model.Allele;
 import com.google.cloud.genomics.dataflow.readers.VariantReader;
-import com.google.cloud.genomics.dataflow.utils.DataflowWorkarounds;
 import com.google.cloud.genomics.dataflow.utils.GenomicsDatasetOptions;
 import com.google.cloud.genomics.dataflow.utils.GenomicsOptions;
 import com.google.cloud.genomics.utils.GenomicsFactory;
@@ -62,7 +62,7 @@ public class TransmissionProbability {
               ShardUtils.getPaginatedVariantRequests(options.getDatasetId(), options.getReferences(), options.getBasesPerShard());
 
     Pipeline p = Pipeline.create(options);
-    DataflowWorkarounds.registerGenomicsCoders(p);
+    p.getCoderRegistry().setFallbackCoderProvider(GenericJsonCoder.PROVIDER);
 
     // The below pipeline works as follows:
     //    - Fetch the variants,

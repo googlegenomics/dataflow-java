@@ -40,7 +40,6 @@ import com.google.cloud.dataflow.sdk.transforms.SerializableFunction;
 import com.google.cloud.dataflow.sdk.values.KV;
 import com.google.cloud.dataflow.sdk.values.PCollection;
 import com.google.cloud.genomics.dataflow.functions.grpc.JoinNonVariantSegmentsWithVariants;
-import com.google.cloud.genomics.dataflow.utils.DataflowWorkarounds;
 import com.google.common.collect.Lists;
 import com.google.genomics.v1.Variant;
 import com.google.genomics.v1.VariantCall;
@@ -170,7 +169,6 @@ public class JoinNonVariantSegmentsWithVariantsTest {
   public void testJoinVariantsPipeline() {
 
     Pipeline p = TestPipeline.create();
-    DataflowWorkarounds.registerGenomicsCoders(p);
 
     PCollection<Variant> inputVariants =
         p.apply(Create.of(input));

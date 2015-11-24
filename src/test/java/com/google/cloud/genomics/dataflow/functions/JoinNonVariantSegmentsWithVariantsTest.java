@@ -47,7 +47,6 @@ import com.google.cloud.dataflow.sdk.values.KV;
 import com.google.cloud.dataflow.sdk.values.PCollection;
 import com.google.cloud.genomics.dataflow.coders.GenericJsonCoder;
 import com.google.cloud.genomics.dataflow.utils.DataUtils;
-import com.google.cloud.genomics.dataflow.utils.DataflowWorkarounds;
 
 @RunWith(JUnit4.class)
 public class JoinNonVariantSegmentsWithVariantsTest {
@@ -157,7 +156,7 @@ public class JoinNonVariantSegmentsWithVariantsTest {
   public void testJoinVariantsPipeline() {
 
     Pipeline p = TestPipeline.create();
-    DataflowWorkarounds.registerGenomicsCoders(p);
+    p.getCoderRegistry().setFallbackCoderProvider(GenericJsonCoder.PROVIDER);
 
     PCollection<Variant> inputVariants =
         p.apply(Create.of(input).withCoder(GenericJsonCoder.of(Variant.class)));
@@ -171,8 +170,7 @@ public class JoinNonVariantSegmentsWithVariantsTest {
         binnedVariants.apply(GroupByKey.<KV<String, Long>, Variant>create());
 
     PCollection<Variant> mergedVariants =
-        groupedBinnedVariants.apply(ParDo.of(new JoinNonVariantSegmentsWithVariants.MergeVariants())).setCoder(
-            GenericJsonCoder.of(Variant.class));
+        groupedBinnedVariants.apply(ParDo.of(new JoinNonVariantSegmentsWithVariants.MergeVariants()));
 
     DataflowAssert.that(mergedVariants).satisfies(
         new AssertThatHasExpectedContentsForTestJoinVariants());

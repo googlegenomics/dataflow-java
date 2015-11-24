@@ -19,7 +19,6 @@ import com.google.api.services.genomics.model.Annotation;
 import com.google.api.services.genomics.model.Position;
 import com.google.api.services.genomics.model.RangePosition;
 import com.google.cloud.dataflow.sdk.Pipeline;
-import com.google.cloud.dataflow.sdk.coders.SerializableCoder;
 import com.google.cloud.dataflow.sdk.options.PipelineOptionsFactory;
 import com.google.cloud.dataflow.sdk.testing.DataflowAssert;
 import com.google.cloud.dataflow.sdk.testing.TestPipeline;
@@ -32,7 +31,6 @@ import com.google.cloud.genomics.dataflow.coders.GenericJsonCoder;
 import com.google.cloud.genomics.dataflow.model.PosRgsMq;
 import com.google.cloud.genomics.dataflow.pipelines.CalculateCoverage.CalculateCoverageMean;
 import com.google.cloud.genomics.dataflow.pipelines.CalculateCoverage.CalculateQuantiles;
-import com.google.cloud.genomics.dataflow.utils.DataflowWorkarounds;
 import com.google.common.collect.Lists;
 import com.google.genomics.v1.CigarUnit;
 import com.google.genomics.v1.CigarUnit.Operation;
@@ -210,7 +208,7 @@ public class CalculateCoverageTest {
         .setPosition(6L).setReferenceName("chr1"), "321", PosRgsMq.MappingQuality.A);
     expectedOutput[11] = KV.of(pTest, 1.0);
     Pipeline p = TestPipeline.create();
-    DataflowWorkarounds.registerCoder(p, PosRgsMq.class, GenericJsonCoder.of(PosRgsMq.class));
+    p.getCoderRegistry().setFallbackCoderProvider(GenericJsonCoder.PROVIDER);
     PCollection<Read> input = p.apply(Create.of(testSet));
     PCollection<KV<PosRgsMq, Double>> output = input.apply(new CalculateCoverageMean());
     DataflowAssert.that(output).containsInAnyOrder(expectedOutput);
@@ -222,8 +220,7 @@ public class CalculateCoverageTest {
   @Test
   public void testCalculateQuantiles() {
     Pipeline p = TestPipeline.create();
-    DataflowWorkarounds.registerCoder(p, Position.class, GenericJsonCoder.of(Position.class));
-    DataflowWorkarounds.registerCoder(p, PosRgsMq.class, GenericJsonCoder.of(PosRgsMq.class));
+    p.getCoderRegistry().setFallbackCoderProvider(GenericJsonCoder.PROVIDER);
     PCollection<KV<PosRgsMq, Double>> input = p.apply(Create.of(testSet2));
     PCollection<KV<Position, KV<PosRgsMq.MappingQuality, List<Double>>>> output = input.apply(
         new CalculateQuantiles(3));
@@ -276,10 +273,7 @@ public class CalculateCoverageTest {
     popts.setBucketWidth(TEST_BUCKET_WIDTH);
     popts.setNumQuantiles(TEST_NUM_QUANTILES);
     Pipeline p = TestPipeline.create(popts);
-    DataflowWorkarounds.registerCoder(p, Read.class, SerializableCoder.of(Read.class));
-    DataflowWorkarounds.registerCoder(p, Position.class, GenericJsonCoder.of(Position.class));
-    DataflowWorkarounds.registerCoder(p, PosRgsMq.class, GenericJsonCoder.of(PosRgsMq.class));
-    DataflowWorkarounds.registerCoder(p, Annotation.class, GenericJsonCoder.of(Annotation.class));
+    p.getCoderRegistry().setFallbackCoderProvider(GenericJsonCoder.PROVIDER);
 
     PCollection<Read> reads = p.apply(Create.of(input));
     PCollection<KV<PosRgsMq, Double>> coverageMeans = reads.apply(
