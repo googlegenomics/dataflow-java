@@ -37,12 +37,12 @@ import com.google.cloud.dataflow.sdk.transforms.DoFn;
 import com.google.cloud.dataflow.sdk.transforms.ParDo;
 import com.google.cloud.dataflow.sdk.util.gcsfs.GcsPath;
 import com.google.cloud.dataflow.sdk.values.PCollection;
+import com.google.cloud.genomics.dataflow.coders.GenericJsonCoder;
 import com.google.cloud.genomics.dataflow.readers.ReadReader;
 import com.google.cloud.genomics.dataflow.readers.bam.ReadBAMTransform;
 import com.google.cloud.genomics.dataflow.readers.bam.Reader;
 import com.google.cloud.genomics.dataflow.readers.bam.ReaderOptions;
 import com.google.cloud.genomics.dataflow.readers.bam.ShardingPolicy;
-import com.google.cloud.genomics.dataflow.utils.DataflowWorkarounds;
 import com.google.cloud.genomics.dataflow.utils.GCSOptions;
 import com.google.cloud.genomics.dataflow.utils.GenomicsDatasetOptions;
 import com.google.cloud.genomics.dataflow.utils.GenomicsOptions;
@@ -101,7 +101,7 @@ public class CountReads {
     GenomicsDatasetOptions.Methods.validateOptions(options);
     auth = GenomicsOptions.Methods.getGenomicsAuth(options);
     p = Pipeline.create(options);
-    DataflowWorkarounds.registerGenomicsCoders(p);
+    p.getCoderRegistry().setFallbackCoderProvider(GenericJsonCoder.PROVIDER);
 
     // ensure data is accessible
     String BAMFilePath = options.getBAMFilePath();

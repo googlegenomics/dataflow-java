@@ -13,7 +13,7 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package com.google.cloud.dataflow.coders;
+package com.google.cloud.genomics.dataflow.coders;
 
 import static org.junit.Assert.assertTrue;
 
