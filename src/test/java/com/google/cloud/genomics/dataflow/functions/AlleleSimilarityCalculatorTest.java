@@ -20,27 +20,41 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertThat;
 import static org.junit.Assert.assertTrue;
 
-import java.util.Collections;
 import java.util.List;
 
 import org.hamcrest.CoreMatchers;
 import org.junit.Test;
 
-import com.google.api.services.genomics.model.Variant;
 import com.google.cloud.dataflow.sdk.transforms.DoFnTester;
 import com.google.cloud.dataflow.sdk.values.KV;
 import com.google.cloud.genomics.dataflow.utils.DataUtils;
+import com.google.genomics.v1.Variant;
 
 public class AlleleSimilarityCalculatorTest {
 
-  static final Variant snp1 = DataUtils.makeVariant("chr7", 200019, 200020, "T", Collections.singletonList("G"),
-      DataUtils.makeCall("het-alt sample", 1, 0), DataUtils.makeCall("hom-alt sample", 1, 1),
-      DataUtils.makeCall("hom-ref sample", 0, 0), DataUtils.makeCall("hom-nocall sample", -1, -1),
-      DataUtils.makeCall("ref-nocall sample", -1, 0));
+  static final Variant snp1 = Variant.newBuilder()
+      .setReferenceName("chr7")
+      .setStart(200019)
+      .setEnd(200020)
+      .setReferenceBases("T")
+      .addAlternateBases("G")
+      .addCalls(DataUtils.makeVariantCall("het-alt sample", 1, 0))
+      .addCalls(DataUtils.makeVariantCall("hom-alt sample", 1, 1))
+      .addCalls(DataUtils.makeVariantCall("hom-ref sample", 0, 0))
+      .addCalls(DataUtils.makeVariantCall("hom-nocall sample", -1, -1))
+      .addCalls(DataUtils.makeVariantCall("ref-nocall sample", -1, 0))
+      .build();
 
-  static final Variant snp2 = DataUtils.makeVariant("chr7", 200020, 200021, "C", Collections.singletonList("A"),
-      DataUtils.makeCall("hom-alt sample", 1, 1), DataUtils.makeCall("het-alt sample", 0, 1),
-      DataUtils.makeCall("ref-nocall sample", 0, -1));
+  static final Variant snp2 = Variant.newBuilder()
+      .setReferenceName("chr7")
+      .setStart(200020)
+      .setEnd(200021)
+      .setReferenceBases("C")
+      .addAlternateBases("A")
+      .addCalls(DataUtils.makeVariantCall("hom-alt sample", 1, 1))
+      .addCalls(DataUtils.makeVariantCall("het-alt sample", 0, 1))
+      .addCalls(DataUtils.makeVariantCall("ref-nocall sample", 0, -1))
+      .build();
 
   @Test
   public void testIsReferenceMajor() {
