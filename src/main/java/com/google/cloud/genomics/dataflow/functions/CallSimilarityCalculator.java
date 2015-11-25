@@ -15,10 +15,10 @@
  */
 package com.google.cloud.genomics.dataflow.functions;
 
-import com.google.api.services.genomics.model.Call;
+import com.google.genomics.v1.VariantCall;
 
 public interface CallSimilarityCalculator {
   
-  double similarity(Call call1, Call call2);
+  double similarity(VariantCall call1, VariantCall call2);
 
 }
