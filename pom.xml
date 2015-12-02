@@ -209,12 +209,6 @@
       <artifactId>protobuf-java</artifactId>
       <version>3.0.0-beta-1</version>
     </dependency>
-    <dependency>
-      <groupId>org.apache.commons</groupId>
-      <artifactId>commons-math3</artifactId>
-      <version>3.2</version>
-      <type>jar</type>
-    </dependency>
   </dependencies>
 
   <profiles>
