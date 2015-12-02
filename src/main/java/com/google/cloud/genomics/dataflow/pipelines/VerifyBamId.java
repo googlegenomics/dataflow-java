@@ -13,13 +13,19 @@
  */
 package com.google.cloud.genomics.dataflow.pipelines;
 
-import com.google.api.services.genomics.Genomics;
+import java.io.IOException;
+import java.io.UnsupportedEncodingException;
+import java.nio.ByteBuffer;
+import java.security.GeneralSecurityException;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Map;
+
+import com.google.api.client.util.Strings;
 import com.google.api.services.genomics.model.Position;
-import com.google.api.services.genomics.model.ReadGroupSet;
-import com.google.api.services.genomics.model.Reference;
-import com.google.api.services.genomics.model.SearchReferencesRequest;
 import com.google.cloud.dataflow.sdk.Pipeline;
-import com.google.cloud.dataflow.sdk.coders.SerializableCoder;
 import com.google.cloud.dataflow.sdk.io.TextIO;
 import com.google.cloud.dataflow.sdk.options.Default;
 import com.google.cloud.dataflow.sdk.options.Description;
@@ -44,44 +50,36 @@ import com.google.cloud.genomics.dataflow.model.ReadBaseQuality;
 import com.google.cloud.genomics.dataflow.model.ReadBaseWithReference;
 import com.google.cloud.genomics.dataflow.model.ReadCounts;
 import com.google.cloud.genomics.dataflow.model.ReadQualityCount;
-import com.google.cloud.genomics.dataflow.readers.ReadStreamer;
+import com.google.cloud.genomics.dataflow.pipelines.CalculateCoverage.CheckMatchingReferenceSet;
+import com.google.cloud.genomics.dataflow.readers.ReadGroupStreamer;
 import com.google.cloud.genomics.dataflow.readers.VariantStreamer;
-import com.google.cloud.genomics.dataflow.utils.DataflowWorkarounds;
 import com.google.cloud.genomics.dataflow.utils.GCSOptions;
 import com.google.cloud.genomics.dataflow.utils.GenomicsDatasetOptions;
 import com.google.cloud.genomics.dataflow.utils.GenomicsOptions;
-import com.google.cloud.genomics.dataflow.utils.ReadUtils;
+import com.google.cloud.genomics.dataflow.utils.ReadFunctions;
 import com.google.cloud.genomics.dataflow.utils.Solver;
-import com.google.cloud.genomics.dataflow.utils.VariantUtils;
-import com.google.cloud.genomics.utils.Contig;
+import com.google.cloud.genomics.dataflow.utils.VariantFunctions;
 import com.google.cloud.genomics.utils.GenomicsFactory;
-import com.google.common.base.Function;
-import com.google.common.collect.FluentIterable;
+import com.google.cloud.genomics.utils.GenomicsUtils;
+import com.google.cloud.genomics.utils.ShardBoundary;
+import com.google.cloud.genomics.utils.ShardUtils;
+import com.google.cloud.genomics.utils.ShardUtils.SexChromosomeFilter;
 import com.google.common.collect.ImmutableMultiset;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Multiset;
 import com.google.genomics.v1.Read;
-import com.google.genomics.v1.StreamReadsRequest;
 import com.google.genomics.v1.StreamVariantsRequest;
 import com.google.genomics.v1.Variant;
 import com.google.protobuf.ListValue;
-
-import java.io.IOException;
-import java.io.UnsupportedEncodingException;
-import java.nio.ByteBuffer;
-import java.security.GeneralSecurityException;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.List;
-import java.util.Map;
 
 /**
  * Test a set of reads for contamination.
  *
  * Takes a set of specified ReadGroupSets of reads to test and statistics on reference allele
  * frequencies for SNPs with a single alternative from a specified set of VariantSets.
+ * 
+ * See http://googlegenomics.readthedocs.org/en/latest/use_cases/perform_quality_control_checks/verify_bam_id.html
+ * for running instructions.
  *
  * Uses the sequence data alone approach described in:
  * G. Jun, M. Flickinger, K. N. Hetrick, Kurt, J. M. Romm, K. F. Doheny,
@@ -96,18 +94,16 @@ public class VerifyBamId {
   private static VerifyBamId.VerifyBamIdOptions options;
   private static Pipeline p;
   private static GenomicsFactory.OfflineAuth auth;
-
-  /**
-   * Constant that represents the size that user given references will be parsed into for each
-   * individual request.
-   */
-  private static final long SHARD_SIZE = 10000000L;
   
   /**
    * String prefix used for sampling hash function
    */
   private static final String HASH_PREFIX = "";
   
+  // TODO: this value is not quite correct. Test again after
+  // https://github.com/googlegenomics/utils-java/issues/48
+  private static final String VARIANT_FIELDS = "variants(start,calls(genotype,callSetName))";
+
   /**
    * Options required to run this pipeline.
    */
@@ -122,14 +118,15 @@ public class VerifyBamId {
 
     void setReadGroupSetIds(String readGroupSetId);
 
-    @Description("A comma delimited list of the IDs of the Google Genomics VariantSets this "
-        + "pipeline is working with. Default (empty) indicates all VariantSets in InputDatasetId."
-        + "  This(and readGroupSetIds) or InputDatasetId must be set.  InputDatasetId overrides "
-        + "VariantSetIds (if InputDatasetId is set, this field will be ignored).")
-    @Default.String("")
-    String getVariantSetIds();
+    public String DEFAULT_VARIANTSET = "10473108253681171589";
+    @Description("The ID of the Google Genomics VariantSet this pipeline is working with."
+        + "  It assumes the variant set has INFO field 'AF' from which it retrieves the"
+        + " allele frequency for the variant, such as 1,000 Genomes phase 1 or phase 3 variants."
+        + "  Defaults to the 1,000 Genomes phase 1 VariantSet with id " + DEFAULT_VARIANTSET + ".")
+    @Default.String(DEFAULT_VARIANTSET)
+    String getVariantSetId();
 
-    void setVariantSetIds(String variantSetId);
+    void setVariantSetId(String variantSetId);
 
     @Description("The ID of the Google Genomics Dataset that the pipeline will get its input reads"
         + " from.  Default (empty) means to use ReadGroupSetIds and VariantSetIds instead.  This or"
@@ -168,37 +165,36 @@ public class VerifyBamId {
     auth = GenomicsOptions.Methods.getGenomicsAuth(options);
     
     p = Pipeline.create(options);
-    DataflowWorkarounds.registerGenomicsCoders(p);
-    DataflowWorkarounds.registerCoder(p, Read.class, SerializableCoder.of(Read.class));
-    DataflowWorkarounds.registerCoder(p, Variant.class, SerializableCoder.of(Variant.class));
-    DataflowWorkarounds.registerCoder(p, ReadBaseQuality.class,
-        GenericJsonCoder.of(ReadBaseQuality.class));
-    DataflowWorkarounds.registerCoder(p, AlleleFreq.class, GenericJsonCoder.of(AlleleFreq.class));
-    DataflowWorkarounds.registerCoder(p, ReadCounts.class, GenericJsonCoder.of(ReadCounts.class));
+    p.getCoderRegistry().setFallbackCoderProvider(GenericJsonCoder.PROVIDER);
 
-    if (options.getInputDatasetId().isEmpty()
-        && (options.getReadGroupSetIds().isEmpty() || options.getVariantSetIds().isEmpty())) {
-      throw new IllegalArgumentException("InputDatasetId or ReadGroupSetIds and VariantSetIds must"
-          + " be specified");
+    if (options.getInputDatasetId().isEmpty() && options.getReadGroupSetIds().isEmpty()) {
+      throw new IllegalArgumentException("InputDatasetId or ReadGroupSetIds must be specified");
     }
 
     List<String> rgsIds;
-    List<String> vsIds;
     if (options.getInputDatasetId().isEmpty()) {
       rgsIds = Lists.newArrayList(options.getReadGroupSetIds().split(","));
-      vsIds = Lists.newArrayList(options.getVariantSetIds().split(","));
     } else {
-      rgsIds = ReadStreamer.getReadGroupSetIds(options.getInputDatasetId(), auth);
-      vsIds = VariantStreamer.getVariantSetIds(options.getInputDatasetId(), auth);
+      rgsIds = GenomicsUtils.getReadGroupSetIds(options.getInputDatasetId(), auth);
     }
+
+    // Grab one ReferenceSetId to be used within the pipeline to confirm that all ReadGroupSets
+    // are associated with the same ReferenceSet.
+    String referenceSetId = GenomicsUtils.getReferenceSetId(rgsIds.get(0), auth);
+    if (Strings.isNullOrEmpty(referenceSetId)) {
+      throw new IllegalArgumentException("No ReferenceSetId associated with ReadGroupSetId "
+          + rgsIds.get(0)
+          + ". All ReadGroupSets in given input must have an associated ReferenceSet.");
+    }
+
+    // TODO: confirm that variant set also corresponds to the same reference
+    // https://github.com/googlegenomics/api-client-java/issues/66
     
-    List<Contig> contigs;
-    String referenceSetId = checkReferenceSetIds(rgsIds);
-    if (options.isAllReferences()) {
-      contigs = getAllReferences(referenceSetId);
-    } else {
-      contigs = parseReferences(options.getReferences(), referenceSetId);
-    }
+    // Reads in Reads.
+    PCollection<Read> reads = p.begin()
+        .apply(Create.of(rgsIds))
+        .apply(ParDo.of(new CheckMatchingReferenceSet(referenceSetId, auth)))
+        .apply(new ReadGroupStreamer(auth, ShardBoundary.Requirement.STRICT, null, SexChromosomeFilter.INCLUDE_XY));
 
     /*
     TODO:  We can reduce the number of requests needed to be created by doing the following:
@@ -208,12 +204,15 @@ public class VerifyBamId {
        to get their ranges (we only need to stream Reads that overlap the selected Variants).
     3. Stream the Reads from the created requests.
     */
-      
-    // Reads in Reads.
-    PCollection<Read> reads = getReadsFromAPI(rgsIds);
 
     // Reads in Variants.  TODO potentially provide an option to load the Variants from a file.
-    PCollection<Variant> variants = getVariantsFromAPI(vsIds);
+    List<StreamVariantsRequest> variantRequests = options.isAllReferences() ?
+        ShardUtils.getVariantRequests(options.getDatasetId(), ShardUtils.SexChromosomeFilter.INCLUDE_XY,
+            options.getBasesPerShard(), auth) :
+          ShardUtils.getVariantRequests(options.getDatasetId(), options.getReferences(), options.getBasesPerShard());
+
+    PCollection<Variant> variants = p.apply(Create.of(variantRequests))
+    .apply(new VariantStreamer(auth, ShardBoundary.Requirement.STRICT, VARIANT_FIELDS));
     
     PCollection<KV<Position, AlleleFreq>> refFreq = getFreq(variants, options.getMinFrequency());
 
@@ -222,7 +221,7 @@ public class VerifyBamId {
     
     // Converts our results to a single Map of Position keys to ReadCounts values.
     PCollectionView<Map<Position, ReadCounts>> view = readCountsTable
-        .apply(View.<Position, ReadCounts>asMap().withSingletonValues());
+        .apply(View.<Position, ReadCounts>asMap());
 
     // Calculates the contamination estimate based on the resulting Map above.
     PCollection<String> result = p.begin().apply(Create.of(""))
@@ -247,12 +246,12 @@ public class VerifyBamId {
    */
   static PCollection<KV<Position, AlleleFreq>> getFreq(
       PCollection<Variant> variants, double minFreq) {
-    return variants.apply(Filter.by(VariantUtils.IS_PASSING).named("PassingFilter"))
-        .apply(Filter.by(VariantUtils.IS_ON_CHROMOSOME).named("OnChromosomeFilter"))
-        .apply(Filter.by(VariantUtils.IS_NOT_LOW_QUALITY).named("NotLowQualityFilter"))
-        .apply(Filter.by(VariantUtils.IS_SINGLE_ALTERNATE_SNP).named("SNPFilter"))
+    return variants.apply(Filter.byPredicate(VariantFunctions.IS_PASSING).named("PassingFilter"))
+        .apply(Filter.byPredicate(VariantFunctions.IS_ON_CHROMOSOME).named("OnChromosomeFilter"))
+        .apply(Filter.byPredicate(VariantFunctions.IS_NOT_LOW_QUALITY).named("NotLowQualityFilter"))
+        .apply(Filter.byPredicate(VariantFunctions.IS_SINGLE_ALTERNATE_SNP).named("SNPFilter"))
         .apply(ParDo.of(new GetAlleleFreq()))
-        .apply(Filter.by(new FilterFreq(minFreq)));
+        .apply(Filter.byPredicate(new FilterFreq(minFreq)));
   }
   
   /**
@@ -271,12 +270,12 @@ public class VerifyBamId {
     // Runs filters on input Reads, splits into individual aligned bases (emitting the
     // base and quality) and grabs a sample of them based on a hash mod of Position.
     PCollection<KV<Position, ReadBaseQuality>> joinReadCounts =
-        reads.apply(Filter.by(ReadUtils.IS_ON_CHROMOSOME).named("IsOnChromosome"))
-        .apply(Filter.by(ReadUtils.IS_NOT_QC_FAILURE).named("IsNotQCFailure"))
-        .apply(Filter.by(ReadUtils.IS_NOT_DUPLICATE).named("IsNotDuplicate"))
-        .apply(Filter.by(ReadUtils.IS_PROPER_PLACEMENT).named("IsProperPlacement"))
+        reads.apply(Filter.byPredicate(ReadFunctions.IS_ON_CHROMOSOME).named("IsOnChromosome"))
+        .apply(Filter.byPredicate(ReadFunctions.IS_NOT_QC_FAILURE).named("IsNotQCFailure"))
+        .apply(Filter.byPredicate(ReadFunctions.IS_NOT_DUPLICATE).named("IsNotDuplicate"))
+        .apply(Filter.byPredicate(ReadFunctions.IS_PROPER_PLACEMENT).named("IsProperPlacement"))
         .apply(ParDo.of(new SplitReads()))
-        .apply(Filter.by(new SampleReads(samplingFraction, samplingPrefix)));
+        .apply(Filter.byPredicate(new SampleReads(samplingFraction, samplingPrefix)));
     
     TupleTag<ReadBaseQuality> readCountsTag = new TupleTag<>();
     TupleTag<AlleleFreq> refFreqTag = new TupleTag<>();
@@ -295,7 +294,7 @@ public class VerifyBamId {
 
     @Override
     public void processElement(ProcessContext c) throws Exception {
-      List<ReadBaseWithReference> readBases = ReadUtils.extractReadBases(c.element());
+      List<ReadBaseWithReference> readBases = ReadFunctions.extractReadBases(c.element());
       if (!readBases.isEmpty()) {
         for (ReadBaseWithReference rb : readBases) {
           c.output(KV.of(rb.getRefPosition(), rb.getRbq()));
@@ -372,7 +371,7 @@ public class VerifyBamId {
         // step the number of AlleleFreqs retrieved is below a given threshold, then throw an
         // exception.
         throw new IllegalArgumentException("Variant " + c.element().getId() + " does not have "
-            + "allele frequency information stored.");
+            + "allele frequency information stored in INFO field AF.");
       }
     }
   }
@@ -483,134 +482,5 @@ public class VerifyBamId {
       c.output(Double.toString(Solver.maximize(new LikelihoodFn(c.sideInput(view)),
           0.0, 0.5, GRID_STEP, REL_ERR, ABS_ERR, MAX_ITER, MAX_EVAL)));
     }
-  }
-  
-  /**
-   * Checks to make sure all of the input ReadGroupSets have the same referenceSetId.
-   * 
-   * @param readGroupSetIds list of input ReadGroupSet ids to check
-   * @return the referenceSetId of the given ReadGroupSets
-   */
-  private static String checkReferenceSetIds(List<String> readGroupSetIds)
-      throws GeneralSecurityException, IOException {
-    String referenceSetId = null;
-    for (String rgsId : readGroupSetIds) {
-      Genomics.Readgroupsets.Get rgsRequest = auth.getGenomics(auth.getDefaultFactory())
-          .readgroupsets().get(rgsId).setFields("referenceSetId");
-      ReadGroupSet rgs = rgsRequest.execute();
-      if (referenceSetId == null) {
-        referenceSetId = rgs.getReferenceSetId();
-      } else if (!rgs.getReferenceSetId().equals(referenceSetId)) {
-        throw new IllegalArgumentException("ReferenceSetIds must be the same for all"
-            + " ReadGroupSets in given input.");
-      }
-    }
-    return referenceSetId;
-  }
-  
-  /**
-   * Parses and shards all of the References in the given ReferenceSet.
-   * 
-   * @param referenceSetId the id of the ReferenceSet we want the Contigs for
-   * @return list of Contigs representing all of the References in the given ReferenceSet
-   */
-  public static List<Contig> getAllReferences(String referenceSetId)
-      throws IOException, GeneralSecurityException {
-    List<Contig> contigs = Lists.newArrayList();
-    Genomics.References.Search refRequest = auth.getGenomics(auth.getDefaultFactory())
-        .references()
-        .search(new SearchReferencesRequest().setReferenceSetId(referenceSetId));
-    List<Reference> referencesList = refRequest.execute().getReferences();
-    for (Reference r : referencesList) {
-      contigs.add(new Contig(r.getName(), 0L, r.getLength()));
-    }
-    contigs = Lists.newArrayList(FluentIterable.from(contigs)
-        .transformAndConcat(new Function<Contig, Iterable<Contig>>() {
-          @Override
-          public Iterable<Contig> apply(Contig contig) {
-            return contig.getShards(SHARD_SIZE);
-          }
-        }));
-    Collections.shuffle(contigs);
-    return contigs;
-  }
-  
-  /**
-   * Parses and shards the References in the given ReferenceSet.
-   * 
-   * @param references the user given references from the command line.
-   * @param referenceSetId the id of the ReferenceSet we want the Contigs for
-   * @return list of Contigs representing all of the References in the given ReferenceSet
-   */
-  public static List<Contig> parseReferences(String references,
-      String referenceSetId) throws IOException, GeneralSecurityException {
-    List<String> splitReferences = Lists.newArrayList(references.split(","));
-    List<Contig> contigs = Lists.newArrayList();
-    List<Reference> referencesList = null; // If needed
-    for (String ref : splitReferences) {
-      String[] splitPieces = ref.split(":");
-      if (splitPieces.length != 3 && referencesList == null) {
-        // referencesList hasn't been needed up until this point, so we must request it.
-        // Assume that they are asking for one entire specific reference.
-        Genomics.References.Search refRequest = auth.getGenomics(auth.getDefaultFactory())
-            .references()
-            .search(new SearchReferencesRequest().setReferenceSetId(referenceSetId));
-        referencesList = refRequest.execute().getReferences();
-        for (Reference r : referencesList) {
-          if (r.getName().equals(splitPieces[0])) { // Found the reference we want.
-            contigs.add(new Contig(splitPieces[0], 0L, r.getLength()));
-            break;
-          }
-        }
-      } else if (splitPieces.length != 3) {
-        // Assume that they are asking for one entire specific reference.
-        for (Reference r : referencesList) {
-          if (r.getName().equals(splitPieces[0])) { // Found the reference we want.
-            contigs.add(new Contig(splitPieces[0], 0L, r.getLength()));
-            break;
-          }
-        }
-      } else {
-        contigs.add(
-            new Contig(splitPieces[0], Long.valueOf(splitPieces[1]), Long.valueOf(splitPieces[2])));
-      }
-    }
-    contigs = Lists.newArrayList(FluentIterable.from(contigs)
-        .transformAndConcat(new Function<Contig, Iterable<Contig>>() {
-          @Override
-          public Iterable<Contig> apply(Contig contig) {
-            return contig.getShards(SHARD_SIZE);
-          }
-        }));
-    Collections.shuffle(contigs);
-    return contigs;
-  }
-  
-  private static PCollection<Read> getReadsFromAPI(List<String> rgsIds)
-      throws IOException, GeneralSecurityException {
-    List<StreamReadsRequest> requests = Lists.newArrayList();
-    for (String r : rgsIds) {
-      if (options.isAllReferences()) {
-        requests.add(ReadStreamer.getReadRequests(r));
-      } else {
-        requests.addAll(ReadStreamer.getReadRequests(r, options.getReferences()));
-      }
-    }
-    PCollection<StreamReadsRequest> readRequests = p.begin().apply(Create.of(requests));
-    return readRequests.apply(new ReadStreamer.StreamReads());
-  }
-  
-  private static PCollection<Variant> getVariantsFromAPI(List<String> vsIds)
-      throws IOException, GeneralSecurityException {
-    List<StreamVariantsRequest> requests = Lists.newArrayList();
-    for (String v : vsIds) {
-      if (options.isAllReferences()) {
-        requests.add(VariantStreamer.getVariantRequests(v));
-      } else {
-        requests.addAll(VariantStreamer.getVariantRequests(v, options.getReferences()));
-      }
-    }
-    PCollection<StreamVariantsRequest> variantRequests = p.begin().apply(Create.of(requests));
-    return variantRequests.apply(new VariantStreamer.StreamVariants());
   }
 }

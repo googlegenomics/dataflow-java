@@ -39,7 +39,6 @@ import com.google.cloud.genomics.dataflow.pipelines.VerifyBamId.GetAlleleFreq;
 import com.google.cloud.genomics.dataflow.pipelines.VerifyBamId.PileupAndJoinReads;
 import com.google.cloud.genomics.dataflow.pipelines.VerifyBamId.SampleReads;
 import com.google.cloud.genomics.dataflow.pipelines.VerifyBamId.SplitReads;
-import com.google.cloud.genomics.dataflow.utils.DataflowWorkarounds;
 import com.google.common.collect.ImmutableList;
 import com.google.genomics.v1.CigarUnit;
 import com.google.genomics.v1.CigarUnit.Operation;
@@ -266,11 +265,7 @@ public class VerifyBamIdTest {
     VerifyBamId.VerifyBamIdOptions popts =
         PipelineOptionsFactory.create().as(VerifyBamId.VerifyBamIdOptions.class);
     Pipeline p = TestPipeline.create(popts);
-    DataflowWorkarounds.registerCoder(p, Position.class, GenericJsonCoder.of(Position.class));
-    DataflowWorkarounds.registerCoder(p, ReadBaseQuality.class,
-        GenericJsonCoder.of(ReadBaseQuality.class));
-    DataflowWorkarounds.registerCoder(p, AlleleFreq.class, GenericJsonCoder.of(AlleleFreq.class));
-    DataflowWorkarounds.registerCoder(p, ReadCounts.class, GenericJsonCoder.of(ReadCounts.class));
+    p.getCoderRegistry().setFallbackCoderProvider(GenericJsonCoder.PROVIDER);
     ReadBaseQuality srq = new ReadBaseQuality("A", 10);
     PCollection<KV<Position, ReadBaseQuality>> readCounts = p.apply(
         Create.of(KV.of(position1, srq)));
@@ -294,11 +289,7 @@ public class VerifyBamIdTest {
     VerifyBamId.VerifyBamIdOptions popts =
         PipelineOptionsFactory.create().as(VerifyBamId.VerifyBamIdOptions.class);
     Pipeline p = TestPipeline.create(popts);
-    DataflowWorkarounds.registerCoder(p, Position.class, GenericJsonCoder.of(Position.class));
-    DataflowWorkarounds.registerCoder(p, ReadBaseQuality.class,
-        GenericJsonCoder.of(ReadBaseQuality.class));
-    DataflowWorkarounds.registerCoder(p, AlleleFreq.class, GenericJsonCoder.of(AlleleFreq.class));
-    DataflowWorkarounds.registerCoder(p, ReadCounts.class, GenericJsonCoder.of(ReadCounts.class));
+    p.getCoderRegistry().setFallbackCoderProvider(GenericJsonCoder.PROVIDER);
     PCollection<KV<Position, AlleleFreq>> refCounts = p.apply(Create.of(this.refCountList));
 
     PCollection<Read> reads = p.apply(Create.of(Read.newBuilder()
