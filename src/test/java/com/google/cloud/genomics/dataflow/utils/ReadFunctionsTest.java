@@ -43,7 +43,7 @@ import java.util.regex.Pattern;
  * Tests for the ReadUtils class.
  */
 @RunWith(JUnit4.class)
-public class ReadUtilsTest {
+public class ReadFunctionsTest {
 
   /**
    * Test whether a char is a valid base (ACGT)
@@ -312,20 +312,20 @@ public class ReadUtilsTest {
   @Test
   public void testReadBases() throws IOException {
     for (CigarTestCase tc : cases) {
-      assertEquals(tc.readBases, ReadUtils.extractReadBases(tc.read));
+      assertEquals(tc.readBases, ReadFunctions.extractReadBases(tc.read));
     }
   }
 
   @Test
   public void testIsOnChromosome() {
-    assertFalse(ReadUtils.IS_ON_CHROMOSOME.apply(Read.newBuilder()
+    assertFalse(ReadFunctions.IS_ON_CHROMOSOME.apply(Read.newBuilder()
         .setAlignment(LinearAlignment.newBuilder()
             .setPosition(Position.newBuilder()
                 .setReferenceName("chrZ")
                 .build())
             .build())
         .build()));
-    assertTrue(ReadUtils.IS_ON_CHROMOSOME.apply(Read.newBuilder()
+    assertTrue(ReadFunctions.IS_ON_CHROMOSOME.apply(Read.newBuilder()
         .setAlignment(LinearAlignment.newBuilder()
             .setPosition(Position.newBuilder()
                 .setReferenceName("1")
@@ -336,30 +336,30 @@ public class ReadUtilsTest {
 
   @Test
   public void testIsNotQCFailure() {
-    assertFalse(ReadUtils.IS_NOT_QC_FAILURE.apply(Read.newBuilder()
+    assertFalse(ReadFunctions.IS_NOT_QC_FAILURE.apply(Read.newBuilder()
         .setFailedVendorQualityChecks(true)
         .build()));
-    assertTrue(ReadUtils.IS_NOT_QC_FAILURE.apply(Read.newBuilder()
+    assertTrue(ReadFunctions.IS_NOT_QC_FAILURE.apply(Read.newBuilder()
         .setFailedVendorQualityChecks(false)
         .build()));
   }
 
   @Test
   public void testIsNotDuplicate() {
-    assertFalse(ReadUtils.IS_NOT_DUPLICATE.apply(Read.newBuilder()
+    assertFalse(ReadFunctions.IS_NOT_DUPLICATE.apply(Read.newBuilder()
         .setDuplicateFragment(true)
         .build()));
-    assertTrue(ReadUtils.IS_NOT_DUPLICATE.apply(Read.newBuilder()
+    assertTrue(ReadFunctions.IS_NOT_DUPLICATE.apply(Read.newBuilder()
         .setDuplicateFragment(false)
         .build()));
   }
 
   @Test
   public void testIsProperPlacement() {
-    assertTrue(ReadUtils.IS_PROPER_PLACEMENT.apply(Read.newBuilder()
+    assertTrue(ReadFunctions.IS_PROPER_PLACEMENT.apply(Read.newBuilder()
         .setProperPlacement(true)
         .build()));
-    assertFalse(ReadUtils.IS_PROPER_PLACEMENT.apply(Read.newBuilder()
+    assertFalse(ReadFunctions.IS_PROPER_PLACEMENT.apply(Read.newBuilder()
         .setProperPlacement(false)
         .build()));
   }

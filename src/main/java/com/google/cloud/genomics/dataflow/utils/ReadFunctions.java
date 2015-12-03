@@ -15,29 +15,22 @@
  */
 package com.google.cloud.genomics.dataflow.utils;
 
-import com.google.api.services.genomics.model.Position;
-import com.google.api.services.genomics.model.ReadGroupSet;
-import com.google.api.services.genomics.model.SearchReadGroupSetsRequest;
-import com.google.cloud.dataflow.sdk.transforms.SerializableFunction;
-import com.google.cloud.genomics.dataflow.model.ReadBaseQuality;
-import com.google.cloud.genomics.dataflow.model.ReadBaseWithReference;
-import com.google.cloud.genomics.utils.GenomicsFactory;
-import com.google.cloud.genomics.utils.Paginator;
-import com.google.common.collect.ImmutableList;
-import com.google.common.collect.Lists;
-import com.google.genomics.v1.CigarUnit;
-import com.google.genomics.v1.Read;
-import java.io.IOException;
-import java.security.GeneralSecurityException;
-
 import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import com.google.api.services.genomics.model.Position;
+import com.google.cloud.dataflow.sdk.transforms.SerializableFunction;
+import com.google.cloud.genomics.dataflow.model.ReadBaseQuality;
+import com.google.cloud.genomics.dataflow.model.ReadBaseWithReference;
+import com.google.common.collect.ImmutableList;
+import com.google.genomics.v1.CigarUnit;
+import com.google.genomics.v1.Read;
+
 /**
  * Utility methods for working with genetic read data.
  */
-public class ReadUtils {
+public class ReadFunctions {
 
   private static final String UNINITIALIZED_REFERENCE_SEQUENCE = "UNINITIALIZED";
 
