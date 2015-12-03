@@ -111,7 +111,7 @@ public class VerifyBamId {
 
     @Description("A comma delimited list of the IDs of the Google Genomics ReadGroupSets this "
         + "pipeline is working with. Default (empty) indicates all ReadGroupSets in InputDatasetId."
-        + "  This(and variantSetIds) or InputDatasetId must be set.  InputDatasetId overrides "
+        + "  This or InputDatasetId must be set.  InputDatasetId overrides "
         + "ReadGroupSetIds (if InputDatasetId is set, this field will be ignored).")
     @Default.String("")
     String getReadGroupSetIds();
