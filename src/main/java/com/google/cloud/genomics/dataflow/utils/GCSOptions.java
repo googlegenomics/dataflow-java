@@ -15,6 +15,10 @@
  */
 package com.google.cloud.genomics.dataflow.utils;
 
+import java.util.List;
+import java.util.logging.Logger;
+
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.google.api.client.googleapis.util.Utils;
 import com.google.api.client.http.HttpTransport;
 import com.google.api.client.json.JsonFactory;
@@ -27,13 +31,8 @@ import com.google.cloud.dataflow.sdk.options.DefaultValueFactory;
 import com.google.cloud.dataflow.sdk.options.PipelineOptions;
 import com.google.cloud.dataflow.sdk.transforms.DoFn;
 import com.google.cloud.genomics.utils.GenomicsFactory;
+import com.google.cloud.genomics.utils.OfflineAuth;
 import com.google.common.collect.ImmutableList;
-import com.fasterxml.jackson.annotation.JsonIgnore;
-
-import java.io.IOException;
-import java.security.GeneralSecurityException;
-import java.util.List;
-import java.util.logging.Logger;
 
 /**
  * Options for pipelines that need to access GCS storage.
@@ -113,30 +112,28 @@ public interface GCSOptions extends GenomicsOptions {
     private Methods() {
     }
     
-    public static GenomicsFactory.OfflineAuth createGCSAuth(GCSOptions options)
-      throws IOException, GeneralSecurityException {
+    public static OfflineAuth createGCSAuth(GCSOptions options) {
       return GenomicsOptions.Methods.getGenomicsAuth(options);
     }
     
     public static Storage.Objects createStorageClient(
-        DoFn<?, ?>.Context context, GenomicsFactory.OfflineAuth auth) throws IOException {
+        DoFn<?, ?>.Context context, OfflineAuth auth) {
       final GCSOptions gcsOptions =
           context.getPipelineOptions().as(GCSOptions.class);
       return createStorageClient(gcsOptions, auth);
     }
     
     public static Storage.Objects createStorageClient(GCSOptions gcsOptions,
-        GenomicsFactory.OfflineAuth auth) throws IOException {
-      LOG.info("Creating storgae client for " + auth.applicationName);
+        OfflineAuth auth) {
       final Storage.Builder storageBuilder = new Storage.Builder(
           gcsOptions.getTransport(),
           gcsOptions.getJsonFactory(),
           null);
       
-      return auth
-          .setupAuthentication(gcsOptions.getGenomicsFactory(), storageBuilder)
+      return gcsOptions.getGenomicsFactory()
+          .fromOfflineAuth(storageBuilder, auth)
           .build()
-            .objects();
+          .objects();
       }
     
   }

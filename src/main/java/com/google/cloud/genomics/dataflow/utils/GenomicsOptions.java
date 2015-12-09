@@ -13,57 +13,58 @@
  */
 package com.google.cloud.genomics.dataflow.utils;
 
-import java.io.IOException;
-import java.security.GeneralSecurityException;
+import java.util.Scanner;
 
 import com.google.cloud.dataflow.sdk.options.Default;
 import com.google.cloud.dataflow.sdk.options.Description;
 import com.google.cloud.dataflow.sdk.options.GcsOptions;
-import com.google.cloud.genomics.utils.GenomicsFactory;
-import com.google.cloud.genomics.utils.GenomicsFactory.Builder;
+import com.google.cloud.dataflow.sdk.runners.DirectPipelineRunner;
+import com.google.cloud.genomics.utils.OfflineAuth;
 
 /**
- * Contains common genomics pipeline options. Extend this class to add additional command line args.
- *
- *  Note: All methods defined in this class will be called during command line parsing unless it is
- * annotated with a @JsonIgnore annotation.
+ * Contains pipeline options relevant to the creation of Genomics API clients.
  */
 public interface GenomicsOptions extends GcsOptions {
 
   public static class Methods {
 
-    public static GenomicsFactory.OfflineAuth getGenomicsAuth(GenomicsOptions options) throws GeneralSecurityException, IOException {
-      Builder builder =
-          GenomicsFactory.builder(options.getAppName()).setNumberOfRetries(options.getNumberOfRetries());
+    public static OfflineAuth getGenomicsAuth(GenomicsOptions options) {
+      if (DirectPipelineRunner.class != options.getRunner()
+          && null != options.getSecretsFile()
+          && options.getWarnUserCredential()) {
+        System.out.println("\nThis pipeline will run on GCE VMs and your user credential will"
+            + " be used by all Dataflow worker instances.  Your credentials may be visible to"
+            + " others with access to the VMs.");
 
-      String secretsFile = options.getSecretsFile(), apiKey = options.getApiKey();
-      if (secretsFile == null && apiKey == null) {
-        throw new IllegalArgumentException(
-            "Need to specify either --secretsFile or --apiKey");
+        System.out.println("Do you want to continue (Y/n)?");
+        Scanner kbd = new Scanner (System.in);
+        String decision;
+        decision = kbd.nextLine();
+        switch(decision) {
+          case "yes": case "Yes": case "YES": case "y": case "Y":
+            break;
+          default:
+            System.exit(0);
+        }
       }
 
-      if(null != secretsFile) {
-        return builder.build().getOfflineAuthFromCredential(options.getGcpCredential(),
-              secretsFile);
+      if (null != options.getSecretsFile()) {
+        // User credential will be available on all Dataflow workers.
+        return new OfflineAuth(options.getGcpCredential());
       }
-      return builder.build().getOfflineAuthFromApiKey(apiKey);
-    }
-
-    public static void validateOptions(GenomicsOptions options) {
+      // This "empty" OfflineAuth will default to the Application
+      // Default Credential available from whereever it is
+      // accessed (e.g., locally or on GCE).
+      return new OfflineAuth();
     }
   }
 
-  @Description("If querying a public dataset, provide a Google API key that has access "
-      + "to genomics data and no OAuth will be performed.")
-  String getApiKey();
+  @Description("Set this option to 'false' to disable the yes/no prompt when running"
+      + " the pipeline with a user credential.")
+  @Default.Boolean(true)
+  boolean getWarnUserCredential();
 
-  void setApiKey(String apiKey);
-
-  @Description("Specifies the maximum number of retries to attempt (if needed) for requests to the Genomics API.")
-  @Default.Integer(10)
-  int getNumberOfRetries();
-
-  void setNumberOfRetries(int numOfRetries);
+  void setWarnUserCredential(boolean warnUserCredential);
 
   @Description("Specifies number of results to return in a single page of results. "
       + "If unspecified, the default page size for the Genomics API is used.")

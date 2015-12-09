@@ -26,7 +26,7 @@ import com.google.cloud.dataflow.sdk.transforms.PTransform;
 import com.google.cloud.dataflow.sdk.transforms.ParDo;
 import com.google.cloud.dataflow.sdk.transforms.Sum;
 import com.google.cloud.dataflow.sdk.values.PCollection;
-import com.google.cloud.genomics.utils.GenomicsFactory;
+import com.google.cloud.genomics.utils.OfflineAuth;
 import com.google.cloud.genomics.utils.ShardBoundary;
 import com.google.cloud.genomics.utils.grpc.ReadStreamIterator;
 import com.google.common.base.Stopwatch;
@@ -40,7 +40,7 @@ import com.google.genomics.v1.StreamReadsResponse;
 public class ReadStreamer extends
 PTransform<PCollection<StreamReadsRequest>, PCollection<Read>> {
 
-  protected final GenomicsFactory.OfflineAuth auth;
+  protected final OfflineAuth auth;
   protected final ShardBoundary.Requirement shardBoundary;
   protected final String fields;
 
@@ -51,7 +51,7 @@ PTransform<PCollection<StreamReadsRequest>, PCollection<Read>> {
    * @param shardBoundary The shard boundary semantics to enforce.
    * @param fields Which fields to include in a partial response or null for all.
    */
-  public ReadStreamer(GenomicsFactory.OfflineAuth auth, ShardBoundary.Requirement shardBoundary, String fields) {
+  public ReadStreamer(OfflineAuth auth, ShardBoundary.Requirement shardBoundary, String fields) {
     this.auth = auth;
     this.shardBoundary = shardBoundary;
     this.fields = fields;

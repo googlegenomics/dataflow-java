@@ -58,8 +58,8 @@ import com.google.cloud.genomics.dataflow.utils.GenomicsOptions;
 import com.google.cloud.genomics.dataflow.utils.ReadFunctions;
 import com.google.cloud.genomics.dataflow.utils.Solver;
 import com.google.cloud.genomics.dataflow.utils.VariantFunctions;
-import com.google.cloud.genomics.utils.GenomicsFactory;
 import com.google.cloud.genomics.utils.GenomicsUtils;
+import com.google.cloud.genomics.utils.OfflineAuth;
 import com.google.cloud.genomics.utils.ShardBoundary;
 import com.google.cloud.genomics.utils.ShardUtils;
 import com.google.cloud.genomics.utils.ShardUtils.SexChromosomeFilter;
@@ -93,7 +93,7 @@ public class VerifyBamId {
 
   private static VerifyBamId.VerifyBamIdOptions options;
   private static Pipeline p;
-  private static GenomicsFactory.OfflineAuth auth;
+  private static OfflineAuth auth;
   
   /**
    * String prefix used for sampling hash function

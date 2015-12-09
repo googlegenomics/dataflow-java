@@ -17,6 +17,8 @@ package com.google.cloud.genomics.dataflow.pipelines;
 
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
+import htsjdk.samtools.SamReader;
+import htsjdk.samtools.ValidationStringency;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -33,13 +35,9 @@ import com.google.cloud.dataflow.sdk.util.gcsfs.GcsPath;
 import com.google.cloud.genomics.dataflow.readers.bam.BAMIO;
 import com.google.cloud.genomics.dataflow.utils.GenomicsOptions;
 
-import htsjdk.samtools.SamReader;
-import htsjdk.samtools.ValidationStringency;
-
 public class IntegrationTestHelper {
 
   // Test configuration constants
-  private final String API_KEY = System.getenv("GOOGLE_API_KEY");
   private final String TEST_PROJECT = System.getenv("TEST_PROJECT");
   private final String TEST_OUTPUT_GCS_FOLDER = System.getenv("TEST_OUTPUT_GCS_FOLDER");
   private final String TEST_STAGING_GCS_FOLDER = System.getenv("TEST_STAGING_GCS_FOLDER");
@@ -53,7 +51,6 @@ public class IntegrationTestHelper {
   GcsUtil gcsUtil;
   
   public IntegrationTestHelper() {
-    assertNotNull("You must set the GOOGLE_API_KEY environment variable for this test.", API_KEY);
     assertNotNull("You must set the TEST_PROJECT environment variable for this test.", TEST_PROJECT);
     assertNotNull("You must set the TEST_OUTPUT_GCS_FOLDER environment variable for this test.", TEST_OUTPUT_GCS_FOLDER);
     assertNotNull("You must set the TEST_STAGING_GCS_FOLDER environment variable for this test.", TEST_STAGING_GCS_FOLDER);
@@ -62,15 +59,7 @@ public class IntegrationTestHelper {
     assertTrue("TEST_STAGING_GCS_FOLDER must start with 'gs://'", TEST_STAGING_GCS_FOLDER.startsWith("gs://"));
     // we don't care how TEST_STAGING_GCS_FOLDER ends, so no check for it.
     
-    popts.setApiKey(API_KEY);
     gcsUtil = new GcsUtil.GcsUtilFactory().create(popts);
-  }
-
-  /**
-   * @return the API_KEY
-   */
-  public String getApiKey() {
-    return API_KEY;
   }
 
   /**

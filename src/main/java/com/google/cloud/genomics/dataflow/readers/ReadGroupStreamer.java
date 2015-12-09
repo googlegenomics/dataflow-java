@@ -21,7 +21,7 @@ import com.google.cloud.dataflow.sdk.transforms.PTransform;
 import com.google.cloud.dataflow.sdk.transforms.ParDo;
 import com.google.cloud.dataflow.sdk.values.PCollection;
 import com.google.cloud.genomics.dataflow.utils.GenomicsDatasetOptions;
-import com.google.cloud.genomics.utils.GenomicsFactory;
+import com.google.cloud.genomics.utils.OfflineAuth;
 import com.google.cloud.genomics.utils.ShardBoundary;
 import com.google.cloud.genomics.utils.ShardUtils;
 import com.google.cloud.genomics.utils.ShardUtils.SexChromosomeFilter;
@@ -36,7 +36,7 @@ import com.google.genomics.v1.StreamReadsRequest;
  * potentially be larger than Dataflow's pipeline creation request size limit.
  */
 public class ReadGroupStreamer extends PTransform<PCollection<String>, PCollection<Read>> {
-  protected final GenomicsFactory.OfflineAuth auth;
+  protected final OfflineAuth auth;
   protected final ShardBoundary.Requirement shardBoundary;
   protected final String fields;
   protected final SexChromosomeFilter sexChromosomeFilter;
@@ -50,7 +50,7 @@ public class ReadGroupStreamer extends PTransform<PCollection<String>, PCollecti
    * @param sexChromosomeFilter An enum value indicating how sex chromosomes should be
    *        handled in the result.
    */
-  public ReadGroupStreamer(GenomicsFactory.OfflineAuth auth, ShardBoundary.Requirement shardBoundary,
+  public ReadGroupStreamer(OfflineAuth auth, ShardBoundary.Requirement shardBoundary,
       String fields, SexChromosomeFilter sexChromosomeFilter) {
     this.auth = auth;
     this.shardBoundary = shardBoundary;

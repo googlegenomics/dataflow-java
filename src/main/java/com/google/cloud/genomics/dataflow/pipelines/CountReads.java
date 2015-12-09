@@ -47,7 +47,7 @@ import com.google.cloud.genomics.dataflow.utils.GCSOptions;
 import com.google.cloud.genomics.dataflow.utils.GenomicsDatasetOptions;
 import com.google.cloud.genomics.dataflow.utils.GenomicsOptions;
 import com.google.cloud.genomics.utils.Contig;
-import com.google.cloud.genomics.utils.GenomicsFactory;
+import com.google.cloud.genomics.utils.OfflineAuth;
 import com.google.cloud.genomics.utils.ShardBoundary;
 import com.google.cloud.genomics.utils.ShardUtils;
 import com.google.common.base.Strings;
@@ -63,7 +63,7 @@ public class CountReads {
   private static final Logger LOG = Logger.getLogger(CountReads.class.getName());
   private static CountReadsOptions options;
   private static Pipeline p;
-  private static GenomicsFactory.OfflineAuth auth;
+  private static OfflineAuth auth;
 
   public static interface CountReadsOptions extends GenomicsDatasetOptions, GCSOptions {
     @Description("The ID of the Google Genomics ReadGroupSet this pipeline is working with. "

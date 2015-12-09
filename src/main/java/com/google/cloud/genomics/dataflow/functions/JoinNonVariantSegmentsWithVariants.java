@@ -31,7 +31,7 @@ import com.google.cloud.dataflow.sdk.values.KV;
 import com.google.cloud.dataflow.sdk.values.PCollection;
 import com.google.cloud.genomics.dataflow.readers.VariantReader;
 import com.google.cloud.genomics.dataflow.utils.GenomicsDatasetOptions;
-import com.google.cloud.genomics.utils.GenomicsFactory;
+import com.google.cloud.genomics.utils.OfflineAuth;
 import com.google.cloud.genomics.utils.ShardBoundary;
 import com.google.cloud.genomics.utils.VariantUtils;
 import com.google.common.base.Function;
@@ -71,7 +71,7 @@ public class JoinNonVariantSegmentsWithVariants {
    *     merged into the variants with which they overlap.
    */
   public static PCollection<Variant> joinVariantsTransform(
-      PCollection<SearchVariantsRequest> input, GenomicsFactory.OfflineAuth auth) {
+      PCollection<SearchVariantsRequest> input, OfflineAuth auth) {
     return joinVariants(input, auth, null);
   }
 
@@ -87,7 +87,7 @@ public class JoinNonVariantSegmentsWithVariants {
    *     merged into the variants with which they overlap.
    */
   public static PCollection<Variant> joinVariantsTransform(
-      PCollection<SearchVariantsRequest> input, GenomicsFactory.OfflineAuth auth, String fields) {
+      PCollection<SearchVariantsRequest> input, OfflineAuth auth, String fields) {
     for (String field : REQUIRED_FIELDS) {
       Preconditions
           .checkArgument(
@@ -99,7 +99,7 @@ public class JoinNonVariantSegmentsWithVariants {
   }
 
   private static PCollection<Variant> joinVariants(PCollection<SearchVariantsRequest> input,
-      GenomicsFactory.OfflineAuth auth, String fields) {
+      OfflineAuth auth, String fields) {
     return input
         .apply(
             ParDo.named(VariantReader.class.getSimpleName()).of(

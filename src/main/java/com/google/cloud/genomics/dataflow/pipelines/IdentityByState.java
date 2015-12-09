@@ -36,7 +36,7 @@ import com.google.cloud.genomics.dataflow.readers.VariantStreamer;
 import com.google.cloud.genomics.dataflow.utils.GenomicsDatasetOptions;
 import com.google.cloud.genomics.dataflow.utils.GenomicsOptions;
 import com.google.cloud.genomics.dataflow.utils.IdentityByStateOptions;
-import com.google.cloud.genomics.utils.GenomicsFactory;
+import com.google.cloud.genomics.utils.OfflineAuth;
 import com.google.cloud.genomics.utils.ShardBoundary;
 import com.google.cloud.genomics.utils.ShardUtils;
 import com.google.genomics.v1.StreamVariantsRequest;
@@ -62,7 +62,7 @@ public class IdentityByState {
     // Option validation is not yet automatic, we make an explicit call here.
     GenomicsDatasetOptions.Methods.validateOptions(options);
 
-    GenomicsFactory.OfflineAuth auth = GenomicsOptions.Methods.getGenomicsAuth(options);
+    OfflineAuth auth = GenomicsOptions.Methods.getGenomicsAuth(options);
     List<StreamVariantsRequest> requests = options.isAllReferences() ?
         ShardUtils.getVariantRequests(options.getDatasetId(), ShardUtils.SexChromosomeFilter.EXCLUDE_XY,
             options.getBasesPerShard(), auth) :

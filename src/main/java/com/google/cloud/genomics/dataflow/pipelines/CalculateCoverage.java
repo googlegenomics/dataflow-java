@@ -48,6 +48,7 @@ import com.google.cloud.genomics.dataflow.utils.GenomicsOptions;
 import com.google.cloud.genomics.utils.Contig;
 import com.google.cloud.genomics.utils.GenomicsFactory;
 import com.google.cloud.genomics.utils.GenomicsUtils;
+import com.google.cloud.genomics.utils.OfflineAuth;
 import com.google.cloud.genomics.utils.RetryPolicy;
 import com.google.cloud.genomics.utils.ShardBoundary;
 import com.google.cloud.genomics.utils.ShardUtils.SexChromosomeFilter;
@@ -76,7 +77,7 @@ public class CalculateCoverage {
 
   private static CoverageOptions options;
   private static Pipeline p;
-  private static GenomicsFactory.OfflineAuth auth;
+  private static OfflineAuth auth;
 
   /**
    * Options required to run this pipeline.
@@ -192,10 +193,10 @@ public class CalculateCoverage {
   
   static class CheckMatchingReferenceSet extends DoFn<String, String> {
     private final String referenceSetIdForAllReadGroupSets;
-    private final GenomicsFactory.OfflineAuth auth;
+    private final OfflineAuth auth;
 
     public CheckMatchingReferenceSet(String referenceSetIdForAllReadGroupSets,
-        GenomicsFactory.OfflineAuth auth) {
+        OfflineAuth auth) {
       this.referenceSetIdForAllReadGroupSets = referenceSetIdForAllReadGroupSets;
       this.auth = auth;
     }
@@ -396,11 +397,11 @@ public class CalculateCoverage {
       DoFn<KV<Position, Iterable<KV<PosRgsMq.MappingQuality, List<Double>>>>, Annotation> {
 
     private final String asId;
-    private final GenomicsFactory.OfflineAuth auth;
+    private final OfflineAuth auth;
     private final List<Annotation> currAnnotations;
     private final boolean write;
 
-    public CreateAnnotations(String asId, GenomicsFactory.OfflineAuth auth, boolean write) {
+    public CreateAnnotations(String asId, OfflineAuth auth, boolean write) {
       this.asId = asId;
       this.auth = auth;
       this.currAnnotations = Lists.newArrayList();
@@ -446,8 +447,8 @@ public class CalculateCoverage {
     }
 
     private void batchCreateAnnotations() throws IOException, GeneralSecurityException {
-      Genomics.Annotations.BatchCreate aRequest = auth.getGenomics(auth.getDefaultFactory())
-          .annotations().batchCreate(
+      Genomics genomics = GenomicsFactory.builder().build().fromOfflineAuth(auth);
+      Genomics.Annotations.BatchCreate aRequest = genomics.annotations().batchCreate(
               new BatchCreateAnnotationsRequest().setAnnotations(currAnnotations));
       RetryPolicy retryP = RetryPolicy.nAttempts(4);
       retryP.execute(aRequest);
@@ -477,8 +478,8 @@ public class CalculateCoverage {
     }
     as.setReferenceSetId(referenceSetId);
     as.setType("GENERIC");
-    Genomics.AnnotationSets.Create asRequest = auth.getGenomics(auth.getDefaultFactory())
-        .annotationSets().create(as);
+    Genomics genomics = GenomicsFactory.builder().build().fromOfflineAuth(auth);
+    Genomics.AnnotationSets.Create asRequest = genomics.annotationSets().create(as);
     AnnotationSet asWithId = asRequest.execute();
     return asWithId;
   }
