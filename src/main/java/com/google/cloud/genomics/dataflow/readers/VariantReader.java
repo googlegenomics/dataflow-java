@@ -15,14 +15,13 @@
  */
 package com.google.cloud.genomics.dataflow.readers;
 
-import java.io.IOException;
 import java.util.logging.Logger;
 
 import com.google.api.services.genomics.Genomics;
 import com.google.api.services.genomics.model.SearchVariantsRequest;
 import com.google.api.services.genomics.model.Variant;
 import com.google.cloud.genomics.dataflow.utils.GenomicsDatasetOptions;
-import com.google.cloud.genomics.utils.GenomicsFactory;
+import com.google.cloud.genomics.utils.OfflineAuth;
 import com.google.cloud.genomics.utils.Paginator;
 import com.google.cloud.genomics.utils.ShardBoundary;
 
@@ -37,7 +36,7 @@ public class VariantReader extends GenomicsApiReader<SearchVariantsRequest, Vari
    * @param auth Auth class containing credentials.
    * @param variantFields Fields to return in responses.
    */
-  public VariantReader(GenomicsFactory.OfflineAuth auth, ShardBoundary.Requirement shardBoundary, String variantFields) {
+  public VariantReader(OfflineAuth auth, ShardBoundary.Requirement shardBoundary, String variantFields) {
     super(auth, variantFields);
     this.shardBoundary = shardBoundary;
   }
@@ -46,13 +45,12 @@ public class VariantReader extends GenomicsApiReader<SearchVariantsRequest, Vari
    * Create a VariantReader with no fields parameter, all information will be returned.
    * @param auth Auth class containing credentials.
    */
-  public VariantReader(GenomicsFactory.OfflineAuth auth, ShardBoundary.Requirement shardBoundary) {
+  public VariantReader(OfflineAuth auth, ShardBoundary.Requirement shardBoundary) {
     this(auth, shardBoundary, null);
   }
 
   @Override
-  protected void processApiCall(Genomics genomics, ProcessContext c, final SearchVariantsRequest request)
-      throws IOException {
+  protected void processApiCall(Genomics genomics, ProcessContext c, final SearchVariantsRequest request) {
     SearchVariantsRequest updatedRequest = request.clone();
     GenomicsDatasetOptions options = c.getPipelineOptions().as(GenomicsDatasetOptions.class);
     if (options.getPageSize() > 0) {

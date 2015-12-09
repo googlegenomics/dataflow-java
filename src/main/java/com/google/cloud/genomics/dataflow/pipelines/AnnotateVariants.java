@@ -48,6 +48,7 @@ import com.google.cloud.genomics.dataflow.utils.AnnotationUtils.VariantEffect;
 import com.google.cloud.genomics.dataflow.utils.GenomicsDatasetOptions;
 import com.google.cloud.genomics.dataflow.utils.GenomicsOptions;
 import com.google.cloud.genomics.utils.GenomicsFactory;
+import com.google.cloud.genomics.utils.OfflineAuth;
 import com.google.cloud.genomics.utils.Paginator;
 import com.google.cloud.genomics.utils.ShardBoundary;
 import com.google.cloud.genomics.utils.ShardUtils;
@@ -87,11 +88,11 @@ public final class AnnotateVariants extends DoFn<SearchVariantsRequest, KV<Strin
   private static final String VARIANT_FIELDS
       = "nextPageToken,variants(id,referenceName,start,end,alternateBases,referenceBases)";
 
-  private final GenomicsFactory.OfflineAuth auth;
+  private final OfflineAuth auth;
   private final List<String> callSetIds, transcriptSetIds, variantAnnotationSetIds;
   private final Map<Range<Long>, String> refBaseCache;
 
-  public AnnotateVariants(GenomicsFactory.OfflineAuth auth,
+  public AnnotateVariants(OfflineAuth auth,
       List<String> callSetIds, List<String> transcriptSetIds,
       List<String> variantAnnotationSetIds) {
     this.auth = auth;
@@ -104,7 +105,7 @@ public final class AnnotateVariants extends DoFn<SearchVariantsRequest, KV<Strin
   @Override
   public void processElement(
       DoFn<SearchVariantsRequest, KV<String, VariantAnnotation>>.ProcessContext c) throws Exception {
-    Genomics genomics = auth.getGenomics(auth.getDefaultFactory());
+    Genomics genomics = GenomicsFactory.builder().build().fromOfflineAuth(auth);
 
     SearchVariantsRequest request = c.element();
     LOG.info("processing contig " + request);
@@ -258,8 +259,8 @@ public final class AnnotateVariants extends DoFn<SearchVariantsRequest, KV<Strin
     // Option validation is not yet automatic, we make an explicit call here.
     GenomicsDatasetOptions.Methods.validateOptions(opts);
 
-    GenomicsFactory.OfflineAuth auth = GenomicsOptions.Methods.getGenomicsAuth(opts);
-    Genomics genomics = auth.getGenomics(auth.getDefaultFactory());
+    OfflineAuth auth = GenomicsOptions.Methods.getGenomicsAuth(opts);
+    Genomics genomics = GenomicsFactory.builder().build().fromOfflineAuth(auth);
 
     List<String> callSetIds = ImmutableList.of();
     if (!Strings.isNullOrEmpty(opts.getCallSetIds().trim())) {

@@ -15,17 +15,16 @@
  */
 package com.google.cloud.genomics.dataflow.utils;
 
-import static com.google.api.services.storage.StorageScopes.DEVSTORAGE_READ_ONLY;
-
+import com.google.api.client.auth.oauth2.Credential;
 import com.google.api.client.http.HttpHeaders;
 import com.google.api.client.http.HttpTransport;
 import com.google.api.client.json.JsonFactory;
 import com.google.api.client.json.jackson2.JacksonFactory;
-import com.google.api.services.genomics.GenomicsScopes;
 import com.google.api.services.storage.Storage;
-import com.google.api.services.storage.StorageScopes;
 import com.google.api.services.storage.model.StorageObject;
+import com.google.cloud.genomics.utils.CredentialFactory;
 import com.google.cloud.genomics.utils.GenomicsFactory;
+import com.google.cloud.genomics.utils.OfflineAuth;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Lists;
@@ -71,14 +70,12 @@ public class GCSHelper {
     Preconditions.checkNotNull(popts);
     // set up storage object
     GenomicsFactory factory = GenomicsFactory.builder(popts.getAppName())
-        .setNumberOfRetries(popts.getNumberOfRetries())
-        .setScopes(Lists.newArrayList(StorageScopes.DEVSTORAGE_READ_ONLY, GenomicsScopes.GENOMICS))
         .build();
     httpTransport = factory.getHttpTransport();
     Storage.Builder builder = new Storage.Builder(httpTransport, JSON_FACTORY, null)
         .setApplicationName(popts.getAppName());
-    GenomicsFactory.OfflineAuth auth = GenomicsOptions.Methods.getGenomicsAuth(popts);
-    storage = auth.setupAuthentication(factory, builder).build();
+    OfflineAuth auth = GenomicsOptions.Methods.getGenomicsAuth(popts);
+    storage = factory.fromOfflineAuth(builder, auth).build();
   }
 
   /**
@@ -87,17 +84,13 @@ public class GCSHelper {
    *
    * @param offlineAuth serialized credentials
    */
-  public GCSHelper(GenomicsFactory.OfflineAuth offlineAuth) throws GeneralSecurityException, IOException {
+  public GCSHelper(OfflineAuth offlineAuth) throws GeneralSecurityException, IOException {
     Preconditions.checkNotNull(offlineAuth);
-    String appName = offlineAuth.applicationName;
     // set up storage object
-    GenomicsFactory factory = GenomicsFactory.builder(appName)
-        .setScopes(Lists.newArrayList(StorageScopes.DEVSTORAGE_READ_ONLY, GenomicsScopes.GENOMICS))
-        .build();
+    GenomicsFactory factory = GenomicsFactory.builder().build();
     httpTransport = factory.getHttpTransport();
-    Storage.Builder builder = new Storage.Builder(httpTransport, JSON_FACTORY, null)
-        .setApplicationName(appName);
-    storage = offlineAuth.setupAuthentication(factory, builder).build();
+    Storage.Builder builder = new Storage.Builder(httpTransport, JSON_FACTORY, null);
+    storage = factory.fromOfflineAuth(builder, offlineAuth).build();
   }
 
   /**
@@ -108,14 +101,12 @@ public class GCSHelper {
    */
   public GCSHelper(String appName, String secretsFile) throws GeneralSecurityException, IOException {
     // cf https://groups.google.com/forum/#!msg/google-genomics-discuss/P9A9odUXwaM/ISdIzOXNS3YJ
-    GenomicsFactory factory = GenomicsFactory.builder(appName)
-        .setScopes(Lists.newArrayList(DEVSTORAGE_READ_ONLY, GenomicsScopes.GENOMICS))
-        .build();
+    GenomicsFactory factory = GenomicsFactory.builder(appName).build();
     httpTransport = factory.getHttpTransport();
-    GenomicsFactory.OfflineAuth offlineAuth = factory.getOfflineAuthFromClientSecretsFile(secretsFile);
+    Credential creds = CredentialFactory.getCredentialFromClientSecrets(secretsFile, appName);
     Storage.Builder builder = new Storage.Builder(httpTransport, JSON_FACTORY, null)
         .setApplicationName(appName);
-    storage = offlineAuth.setupAuthentication(factory, builder).build();
+    storage = factory.fromCredential(builder, creds).build();
   }
 
   @VisibleForTesting

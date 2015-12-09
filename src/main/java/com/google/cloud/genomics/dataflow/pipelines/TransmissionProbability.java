@@ -35,7 +35,7 @@ import com.google.cloud.genomics.dataflow.model.Allele;
 import com.google.cloud.genomics.dataflow.readers.VariantReader;
 import com.google.cloud.genomics.dataflow.utils.GenomicsDatasetOptions;
 import com.google.cloud.genomics.dataflow.utils.GenomicsOptions;
-import com.google.cloud.genomics.utils.GenomicsFactory;
+import com.google.cloud.genomics.utils.OfflineAuth;
 import com.google.cloud.genomics.utils.ShardBoundary;
 import com.google.cloud.genomics.utils.ShardUtils;
 
@@ -55,7 +55,7 @@ public class TransmissionProbability {
     // Option validation is not yet automatic, we make an explicit call here.
     GenomicsDatasetOptions.Methods.validateOptions(options);
 
-    GenomicsFactory.OfflineAuth auth = GenomicsOptions.Methods.getGenomicsAuth(options);
+    OfflineAuth auth = GenomicsOptions.Methods.getGenomicsAuth(options);
     List<SearchVariantsRequest> requests = options.isAllReferences() ?
         ShardUtils.getPaginatedVariantRequests(options.getDatasetId(), ShardUtils.SexChromosomeFilter.EXCLUDE_XY,
             options.getBasesPerShard(), auth) :

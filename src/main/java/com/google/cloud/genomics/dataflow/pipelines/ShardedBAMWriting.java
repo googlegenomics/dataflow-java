@@ -37,7 +37,7 @@ import com.google.cloud.genomics.dataflow.utils.GenomicsOptions;
 import com.google.cloud.genomics.dataflow.utils.ShardReadsTransform;
 import com.google.cloud.genomics.dataflow.writers.WriteReadsTransform;
 import com.google.cloud.genomics.utils.Contig;
-import com.google.cloud.genomics.utils.GenomicsFactory;
+import com.google.cloud.genomics.utils.OfflineAuth;
 import com.google.common.collect.Lists;
 
 import htsjdk.samtools.SAMFileHeader;
@@ -72,7 +72,7 @@ public class ShardedBAMWriting {
   private static final int MAX_FILES_FOR_COMPOSE = 32;
   private static Options options;
   private static Pipeline pipeline;
-  private static GenomicsFactory.OfflineAuth auth;
+  private static OfflineAuth auth;
   private static Iterable<Contig> contigs;
 
   public static void main(String[] args) throws GeneralSecurityException, IOException {
