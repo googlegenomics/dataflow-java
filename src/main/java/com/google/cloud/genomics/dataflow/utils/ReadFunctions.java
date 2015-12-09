@@ -19,12 +19,12 @@ import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import com.google.api.services.genomics.model.Position;
 import com.google.cloud.dataflow.sdk.transforms.SerializableFunction;
 import com.google.cloud.genomics.dataflow.model.ReadBaseQuality;
 import com.google.cloud.genomics.dataflow.model.ReadBaseWithReference;
 import com.google.common.collect.ImmutableList;
 import com.google.genomics.v1.CigarUnit;
+import com.google.genomics.v1.Position;
 import com.google.genomics.v1.Read;
 
 /**
@@ -84,10 +84,11 @@ public class ReadFunctions {
             if (m.matches()) {
               name = m.group(m.groupCount() - 1);
             }
-            Position refPosition = new Position()
+            Position refPosition = Position.newBuilder()
                 .setReferenceName(name)
                 .setPosition(read.getAlignment().getPosition().getPosition()
-                  + refPosAbsoluteOffset);
+                  + refPosAbsoluteOffset)
+                  .build();
             bases.add(new ReadBaseWithReference(new ReadBaseQuality(
                 readSeq.substring(readOffset, readOffset + 1),
                 readQual.get(readOffset)),

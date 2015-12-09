@@ -15,12 +15,12 @@
  */
 package com.google.cloud.genomics.dataflow.functions;
 
-import com.google.api.services.genomics.model.Position;
 import com.google.cloud.genomics.dataflow.model.ReadCounts;
 import com.google.cloud.genomics.dataflow.model.ReadQualityCount;
 import com.google.cloud.genomics.dataflow.model.ReadQualityCount.Base;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
+import com.google.genomics.v1.Position;
 
 import org.apache.commons.math3.analysis.UnivariateFunction;
 
