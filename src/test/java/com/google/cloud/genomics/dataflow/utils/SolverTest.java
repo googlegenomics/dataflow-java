@@ -15,12 +15,12 @@
  */
 package com.google.cloud.genomics.dataflow.utils;
 
-import com.google.api.services.genomics.model.Position;
 import com.google.cloud.genomics.dataflow.functions.LikelihoodFn;
 import com.google.cloud.genomics.dataflow.model.ReadCounts;
 import com.google.cloud.genomics.dataflow.model.ReadQualityCount;
 import com.google.cloud.genomics.dataflow.model.ReadQualityCount.Base;
 import com.google.common.collect.ImmutableMap;
+import com.google.genomics.v1.Position;
 
 import junit.framework.TestCase;
 
@@ -79,9 +79,10 @@ public class SolverTest extends TestCase {
   public void testSolverOnKnownLikelihoodCases() {
     int phred = 200;
 
-    Position position1 = new Position()
+    Position position1 = Position.newBuilder()
         .setReferenceName("1")
-        .setPosition(123L);
+        .setPosition(123L)
+        .build();
 
     /*
      * Observe 900 REF reads and 100 NONREF

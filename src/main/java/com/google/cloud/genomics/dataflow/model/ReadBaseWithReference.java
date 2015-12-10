@@ -15,8 +15,9 @@
  */
 package com.google.cloud.genomics.dataflow.model;
 
-import com.google.api.services.genomics.model.Position;
 import java.util.Objects;
+
+import com.google.genomics.v1.Position;
 
 /**
  * Data on a single base in a read connected with it reference data.
@@ -30,7 +31,7 @@ public class ReadBaseWithReference {
   public ReadBaseWithReference() {
     this.rbq = new ReadBaseQuality();
     this.refBase = "";
-    this.refPosition = new Position().setPosition(0L).setReferenceName("");
+    this.refPosition = Position.newBuilder().setPosition(0L).setReferenceName("").build();
   }
 
   public ReadBaseWithReference(ReadBaseQuality rbq, String refBase, Position refPosition) {

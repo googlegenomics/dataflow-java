@@ -186,9 +186,10 @@ public class ReadFunctionsTest {
                 alignedSeq.substring(i, i + 1),
                 quals.get(qualityOffset)),
             alignedRef.substring(i, i + 1),
-            new com.google.api.services.genomics.model.Position()
+            Position.newBuilder()
             .setReferenceName(chromosome)
-            .setPosition((long) (originalPos + refPositionOffset)));
+            .setPosition((long) (originalPos + refPositionOffset))
+            .build());
         qualityOffset++;
         refPositionOffset++;
         readBaseList.add(sr);

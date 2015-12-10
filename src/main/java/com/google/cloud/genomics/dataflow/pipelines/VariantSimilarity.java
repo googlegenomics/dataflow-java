@@ -22,8 +22,6 @@ import java.util.List;
 
 import com.google.api.services.genomics.model.SearchVariantsRequest;
 import com.google.cloud.dataflow.sdk.Pipeline;
-import com.google.cloud.dataflow.sdk.coders.Proto2Coder;
-import com.google.cloud.dataflow.sdk.coders.SerializableCoder;
 import com.google.cloud.dataflow.sdk.options.Default;
 import com.google.cloud.dataflow.sdk.options.Description;
 import com.google.cloud.dataflow.sdk.options.PipelineOptionsFactory;
@@ -46,7 +44,6 @@ import com.google.cloud.genomics.utils.ShardUtils;
 import com.google.common.collect.BiMap;
 import com.google.common.collect.HashBiMap;
 import com.google.genomics.v1.StreamVariantsRequest;
-import com.google.genomics.v1.Variant;
 
 /**
  * A pipeline that generates similarity data for variants in a dataset.
