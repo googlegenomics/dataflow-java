@@ -24,7 +24,6 @@ import java.util.List;
 import java.util.Map;
 
 import com.google.api.client.util.Strings;
-import com.google.api.services.genomics.model.Position;
 import com.google.cloud.dataflow.sdk.Pipeline;
 import com.google.cloud.dataflow.sdk.io.TextIO;
 import com.google.cloud.dataflow.sdk.options.Default;
@@ -67,6 +66,7 @@ import com.google.cloud.genomics.utils.ShardUtils.SexChromosomeFilter;
 import com.google.common.collect.ImmutableMultiset;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Multiset;
+import com.google.genomics.v1.Position;
 import com.google.genomics.v1.Read;
 import com.google.genomics.v1.StreamVariantsRequest;
 import com.google.genomics.v1.Variant;
@@ -356,9 +356,10 @@ public class VerifyBamId {
     public void processElement(ProcessContext c) throws Exception {
       ListValue lv = c.element().getInfo().get("AF");
       if (lv != null && lv.getValuesCount() > 0) {
-        Position p = new Position()
+        Position p = Position.newBuilder()
             .setPosition(c.element().getStart())
-            .setReferenceName(c.element().getReferenceName());
+            .setReferenceName(c.element().getReferenceName())
+            .build();
         AlleleFreq af = new AlleleFreq();
         af.setRefFreq(lv.getValues(0).getNumberValue());
         af.setAltBases(c.element().getAlternateBasesList());

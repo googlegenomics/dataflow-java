@@ -15,11 +15,11 @@
  */
 package com.google.cloud.genomics.dataflow.functions;
 
-import com.google.api.services.genomics.model.Position;
 import com.google.cloud.genomics.dataflow.model.ReadCounts;
 import com.google.cloud.genomics.dataflow.model.ReadQualityCount;
 import com.google.cloud.genomics.dataflow.model.ReadQualityCount.Base;
 import com.google.common.collect.ImmutableMap;
+import com.google.genomics.v1.Position;
 
 import junit.framework.TestCase;
 
@@ -43,9 +43,10 @@ public class LikelihoodFnTest extends TestCase {
     final int errPhred = 10;  // P(err) = 0.1
     final double pRef = 0.6;
 
-    Position position1 = new Position()
+    Position position1 = Position.newBuilder()
         .setReferenceName("1")
-        .setPosition(123L);
+        .setPosition(123L)
+        .build();
 
     /*
      * Observe single REF read
@@ -104,9 +105,10 @@ public class LikelihoodFnTest extends TestCase {
 
     // Likelihood for reads at 2 different positions should be product of
     // likelihoods for individual reads
-    Position position2 = new Position()
+    Position position2 = Position.newBuilder()
         .setReferenceName("1")
-        .setPosition(124L);
+        .setPosition(124L)
+        .build();
     countsBuilder = ImmutableMap.builder();
     rc = new ReadCounts();
     rc.setRefFreq(pRef);

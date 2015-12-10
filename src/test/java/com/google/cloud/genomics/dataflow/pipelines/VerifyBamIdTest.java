@@ -15,7 +15,6 @@
  */
 package com.google.cloud.genomics.dataflow.pipelines;
 
-import com.google.api.services.genomics.model.Position;
 import com.google.cloud.dataflow.sdk.Pipeline;
 import com.google.cloud.dataflow.sdk.options.PipelineOptionsFactory;
 import com.google.cloud.dataflow.sdk.testing.DataflowAssert;
@@ -43,11 +42,11 @@ import com.google.common.collect.ImmutableList;
 import com.google.genomics.v1.CigarUnit;
 import com.google.genomics.v1.CigarUnit.Operation;
 import com.google.genomics.v1.LinearAlignment;
+import com.google.genomics.v1.Position;
 import com.google.genomics.v1.Read;
 import com.google.genomics.v1.Variant;
 import com.google.protobuf.ListValue;
 import com.google.protobuf.Value;
-
 import com.beust.jcommander.internal.Lists;
 
 import org.hamcrest.CoreMatchers;
@@ -76,9 +75,10 @@ public class VerifyBamIdTest {
         .setAlignedSequence("A")
         .addAlignedQuality(3)
         .build();
-    Assert.assertThat(splitReads.processBatch(r), CoreMatchers.hasItems(KV.of(new Position()
+    Assert.assertThat(splitReads.processBatch(r), CoreMatchers.hasItems(KV.of(Position.newBuilder()
             .setReferenceName("1")
-            .setPosition(123L),
+            .setPosition(123L)
+            .build(),
             new ReadBaseQuality("A", 3))));
     
     // two matched bases -> two SingleReadQuality protos
@@ -94,13 +94,15 @@ public class VerifyBamIdTest {
         .setAlignedSequence("AG")
         .addAllAlignedQuality(ImmutableList.of(3, 4))
         .build();
-    Assert.assertThat(splitReads.processBatch(r), CoreMatchers.hasItems(KV.of(new Position()
+    Assert.assertThat(splitReads.processBatch(r), CoreMatchers.hasItems(KV.of(Position.newBuilder()
             .setReferenceName("1")
-            .setPosition(123L),
+            .setPosition(123L)
+            .build(),
             new ReadBaseQuality("A", 3)),
-        KV.of(new Position()
+        KV.of(Position.newBuilder()
             .setReferenceName("1")
-            .setPosition(124L),
+            .setPosition(124L)
+            .build(),
             new ReadBaseQuality("G", 4))));
     
     // matched bases with different offsets onto the reference
@@ -126,17 +128,20 @@ public class VerifyBamIdTest {
         .setAlignedSequence("ACGT")
         .addAllAlignedQuality(ImmutableList.of(1, 2, 3, 4))
         .build();
-    Assert.assertThat(splitReads.processBatch(r), CoreMatchers.hasItems(KV.of(new Position()
+    Assert.assertThat(splitReads.processBatch(r), CoreMatchers.hasItems(KV.of(Position.newBuilder()
             .setReferenceName("1")
-            .setPosition(123L),
+            .setPosition(123L)
+            .build(),
             new ReadBaseQuality("C", 2)),
-        KV.of(new Position()
+        KV.of(Position.newBuilder()
             .setReferenceName("1")
-            .setPosition(125L),
+            .setPosition(125L)
+            .build(),
             new ReadBaseQuality("G", 3)),
-        KV.of(new Position()
+        KV.of(Position.newBuilder()
             .setReferenceName("1")
-            .setPosition(126L),
+            .setPosition(126L)
+            .build(),
             new ReadBaseQuality("T", 4))));
     
     // matched bases with different offsets onto the reference
@@ -161,17 +166,20 @@ public class VerifyBamIdTest {
         .setAlignedSequence("ACGT")
         .addAllAlignedQuality(ImmutableList.of(1, 2, 3, 4))
         .build();
-    Assert.assertThat(splitReads.processBatch(r), CoreMatchers.hasItems(KV.of(new Position()
+    Assert.assertThat(splitReads.processBatch(r), CoreMatchers.hasItems(KV.of(Position.newBuilder()
             .setReferenceName("1")
-            .setPosition(124L),
+            .setPosition(124L)
+            .build(),
             new ReadBaseQuality("A", 1)),
-        KV.of(new Position()
+        KV.of(Position.newBuilder()
             .setReferenceName("1")
-            .setPosition(125L),
+            .setPosition(125L)
+            .build(),
             new ReadBaseQuality("C", 2)),
-        KV.of(new Position()
+        KV.of(Position.newBuilder()
             .setReferenceName("1")
-            .setPosition(126L),
+            .setPosition(126L)
+            .build(),
             new ReadBaseQuality("T", 4))));
   }
   
@@ -179,16 +187,18 @@ public class VerifyBamIdTest {
   public void testSampleReads() {
     SampleReads sampleReads = new SampleReads(0.5, "");
     Assert.assertTrue(sampleReads.apply(KV.of(
-        new Position()
+        Position.newBuilder()
             .setReferenceName("1")
             .setPosition(125L)
-            .setReverseStrand(false),
+            .setReverseStrand(false)
+            .build(),
         new ReadBaseQuality())));
     Assert.assertFalse(sampleReads.apply(KV.of(
-        new Position()
+        Position.newBuilder()
             .setReferenceName("2")
             .setPosition(124L)
-            .setReverseStrand(false),
+            .setReverseStrand(false)
+            .build(),
         new ReadBaseQuality())));
   }
   
@@ -196,7 +206,10 @@ public class VerifyBamIdTest {
   public void testGetAlleleFreq() {
     DoFnTester<Variant, KV<Position, AlleleFreq>> getAlleleFreq = DoFnTester.of(
         new GetAlleleFreq());
-    Position pos = new Position().setReferenceName("1").setPosition(123L);
+    Position pos = Position.newBuilder()
+        .setReferenceName("1")
+        .setPosition(123L)
+        .build();
     Variant.Builder vBuild = Variant.newBuilder()
         .setReferenceName("1")
         .setStart(123L)
@@ -215,7 +228,10 @@ public class VerifyBamIdTest {
   @Test
   public void testFilterFreq() {
     FilterFreq filterFreq = new FilterFreq(0.01);
-    Position pos = new Position().setReferenceName("1").setPosition(123L);
+    Position pos = Position.newBuilder()
+        .setReferenceName("1")
+        .setPosition(123L)
+        .build();
     AlleleFreq af = new AlleleFreq();
     af.setRefFreq(0.9999);
     Assert.assertFalse(filterFreq.apply(KV.of(pos, af)));
@@ -226,17 +242,20 @@ public class VerifyBamIdTest {
   }
   
   private final Position position1
-    = new Position()
+    = Position.newBuilder()
       .setReferenceName("1")
-      .setPosition(123L);
+      .setPosition(123L)
+      .build();
   private final Position position2
-    = new Position()
+    = Position.newBuilder()
       .setReferenceName("1")
-      .setPosition(124L);
+      .setPosition(124L)
+      .build();
   private final Position position3
-    = new Position()
+    = Position.newBuilder()
       .setReferenceName("1")
-      .setPosition(125L);
+      .setPosition(125L)
+      .build();
 
   private final ImmutableList<KV<Position, AlleleFreq>> refCountList;
   {
