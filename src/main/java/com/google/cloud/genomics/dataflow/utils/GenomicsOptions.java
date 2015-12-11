@@ -37,7 +37,7 @@ public interface GenomicsOptions extends GcsOptions {
             + " others with access to the VMs.");
 
         System.out.println("Do you want to continue (Y/n)?");
-        Scanner kbd = new Scanner (System.in);
+        Scanner kbd = new Scanner(System.in);
         String decision;
         decision = kbd.nextLine();
         switch(decision) {
