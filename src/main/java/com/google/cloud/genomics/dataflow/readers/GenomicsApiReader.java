@@ -15,30 +15,29 @@
  */
 package com.google.cloud.genomics.dataflow.readers;
 
+import java.util.logging.Logger;
+
 import com.google.api.client.json.GenericJson;
 import com.google.api.services.genomics.Genomics;
 import com.google.cloud.dataflow.sdk.transforms.Aggregator;
 import com.google.cloud.dataflow.sdk.transforms.DoFn;
 import com.google.cloud.dataflow.sdk.transforms.Sum;
 import com.google.cloud.genomics.utils.GenomicsFactory;
-
-import java.io.IOException;
-import java.security.GeneralSecurityException;
-import java.util.logging.Logger;
+import com.google.cloud.genomics.utils.OfflineAuth;
 
 public abstract class GenomicsApiReader<I extends GenericJson, O extends GenericJson> 
     extends DoFn<I, O> {
   private static final Logger LOG = Logger.getLogger(GenomicsApiReader.class.getName());
 
   // Used for access to the genomics API
-  protected final GenomicsFactory.OfflineAuth auth;
+  protected final OfflineAuth auth;
   protected final String fields;
   protected Aggregator<Integer, Integer> initializedRequestsCount;
   protected Aggregator<Integer, Integer> unsuccessfulResponsesCount;
   protected Aggregator<Integer, Integer> ioExceptionsCount;
   protected Aggregator<Long, Long> itemCount;
   
-  public GenomicsApiReader(GenomicsFactory.OfflineAuth auth, String fields) {
+  public GenomicsApiReader(OfflineAuth auth, String fields) {
     this.auth = auth;
     this.fields = fields;
     initializedRequestsCount = createAggregator("Genomics API Initialized Request Count", new Sum.SumIntegerFn());
@@ -49,24 +48,18 @@ public abstract class GenomicsApiReader<I extends GenericJson, O extends Generic
   
   @Override
   public void processElement(ProcessContext c) {
-    try {
-      GenomicsFactory factory = auth.getDefaultFactory();
-      processApiCall(auth.getGenomics(factory), c, c.element());
+    GenomicsFactory factory = GenomicsFactory.builder().build();
+    Genomics genomics = factory.fromOfflineAuth(auth);
 
-      initializedRequestsCount.addValue(factory.initializedRequestsCount());
-      unsuccessfulResponsesCount.addValue(factory.unsuccessfulResponsesCount());
-      ioExceptionsCount.addValue(factory.ioExceptionsCount());
-      LOG.info("ApiReader processed " + factory.initializedRequestsCount() + " requests ("
-          + factory.unsuccessfulResponsesCount() + " server errors and "
-          + factory.ioExceptionsCount() + " IO exceptions)");
+    processApiCall(genomics, c, c.element());
 
-
-    } catch (IOException | GeneralSecurityException e) {
-      throw new RuntimeException(
-          "Failed to create genomics API request - this shouldn't happen.", e);
-    }
+    initializedRequestsCount.addValue(factory.initializedRequestsCount());
+    unsuccessfulResponsesCount.addValue(factory.unsuccessfulResponsesCount());
+    ioExceptionsCount.addValue(factory.ioExceptionsCount());
+    LOG.info("ApiReader processed " + factory.initializedRequestsCount() + " requests ("
+        + factory.unsuccessfulResponsesCount() + " server errors and "
+        + factory.ioExceptionsCount() + " IO exceptions)");
   }
 
-  protected abstract void processApiCall(Genomics genomics, ProcessContext c, I element)
-      throws IOException;
+  protected abstract void processApiCall(Genomics genomics, ProcessContext c, I element);
 }

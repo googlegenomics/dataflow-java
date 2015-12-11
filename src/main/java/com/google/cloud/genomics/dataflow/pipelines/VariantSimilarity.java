@@ -37,8 +37,8 @@ import com.google.cloud.genomics.dataflow.readers.VariantStreamer;
 import com.google.cloud.genomics.dataflow.utils.GCSOptions;
 import com.google.cloud.genomics.dataflow.utils.GenomicsDatasetOptions;
 import com.google.cloud.genomics.dataflow.utils.GenomicsOptions;
-import com.google.cloud.genomics.utils.GenomicsFactory;
 import com.google.cloud.genomics.utils.GenomicsUtils;
+import com.google.cloud.genomics.utils.OfflineAuth;
 import com.google.cloud.genomics.utils.ShardBoundary;
 import com.google.cloud.genomics.utils.ShardUtils;
 import com.google.common.collect.BiMap;
@@ -56,8 +56,8 @@ public class VariantSimilarity {
     = "nextPageToken,variants(start,calls(genotype,callSetName))";
 
   public static interface VariantSimilarityOptions extends GenomicsDatasetOptions, GCSOptions {
-    @Description("Whether to use the gRPC API endpoint for variants.  Defaults to 'false';")
-    @Default.Boolean(false)
+    @Description("Whether to use the gRPC API endpoint for variants.  Defaults to 'true';")
+    @Default.Boolean(true)
     Boolean getUseGrpc();
 
     void setUseGrpc(Boolean value);
@@ -71,7 +71,7 @@ public class VariantSimilarity {
     // Option validation is not yet automatic, we make an explicit call here.
     GenomicsDatasetOptions.Methods.validateOptions(options);
 
-    GenomicsFactory.OfflineAuth auth = GenomicsOptions.Methods.getGenomicsAuth(options);
+    OfflineAuth auth = GenomicsOptions.Methods.getGenomicsAuth(options);
 
     List<String> callSetNames = GenomicsUtils.getCallSetsNames(options.getDatasetId() , auth);
     Collections.sort(callSetNames); // Ensure a stable sort order for reproducible results.
