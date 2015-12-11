@@ -39,7 +39,6 @@ public interface GenomicsDatasetOptions extends GenomicsOptions {
           Preconditions.checkState(false, "output must be a valid Google Cloud Storage URL (starting with gs://)");
         }
       }
-      GenomicsOptions.Methods.validateOptions(options);
     }
   }
 

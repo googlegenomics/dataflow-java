@@ -75,7 +75,6 @@ public class CountReadsITCase {
       boolean includeUnmapped) throws Exception {
     final String OUTPUT = helper.getTestOutputGcsFolder()+ outputFilename;
     String[] ARGS = {
-        "--apiKey=" + helper.getApiKey(),
         "--output=" + OUTPUT,
         "--references=" + contig,
         "--includeUnmapped=" + includeUnmapped,
@@ -126,7 +125,6 @@ public class CountReadsITCase {
   private void testCloudBase(String outputFilename, String contig, String bamFilename, long expectedCount) throws Exception {
     final String OUTPUT = helper.getTestOutputGcsFolder() + outputFilename;
     String[] ARGS = {
-        "--apiKey=" + helper.getApiKey(),
         "--project=" + helper.getTestProject(),
         "--output=" + OUTPUT,
         "--numWorkers=2",
@@ -167,7 +165,6 @@ public class CountReadsITCase {
   public void testCloudWithAPIBase(String outputFilename, String contig, String readGroupSetId, long expectedCount) throws Exception {
     final String OUTPUT = helper.getTestOutputGcsFolder() + outputFilename;
     String[] ARGS = {
-        "--apiKey=" + helper.getApiKey(),
         "--project=" + helper.getTestProject(),
         "--output=" + OUTPUT,
         "--numWorkers=2",

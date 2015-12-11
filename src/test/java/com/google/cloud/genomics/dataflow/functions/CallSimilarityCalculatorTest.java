@@ -29,18 +29,18 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 
-import com.google.api.services.genomics.model.Call;
-import com.google.api.services.genomics.model.Variant;
 import com.google.cloud.dataflow.sdk.transforms.DoFnTester;
 import com.google.cloud.dataflow.sdk.values.KV;
 import com.google.cloud.genomics.dataflow.utils.DataUtils;
+import com.google.genomics.v1.Variant;
+import com.google.genomics.v1.VariantCall;
 
 @RunWith(JUnit4.class)
 public class CallSimilarityCalculatorTest {
 
   private static final double DELTA = 1e-6;
   
-  private List<Call> calls = newArrayList();
+  private List<VariantCall> calls = newArrayList();
 
   private List<Variant> variants = newArrayList();
   
@@ -52,20 +52,20 @@ public class CallSimilarityCalculatorTest {
 
   @Before
   public void setUp() {
-    calls.add(DataUtils.makeCall(H1, 0, 0));
-    calls.add(DataUtils.makeCall(H2, 1, 0));
-    calls.add(DataUtils.makeCall(H3, 0, 1));
-    calls.add(DataUtils.makeCall(H2, 1, 1));
-    calls.add(DataUtils.makeCall(H3, 1, 1));
-    calls.add(DataUtils.makeCall(H2, 1));
-    calls.add(DataUtils.makeCall(H3, 0));
-    calls.add(DataUtils.makeCall(H2, 1, 0, 1));
-    calls.add(DataUtils.makeCall(H3, 1, 0, 0));
+    calls.add(DataUtils.makeVariantCall(H1, 0, 0));
+    calls.add(DataUtils.makeVariantCall(H2, 1, 0));
+    calls.add(DataUtils.makeVariantCall(H3, 0, 1));
+    calls.add(DataUtils.makeVariantCall(H2, 1, 1));
+    calls.add(DataUtils.makeVariantCall(H3, 1, 1));
+    calls.add(DataUtils.makeVariantCall(H2, 1));
+    calls.add(DataUtils.makeVariantCall(H3, 0));
+    calls.add(DataUtils.makeVariantCall(H2, 1, 0, 1));
+    calls.add(DataUtils.makeVariantCall(H3, 1, 0, 0));
 
-    variants.add(DataUtils.makeSimpleVariant(calls.get(0), calls.get(1), calls.get(2)));
-    variants.add(DataUtils.makeSimpleVariant(calls.get(0), calls.get(3), calls.get(4)));
-    variants.add(DataUtils.makeSimpleVariant(calls.get(0), calls.get(5), calls.get(6)));
-    variants.add(DataUtils.makeSimpleVariant(calls.get(0), calls.get(7), calls.get(8)));
+    variants.add(Variant.newBuilder().addCalls(calls.get(0)).addCalls(calls.get(1)).addCalls(calls.get(2)).build());
+    variants.add(Variant.newBuilder().addCalls(calls.get(0)).addCalls(calls.get(3)).addCalls(calls.get(4)).build());
+    variants.add(Variant.newBuilder().addCalls(calls.get(0)).addCalls(calls.get(5)).addCalls(calls.get(6)).build());
+    variants.add(Variant.newBuilder().addCalls(calls.get(0)).addCalls(calls.get(7)).addCalls(calls.get(8)).build());
   }
 
   @Test

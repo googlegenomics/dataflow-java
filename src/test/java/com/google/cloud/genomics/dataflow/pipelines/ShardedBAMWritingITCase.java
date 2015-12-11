@@ -63,7 +63,6 @@ public class ShardedBAMWritingITCase {
   public void testShardedWriting() throws Exception {
     final String OUTPUT = helper.getTestOutputGcsFolder() + OUTPUT_FNAME;
     String[] ARGS = {
-        "--apiKey=" + helper.getApiKey(),
         "--project=" + helper.getTestProject(),
         "--output=" + OUTPUT,
         "--numWorkers=18",

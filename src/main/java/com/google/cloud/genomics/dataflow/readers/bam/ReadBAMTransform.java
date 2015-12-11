@@ -34,7 +34,7 @@ import com.google.cloud.dataflow.sdk.values.PCollectionView;
 import com.google.cloud.dataflow.sdk.values.TupleTag;
 import com.google.cloud.genomics.dataflow.utils.GCSOptions;
 import com.google.cloud.genomics.utils.Contig;
-import com.google.cloud.genomics.utils.GenomicsFactory;
+import com.google.cloud.genomics.utils.OfflineAuth;
 
 import htsjdk.samtools.ValidationStringency;
 
@@ -47,11 +47,11 @@ import java.util.List;
  * a collection of reads by reading BAM files in a sharded manner.
  */
 public class ReadBAMTransform extends PTransform<PCollection<BAMShard>, PCollection<Read>> {
-  GenomicsFactory.OfflineAuth auth;
+  OfflineAuth auth;
   ReaderOptions options;
 
   public static class ReadFn extends DoFn<BAMShard, Read> {
-    GenomicsFactory.OfflineAuth auth;
+    OfflineAuth auth;
     Storage.Objects storage;
     ReaderOptions options;
     Aggregator<Integer, Integer> recordCountAggregator;
@@ -60,7 +60,7 @@ public class ReadBAMTransform extends PTransform<PCollection<BAMShard>, PCollect
     Aggregator<Integer, Integer> skippedEndCountAggregator;
     Aggregator<Integer, Integer> skippedRefMismatchAggregator;
 
-    public ReadFn(GenomicsFactory.OfflineAuth auth, ReaderOptions options) {
+    public ReadFn(OfflineAuth auth, ReaderOptions options) {
       this.auth = auth;
       this.options = options;
       recordCountAggregator = createAggregator("Processed records", new SumIntegerFn());
@@ -92,7 +92,7 @@ public class ReadBAMTransform extends PTransform<PCollection<BAMShard>, PCollect
 
   public static PCollection<Read> getReadsFromBAMFilesSharded(
       Pipeline p, 
-      GenomicsFactory.OfflineAuth auth,
+      OfflineAuth auth,
       Iterable<Contig> contigs,
       ReaderOptions options,
       String BAMFile,
@@ -122,11 +122,11 @@ public class ReadBAMTransform extends PTransform<PCollection<BAMShard>, PCollect
     return reads;
   }
 
-  public GenomicsFactory.OfflineAuth  getAuth() {
+  public OfflineAuth  getAuth() {
     return auth;
   }
 
-  public void setAuth(GenomicsFactory.OfflineAuth auth) {
+  public void setAuth(OfflineAuth auth) {
     this.auth = auth;
   }
 

@@ -25,9 +25,7 @@ import java.util.List;
 
 import org.hamcrest.CoreMatchers;
 import org.junit.After;
-import org.junit.Before;
 import org.junit.BeforeClass;
-import org.junit.Ignore;
 import org.junit.Test;
 
 import com.google.api.client.util.Lists;
@@ -94,7 +92,6 @@ public class VariantSimilarityITCase {
   @Test
   public void testPaginatedLocal() throws IOException, GeneralSecurityException {
     String[] ARGS = {
-        "--apiKey=" + helper.getApiKey(),
         "--references=" + helper.PLATINUM_GENOMES_BRCA1_REFERENCES,
         "--datasetId=" + helper.PLATINUM_GENOMES_DATASET,
         "--output=" + outputPrefix,
@@ -106,7 +103,6 @@ public class VariantSimilarityITCase {
   @Test
   public void testPaginatedCloud() throws IOException, GeneralSecurityException {
     String[] ARGS = {
-        "--apiKey=" + helper.getApiKey(),
         "--references=" + helper.PLATINUM_GENOMES_BRCA1_REFERENCES,
         "--datasetId=" + helper.PLATINUM_GENOMES_DATASET,
         "--output=" + outputPrefix,
@@ -118,13 +114,9 @@ public class VariantSimilarityITCase {
     testBase(ARGS);
   }
 
-  @Ignore
-  // TODO enable this test.  For it to work, we'll need to add alpn to the classpath
-  // and figure out https://github.com/googlegenomics/dataflow-java/issues/119
   @Test
   public void testStreamingLocal() throws IOException, GeneralSecurityException {
     String[] ARGS = {
-        "--apiKey=" + helper.getApiKey(),
         "--references=" + helper.PLATINUM_GENOMES_BRCA1_REFERENCES,
         "--datasetId=" + helper.PLATINUM_GENOMES_DATASET,
         "--output=" + outputPrefix,
@@ -136,7 +128,6 @@ public class VariantSimilarityITCase {
   @Test
   public void testStreamingCloud() throws IOException, GeneralSecurityException {
     String[] ARGS = {
-        "--apiKey=" + helper.getApiKey(),
         "--references=" + helper.PLATINUM_GENOMES_BRCA1_REFERENCES,
         "--datasetId=" + helper.PLATINUM_GENOMES_DATASET,
         "--output=" + outputPrefix,

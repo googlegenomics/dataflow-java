@@ -15,7 +15,7 @@
  */
 package com.google.cloud.genomics.dataflow.functions;
 
-import com.google.api.services.genomics.model.Call;
+import com.google.genomics.v1.VariantCall;
 
 /**
  * See <a href="http://konradjkarczewski.files.wordpress.com/2012/02/identity-howto.pdf">this
@@ -27,15 +27,15 @@ public class SharedAllelesRatioCalculator implements CallSimilarityCalculator {
   // TODO: Double check that the following is the right way of computing the IBS
   // scores when the number of alleles is different than 2 and when the genotypes are unphased.
   @Override
-  public double similarity(Call call1, Call call2) {
-    int minNumberOfGenotypes = Math.min(call1.getGenotype().size(), call2.getGenotype().size());
+  public double similarity(VariantCall call1, VariantCall call2) {
+    int minNumberOfGenotypes = Math.min(call1.getGenotypeCount(), call2.getGenotypeCount());
     int numberOfSharedAlleles = 0;
     for (int i = 0; i < minNumberOfGenotypes; ++i) {
-      if (call1.getGenotype().get(i) == call2.getGenotype().get(i)) {
+      if (call1.getGenotype(i) == call2.getGenotype(i)) {
         ++numberOfSharedAlleles;
       }
     }
-    int maxNumberOfGenotypes = Math.max(call1.getGenotype().size(), call2.getGenotype().size());
+    int maxNumberOfGenotypes = Math.max(call1.getGenotypeCount(), call2.getGenotypeCount());
     return (double) numberOfSharedAlleles / maxNumberOfGenotypes;
   }
 

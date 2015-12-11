@@ -15,20 +15,11 @@
  */
 package com.google.cloud.genomics.dataflow.readers.bam;
 
-import com.google.api.services.genomics.model.Read;
-import com.google.api.services.storage.Storage;
-import com.google.cloud.dataflow.sdk.options.PipelineOptionsFactory;
-import com.google.cloud.dataflow.sdk.util.Transport;
-import com.google.cloud.genomics.dataflow.utils.GCSOptions;
-import com.google.cloud.genomics.dataflow.utils.GenomicsOptions;
-import com.google.cloud.genomics.gatk.common.GenomicsConverter;
-
-import htsjdk.samtools.SAMFileHeader;
-import htsjdk.samtools.SAMRecord;
 import htsjdk.samtools.SAMRecordIterator;
 import htsjdk.samtools.SamReader;
-import htsjdk.samtools.SamReaderFactory;
 import htsjdk.samtools.ValidationStringency;
+
+import java.io.IOException;
 
 import org.junit.Assert;
 import org.junit.Before;
@@ -36,10 +27,10 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 
-import java.io.File;
-import java.io.IOException;
-
-import static org.junit.Assert.assertEquals;
+import com.google.api.services.storage.Storage;
+import com.google.cloud.dataflow.sdk.options.PipelineOptionsFactory;
+import com.google.cloud.dataflow.sdk.util.Transport;
+import com.google.cloud.genomics.dataflow.utils.GCSOptions;
 
 @RunWith(JUnit4.class)
 public class BAMIOITCase {
@@ -55,7 +46,6 @@ public class BAMIOITCase {
   @Test
   public void openBAMTest() throws IOException {
 	  GCSOptions popts = PipelineOptionsFactory.create().as(GCSOptions.class);
-	  popts.setApiKey(API_KEY);
 	  final Storage.Objects storageClient = Transport.newStorageClient(popts).build().objects();
 
 	  SamReader samReader = BAMIO.openBAM(storageClient, TEST_BAM_FNAME, ValidationStringency.DEFAULT_STRINGENCY);	

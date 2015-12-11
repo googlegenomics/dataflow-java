@@ -16,14 +16,13 @@
 
 package com.google.cloud.genomics.dataflow.readers;
 
-import java.io.IOException;
 import java.util.logging.Logger;
 
 import com.google.api.services.genomics.Genomics;
 import com.google.api.services.genomics.model.Read;
 import com.google.api.services.genomics.model.SearchReadsRequest;
 import com.google.cloud.genomics.dataflow.utils.GenomicsOptions;
-import com.google.cloud.genomics.utils.GenomicsFactory;
+import com.google.cloud.genomics.utils.OfflineAuth;
 import com.google.cloud.genomics.utils.Paginator;
 import com.google.cloud.genomics.utils.ShardBoundary;
 
@@ -44,7 +43,7 @@ public class ReadReader extends GenomicsApiReader<SearchReadsRequest, Read> {
    * @param auth Auth class containing credentials.
    * @param readFields Fields to return in responses.
    */
-  public ReadReader(GenomicsFactory.OfflineAuth auth, ShardBoundary.Requirement shardBoundary, String readFields) {
+  public ReadReader(OfflineAuth auth, ShardBoundary.Requirement shardBoundary, String readFields) {
     super(auth, readFields);
     this.shardBoundary = shardBoundary;
   }
@@ -53,13 +52,12 @@ public class ReadReader extends GenomicsApiReader<SearchReadsRequest, Read> {
    * Create a ReadReader with no fields parameter, all information will be returned.
    * @param auth Auth class containing credentials.
    */
-  public ReadReader(GenomicsFactory.OfflineAuth auth, ShardBoundary.Requirement shardBoundary) {
+  public ReadReader(OfflineAuth auth, ShardBoundary.Requirement shardBoundary) {
     this(auth, shardBoundary, null);
   }
 
   @Override
-  protected void processApiCall(Genomics genomics, ProcessContext c, SearchReadsRequest request)
-      throws IOException {
+  protected void processApiCall(Genomics genomics, ProcessContext c, SearchReadsRequest request) {
     LOG.info("Starting Reads read loop");
     
     GenomicsOptions options = c.getPipelineOptions().as(GenomicsOptions.class);

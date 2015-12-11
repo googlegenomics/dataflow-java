@@ -15,9 +15,9 @@
  */
 package com.google.cloud.genomics.dataflow.functions;
 
-import com.google.api.services.genomics.model.Call;
 import com.google.common.base.Predicate;
 import com.google.common.collect.Iterables;
+import com.google.genomics.v1.VariantCall;
 
 /**
  * Computes the similarity of two calls based on whether they share a minor allele or not.
@@ -30,8 +30,8 @@ public class SharedMinorAllelesCalculator implements CallSimilarityCalculator {
     this.isReferenceMajor = isReferenceMajor;
   }
 
-  private boolean hasMinorAllele(Call call) {
-    return Iterables.any(call.getGenotype(), new Predicate<Integer>() {
+  private boolean hasMinorAllele(VariantCall call) {
+    return Iterables.any(call.getGenotypeList(), new Predicate<Integer>() {
 
       @Override
       public boolean apply(Integer genotype) {
@@ -46,7 +46,7 @@ public class SharedMinorAllelesCalculator implements CallSimilarityCalculator {
   }
 
   @Override
-  public double similarity(Call call1, Call call2) {
+  public double similarity(VariantCall call1, VariantCall call2) {
     if (call1.getCallSetName().equals(call2.getCallSetName())) {
       return 1.0;
     }
