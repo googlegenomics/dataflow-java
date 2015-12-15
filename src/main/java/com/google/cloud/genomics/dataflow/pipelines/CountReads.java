@@ -44,8 +44,9 @@ import com.google.cloud.genomics.dataflow.readers.bam.Reader;
 import com.google.cloud.genomics.dataflow.readers.bam.ReaderOptions;
 import com.google.cloud.genomics.dataflow.readers.bam.ShardingPolicy;
 import com.google.cloud.genomics.dataflow.utils.GCSOptions;
-import com.google.cloud.genomics.dataflow.utils.GenomicsDatasetOptions;
+import com.google.cloud.genomics.dataflow.utils.GCSOutputOptions;
 import com.google.cloud.genomics.dataflow.utils.GenomicsOptions;
+import com.google.cloud.genomics.dataflow.utils.ShardOptions;
 import com.google.cloud.genomics.utils.Contig;
 import com.google.cloud.genomics.utils.OfflineAuth;
 import com.google.cloud.genomics.utils.ShardBoundary;
@@ -60,12 +61,9 @@ import com.google.common.base.Strings;
  * for running instructions.
  */
 public class CountReads {
-  private static final Logger LOG = Logger.getLogger(CountReads.class.getName());
-  private static CountReadsOptions options;
-  private static Pipeline p;
-  private static OfflineAuth auth;
 
-  public static interface CountReadsOptions extends GenomicsDatasetOptions, GCSOptions {
+  public static interface Options extends GCSOptions, ShardOptions, GCSOutputOptions {
+    
     @Description("The ID of the Google Genomics ReadGroupSet this pipeline is working with. "
         + "Default (empty) indicates all ReadGroupSets.")
     @Default.String("")
@@ -91,14 +89,27 @@ public class CountReads {
 
     void setIncludeUnmapped(boolean newValue);
 
+    public static class Methods {
+      public static void validateOptions(Options options) {
+        GCSOutputOptions.Methods.validateOptions(options);
+      }
+    }
+
   }
 
+  private static final Logger LOG = Logger.getLogger(CountReads.class.getName());
+  private static Pipeline p;
+  private static Options options;
+  private static OfflineAuth auth;
+  
   public static void main(String[] args) throws GeneralSecurityException, IOException {
     // Register the options so that they show up via --help
-    PipelineOptionsFactory.register(CountReadsOptions.class);
-    options = PipelineOptionsFactory.fromArgs(args).withValidation().as(CountReadsOptions.class);
+    PipelineOptionsFactory.register(Options.class);
+    Options options = PipelineOptionsFactory.fromArgs(args)
+        .withValidation().as(Options.class);
     // Option validation is not yet automatic, we make an explicit call here.
-    GenomicsDatasetOptions.Methods.validateOptions(options);
+    Options.Methods.validateOptions(options);
+
     auth = GenomicsOptions.Methods.getGenomicsAuth(options);
     p = Pipeline.create(options);
     p.getCoderRegistry().setFallbackCoderProvider(GenericJsonCoder.PROVIDER);

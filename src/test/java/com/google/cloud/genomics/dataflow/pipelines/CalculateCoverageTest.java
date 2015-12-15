@@ -268,8 +268,8 @@ public class CalculateCoverageTest {
     a2.getInfo().put("H", Lists.newArrayList("0.5", "1.0", "1.0"));
     a2.getInfo().put("A", Lists.newArrayList("2.0", "3.0", "3.0"));
     expectedOutput.add(a2);
-    CalculateCoverage.CoverageOptions popts = PipelineOptionsFactory.create().as(
-        CalculateCoverage.CoverageOptions.class);
+    CalculateCoverage.Options popts = PipelineOptionsFactory.create().as(
+        CalculateCoverage.Options.class);
     popts.setBucketWidth(TEST_BUCKET_WIDTH);
     popts.setNumQuantiles(TEST_NUM_QUANTILES);
     Pipeline p = TestPipeline.create(popts);
