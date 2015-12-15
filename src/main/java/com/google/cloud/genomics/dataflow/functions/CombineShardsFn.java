@@ -28,7 +28,7 @@ import com.google.cloud.dataflow.sdk.util.Transport;
 import com.google.cloud.dataflow.sdk.values.PCollectionView;
 import com.google.cloud.genomics.dataflow.readers.bam.BAMIO;
 import com.google.cloud.genomics.dataflow.utils.GCSOptions;
-import com.google.cloud.genomics.dataflow.utils.GenomicsDatasetOptions;
+import com.google.cloud.genomics.dataflow.utils.GCSOutputOptions;
 
 import com.google.common.base.Stopwatch;
 import com.google.common.collect.Lists;
@@ -54,7 +54,7 @@ import java.util.logging.Logger;
  */
 public class CombineShardsFn extends DoFn<String, String> {
 
-  public static interface Options extends GenomicsDatasetOptions, GCSOptions {}
+  public static interface Options extends GCSOutputOptions, GCSOptions {}
 
   private static final int MAX_FILES_FOR_COMPOSE = 32;
   private static final String BAM_INDEX_FILE_MIME_TYPE = "application/octet-stream";

@@ -52,10 +52,10 @@ import com.google.cloud.genomics.dataflow.model.ReadQualityCount;
 import com.google.cloud.genomics.dataflow.pipelines.CalculateCoverage.CheckMatchingReferenceSet;
 import com.google.cloud.genomics.dataflow.readers.ReadGroupStreamer;
 import com.google.cloud.genomics.dataflow.readers.VariantStreamer;
-import com.google.cloud.genomics.dataflow.utils.GCSOptions;
-import com.google.cloud.genomics.dataflow.utils.GenomicsDatasetOptions;
+import com.google.cloud.genomics.dataflow.utils.GCSOutputOptions;
 import com.google.cloud.genomics.dataflow.utils.GenomicsOptions;
 import com.google.cloud.genomics.dataflow.utils.ReadFunctions;
+import com.google.cloud.genomics.dataflow.utils.ShardOptions;
 import com.google.cloud.genomics.dataflow.utils.Solver;
 import com.google.cloud.genomics.dataflow.utils.VariantFunctions;
 import com.google.cloud.genomics.utils.GenomicsUtils;
@@ -91,23 +91,10 @@ import com.google.protobuf.ListValue;
  */
 public class VerifyBamId {
 
-  private static VerifyBamId.VerifyBamIdOptions options;
-  private static Pipeline p;
-  private static OfflineAuth auth;
-  
-  /**
-   * String prefix used for sampling hash function
-   */
-  private static final String HASH_PREFIX = "";
-  
-  // TODO: this value is not quite correct. Test again after
-  // https://github.com/googlegenomics/utils-java/issues/48
-  private static final String VARIANT_FIELDS = "variants(start,calls(genotype,callSetName))";
-
   /**
    * Options required to run this pipeline.
    */
-  public static interface VerifyBamIdOptions extends GenomicsDatasetOptions, GCSOptions {
+  public static interface Options extends ShardOptions, GCSOutputOptions {
 
     @Description("A comma delimited list of the IDs of the Google Genomics ReadGroupSets this "
         + "pipeline is working with. Default (empty) indicates all ReadGroupSets in InputDatasetId."
@@ -118,16 +105,6 @@ public class VerifyBamId {
 
     void setReadGroupSetIds(String readGroupSetId);
 
-    public String DEFAULT_VARIANTSET = "10473108253681171589";
-    @Description("The ID of the Google Genomics VariantSet this pipeline is working with."
-        + "  It assumes the variant set has INFO field 'AF' from which it retrieves the"
-        + " allele frequency for the variant, such as 1,000 Genomes phase 1 or phase 3 variants."
-        + "  Defaults to the 1,000 Genomes phase 1 VariantSet with id " + DEFAULT_VARIANTSET + ".")
-    @Default.String(DEFAULT_VARIANTSET)
-    String getVariantSetId();
-
-    void setVariantSetId(String variantSetId);
-
     @Description("The ID of the Google Genomics Dataset that the pipeline will get its input reads"
         + " from.  Default (empty) means to use ReadGroupSetIds and VariantSetIds instead.  This or"
         + " ReadGroupSetIds and VariantSetIds must be set.  InputDatasetId overrides"
@@ -137,6 +114,16 @@ public class VerifyBamId {
     String getInputDatasetId();
 
     void setInputDatasetId(String inputDatasetId);
+
+    public String DEFAULT_VARIANTSET = "10473108253681171589";
+    @Description("The ID of the Google Genomics VariantSet this pipeline is working with."
+        + "  It assumes the variant set has INFO field 'AF' from which it retrieves the"
+        + " allele frequency for the variant, such as 1,000 Genomes phase 1 or phase 3 variants."
+        + "  Defaults to the 1,000 Genomes phase 1 VariantSet with id " + DEFAULT_VARIANTSET + ".")
+    @Default.String(DEFAULT_VARIANTSET)
+    String getVariantSetId();
+
+    void setVariantSetId(String variantSetId);
 
     @Description("The minimum allele frequency to use in analysis.  Defaults to 0.01.")
     @Default.Double(0.01)
@@ -149,19 +136,39 @@ public class VerifyBamId {
     double getSamplingFraction();
 
     void setSamplingFraction(double minFrequency);
+
+    public static class Methods {
+      public static void validateOptions(Options options) {
+        GCSOutputOptions.Methods.validateOptions(options);
+      }
+    }
+
   }
+
+  private static Options options;
+  private static Pipeline p;
+  private static OfflineAuth auth;
+
+  /**
+   * String prefix used for sampling hash function
+   */
+  private static final String HASH_PREFIX = "";
+
+  // TODO: this value is not quite correct. Test again after
+  // https://github.com/googlegenomics/utils-java/issues/48
+  private static final String VARIANT_FIELDS = "variants(start,calls(genotype,callSetName))";
 
   /**
    * Run the VerifyBamId algorithm and output the resulting contamination estimate.
    */
   public static void main(String[] args) throws GeneralSecurityException, IOException {
     // Register the options so that they show up via --help
-    PipelineOptionsFactory.register(VerifyBamIdOptions.class);
-    options = PipelineOptionsFactory.fromArgs(args)
-        .withValidation()
-        .as(VerifyBamId.VerifyBamIdOptions.class);
+    PipelineOptionsFactory.register(Options.class);
+    Options options = PipelineOptionsFactory.fromArgs(args)
+        .withValidation().as(Options.class);
     // Option validation is not yet automatic, we make an explicit call here.
-    GenomicsDatasetOptions.Methods.validateOptions(options);
+    Options.Methods.validateOptions(options);
+    
     auth = GenomicsOptions.Methods.getGenomicsAuth(options);
     
     p = Pipeline.create(options);
@@ -207,9 +214,9 @@ public class VerifyBamId {
 
     // Reads in Variants.  TODO potentially provide an option to load the Variants from a file.
     List<StreamVariantsRequest> variantRequests = options.isAllReferences() ?
-        ShardUtils.getVariantRequests(options.getDatasetId(), ShardUtils.SexChromosomeFilter.INCLUDE_XY,
+        ShardUtils.getVariantRequests(options.getVariantSetId(), ShardUtils.SexChromosomeFilter.INCLUDE_XY,
             options.getBasesPerShard(), auth) :
-          ShardUtils.getVariantRequests(options.getDatasetId(), options.getReferences(), options.getBasesPerShard());
+          ShardUtils.getVariantRequests(options.getVariantSetId(), options.getReferences(), options.getBasesPerShard());
 
     PCollection<Variant> variants = p.apply(Create.of(variantRequests))
     .apply(new VariantStreamer(auth, ShardBoundary.Requirement.STRICT, VARIANT_FIELDS));

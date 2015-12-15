@@ -20,7 +20,7 @@ import com.google.cloud.dataflow.sdk.transforms.DoFn;
 import com.google.cloud.dataflow.sdk.transforms.PTransform;
 import com.google.cloud.dataflow.sdk.transforms.ParDo;
 import com.google.cloud.dataflow.sdk.values.PCollection;
-import com.google.cloud.genomics.dataflow.utils.GenomicsDatasetOptions;
+import com.google.cloud.genomics.dataflow.utils.ShardOptions;
 import com.google.cloud.genomics.utils.OfflineAuth;
 import com.google.cloud.genomics.utils.ShardBoundary;
 import com.google.cloud.genomics.utils.ShardUtils;
@@ -69,7 +69,7 @@ public class ReadGroupStreamer extends PTransform<PCollection<String>, PCollecti
     @Override
     public void processElement(DoFn<String, StreamReadsRequest>.ProcessContext c)
         throws Exception {
-      GenomicsDatasetOptions options = c.getPipelineOptions().as(GenomicsDatasetOptions.class);
+      ShardOptions options = c.getPipelineOptions().as(ShardOptions.class);
       String readGroupSetId = c.element();
 
       List<StreamReadsRequest> requests = null;
