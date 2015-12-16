@@ -79,7 +79,7 @@ public class ShardedBAMWriting {
   private static final Logger LOG = Logger.getLogger(ShardedBAMWriting.class.getName());
   private static final String BAM_INDEX_FILE_MIME_TYPE = "application/octet-stream";
   private static final int MAX_FILES_FOR_COMPOSE = 32;
-  private static Options options;
+  private static Options pipelineOptions;
   private static Pipeline pipeline;
   private static OfflineAuth auth;
   private static Iterable<Contig> contigs;
@@ -87,18 +87,18 @@ public class ShardedBAMWriting {
   public static void main(String[] args) throws GeneralSecurityException, IOException {
     // Register the options so that they show up via --help
     PipelineOptionsFactory.register(Options.class);
-    options = PipelineOptionsFactory.fromArgs(args)
+    pipelineOptions = PipelineOptionsFactory.fromArgs(args)
         .withValidation().as(Options.class);
     // Option validation is not yet automatic, we make an explicit call here.
-    Options.Methods.validateOptions(options);
+    Options.Methods.validateOptions(pipelineOptions);
 
-    auth = GenomicsOptions.Methods.getGenomicsAuth(options);
-    pipeline = Pipeline.create(options);
+    auth = GenomicsOptions.Methods.getGenomicsAuth(pipelineOptions);
+    pipeline = Pipeline.create(pipelineOptions);
     // Register coders.
     pipeline.getCoderRegistry().setFallbackCoderProvider(GenericJsonCoder.PROVIDER);
     pipeline.getCoderRegistry().registerCoder(Contig.class, CONTIG_CODER);
     // Process options.
-    contigs = Contig.parseContigsFromCommandLine(options.getReferences());
+    contigs = Contig.parseContigsFromCommandLine(pipelineOptions.getReferences());
     // Get header info.
     final HeaderInfo headerInfo = getHeader();
     
@@ -106,11 +106,11 @@ public class ShardedBAMWriting {
     final PCollection<Read> reads = getReadsFromBAMFile();
     final PCollection<KV<Contig,Iterable<Read>>> shardedReads = ShardReadsTransform.shard(reads);
     final PCollection<String> writtenShards = WriteReadsTransform.write(
-        shardedReads, headerInfo, options.getOutput(), pipeline);
+        shardedReads, headerInfo, pipelineOptions.getOutput(), pipeline);
     writtenShards
         .apply(
             TextIO.Write
-              .to(options.getOutput() + "-result")
+              .to(pipelineOptions.getOutput() + "-result")
         .named("Write Output Result")
         .withoutSharding());
     pipeline.run();            
@@ -148,16 +148,16 @@ public class ShardedBAMWriting {
     
     // Open and read start of BAM
     final Storage.Objects storage = Transport.newStorageClient(
-        options
+        pipelineOptions
           .as(GCSOptions.class))
           .build()
           .objects();
-    LOG.info("Reading header from " + options.getBAMFilePath());
+    LOG.info("Reading header from " + pipelineOptions.getBAMFilePath());
     final SamReader samReader = BAMIO
-        .openBAM(storage, options.getBAMFilePath(), ValidationStringency.DEFAULT_STRINGENCY);
+        .openBAM(storage, pipelineOptions.getBAMFilePath(), ValidationStringency.DEFAULT_STRINGENCY);
     final SAMFileHeader header = samReader.getFileHeader();
     
-    LOG.info("Reading first chunk of reads from " + options.getBAMFilePath());
+    LOG.info("Reading first chunk of reads from " + pipelineOptions.getBAMFilePath());
     final SAMRecordIterator recordIterator = samReader.query(
         firstContig.referenceName, (int)firstContig.start + 1, (int)firstContig.end + 1, false);
    
@@ -166,7 +166,7 @@ public class ShardedBAMWriting {
       SAMRecord record = recordIterator.next();
       final int alignmentStart = record.getAlignmentStart();
       if (firstShard == null && alignmentStart > firstContig.start && alignmentStart < firstContig.end) {
-        firstShard = shardFromAlignmentStart(firstContig.referenceName, alignmentStart, options.getLociPerWritingShard());
+        firstShard = shardFromAlignmentStart(firstContig.referenceName, alignmentStart, pipelineOptions.getLociPerWritingShard());
         LOG.info("Determined first shard to be " + firstShard);
         result = new HeaderInfo(header, firstShard);
       }
@@ -177,7 +177,7 @@ public class ShardedBAMWriting {
     if (result == null) {
       throw new IOException("Did not find reads for the first contig " + firstContig.toString());
     }
-    LOG.info("Finished header reading from " + options.getBAMFilePath());
+    LOG.info("Finished header reading from " + pipelineOptions.getBAMFilePath());
     return result;
   }
 
@@ -197,7 +197,7 @@ public class ShardedBAMWriting {
   private static final ShardingPolicy READ_SHARDING_POLICY = ShardingPolicy.BYTE_SIZE_POLICY;
       
   private static PCollection<Read> getReadsFromBAMFile() throws IOException {
-    LOG.info("Sharded reading of "+ options.getBAMFilePath());
+    LOG.info("Sharded reading of "+ pipelineOptions.getBAMFilePath());
     
     final ReaderOptions readerOptions = new ReaderOptions(
         ValidationStringency.DEFAULT_STRINGENCY,
@@ -207,7 +207,7 @@ public class ShardedBAMWriting {
         auth,
         contigs,
         readerOptions,
-        options.getBAMFilePath(),
+        pipelineOptions.getBAMFilePath(),
         READ_SHARDING_POLICY);
   }
   

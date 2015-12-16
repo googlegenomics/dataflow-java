@@ -130,7 +130,7 @@ public final class AnnotateVariants extends DoFn<SearchVariantsRequest, KV<Strin
   private final OfflineAuth auth;
   private final List<String> callSetIds, transcriptSetIds, variantAnnotationSetIds;
   private final Map<Range<Long>, String> refBaseCache;
-  
+
   public AnnotateVariants(OfflineAuth auth,
       List<String> callSetIds, List<String> transcriptSetIds,
       List<String> variantAnnotationSetIds) {

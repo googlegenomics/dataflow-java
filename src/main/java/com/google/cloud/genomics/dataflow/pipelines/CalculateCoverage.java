@@ -291,7 +291,7 @@ public class CalculateCoverage {
           long dist = Math.min(bucket + pOptions.getBucketWidth(), readEnd) - readCurr;
           readCurr += dist;
           baseCount += dist;
-          Position p = new Position()
+          Position position = new Position()
               .setPosition(bucket)
               .setReferenceName(c.element().getAlignment().getPosition().getReferenceName());
           Integer mq = c.element().getAlignment().getMappingQuality();
@@ -306,9 +306,9 @@ public class CalculateCoverage {
           } else {
             mqEnum = PosRgsMq.MappingQuality.H;
           }
-          c.output(KV.of(new PosRgsMq(p, c.element().getReadGroupSetId(), mqEnum), baseCount));
+          c.output(KV.of(new PosRgsMq(position, c.element().getReadGroupSetId(), mqEnum), baseCount));
           c.output(KV.of(new PosRgsMq(
-              p, c.element().getReadGroupSetId(), PosRgsMq.MappingQuality.A), baseCount));
+              position, c.element().getReadGroupSetId(), PosRgsMq.MappingQuality.A), baseCount));
           bucket += pOptions.getBucketWidth();
         }
       }
@@ -419,13 +419,13 @@ public class CalculateCoverage {
               .setReferenceName(bucket.getReferenceName()))
           .setType("GENERIC")
           .setInfo(new HashMap<String, List<String>>());
-      for (KV<PosRgsMq.MappingQuality, List<Double>> p : c.element().getValue()) {
+      for (KV<PosRgsMq.MappingQuality, List<Double>> mappingQualityKV : c.element().getValue()) {
         List<String> output = Lists.newArrayList();
-        for (int i = 0; i < p.getValue().size(); i++) {
-          double value = Math.round(p.getValue().get(i) * 1000000.0) / 1000000.0;
+        for (int i = 0; i < mappingQualityKV.getValue().size(); i++) {
+          double value = Math.round(mappingQualityKV.getValue().get(i) * 1000000.0) / 1000000.0;
           output.add(Double.toString(value));
         }
-        a.getInfo().put(p.getKey().toString(), output);
+        a.getInfo().put(mappingQualityKV.getKey().toString(), output);
       }
       if (write) {
         currAnnotations.add(a);

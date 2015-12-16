@@ -151,7 +151,7 @@ public class Sharder {
       LOG.info("Outputting unmapped reads shard ");
       output.output(new BAMShard(filePath, null, new Contig("*", 0, -1)));
     }
-    final boolean allReferences =
+    allReferences =
         contigsByReference.size() == 0 || contigsByReference.containsKey("");
     LOG.info("All references = " + allReferences);
     LOG.info("BAM has index = " + reader.hasIndex());
