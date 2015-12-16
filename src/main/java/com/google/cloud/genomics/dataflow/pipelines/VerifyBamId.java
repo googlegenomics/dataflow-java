@@ -145,8 +145,8 @@ public class VerifyBamId {
 
   }
 
-  private static Options options;
   private static Pipeline p;
+  private static Options pipelineOptions;
   private static OfflineAuth auth;
 
   /**
@@ -164,25 +164,25 @@ public class VerifyBamId {
   public static void main(String[] args) throws GeneralSecurityException, IOException {
     // Register the options so that they show up via --help
     PipelineOptionsFactory.register(Options.class);
-    Options options = PipelineOptionsFactory.fromArgs(args)
+    pipelineOptions = PipelineOptionsFactory.fromArgs(args)
         .withValidation().as(Options.class);
     // Option validation is not yet automatic, we make an explicit call here.
-    Options.Methods.validateOptions(options);
+    Options.Methods.validateOptions(pipelineOptions);
     
-    auth = GenomicsOptions.Methods.getGenomicsAuth(options);
+    auth = GenomicsOptions.Methods.getGenomicsAuth(pipelineOptions);
     
-    p = Pipeline.create(options);
+    p = Pipeline.create(pipelineOptions);
     p.getCoderRegistry().setFallbackCoderProvider(GenericJsonCoder.PROVIDER);
 
-    if (options.getInputDatasetId().isEmpty() && options.getReadGroupSetIds().isEmpty()) {
+    if (pipelineOptions.getInputDatasetId().isEmpty() && pipelineOptions.getReadGroupSetIds().isEmpty()) {
       throw new IllegalArgumentException("InputDatasetId or ReadGroupSetIds must be specified");
     }
 
     List<String> rgsIds;
-    if (options.getInputDatasetId().isEmpty()) {
-      rgsIds = Lists.newArrayList(options.getReadGroupSetIds().split(","));
+    if (pipelineOptions.getInputDatasetId().isEmpty()) {
+      rgsIds = Lists.newArrayList(pipelineOptions.getReadGroupSetIds().split(","));
     } else {
-      rgsIds = GenomicsUtils.getReadGroupSetIds(options.getInputDatasetId(), auth);
+      rgsIds = GenomicsUtils.getReadGroupSetIds(pipelineOptions.getInputDatasetId(), auth);
     }
 
     // Grab one ReferenceSetId to be used within the pipeline to confirm that all ReadGroupSets
@@ -213,18 +213,18 @@ public class VerifyBamId {
     */
 
     // Reads in Variants.  TODO potentially provide an option to load the Variants from a file.
-    List<StreamVariantsRequest> variantRequests = options.isAllReferences() ?
-        ShardUtils.getVariantRequests(options.getVariantSetId(), ShardUtils.SexChromosomeFilter.INCLUDE_XY,
-            options.getBasesPerShard(), auth) :
-          ShardUtils.getVariantRequests(options.getVariantSetId(), options.getReferences(), options.getBasesPerShard());
+    List<StreamVariantsRequest> variantRequests = pipelineOptions.isAllReferences() ?
+        ShardUtils.getVariantRequests(pipelineOptions.getVariantSetId(), ShardUtils.SexChromosomeFilter.INCLUDE_XY,
+            pipelineOptions.getBasesPerShard(), auth) :
+          ShardUtils.getVariantRequests(pipelineOptions.getVariantSetId(), pipelineOptions.getReferences(), pipelineOptions.getBasesPerShard());
 
     PCollection<Variant> variants = p.apply(Create.of(variantRequests))
     .apply(new VariantStreamer(auth, ShardBoundary.Requirement.STRICT, VARIANT_FIELDS));
     
-    PCollection<KV<Position, AlleleFreq>> refFreq = getFreq(variants, options.getMinFrequency());
+    PCollection<KV<Position, AlleleFreq>> refFreq = getFreq(variants, pipelineOptions.getMinFrequency());
 
     PCollection<KV<Position, ReadCounts>> readCountsTable =
-        combineReads(reads, options.getSamplingFraction(), HASH_PREFIX, refFreq);
+        combineReads(reads, pipelineOptions.getSamplingFraction(), HASH_PREFIX, refFreq);
     
     // Converts our results to a single Map of Position keys to ReadCounts values.
     PCollectionView<Map<Position, ReadCounts>> view = readCountsTable
@@ -235,7 +235,7 @@ public class VerifyBamId {
         .apply(ParDo.of(new Maximizer(view)).withSideInputs(view));
 
     // Writes the result to the given output location in Cloud Storage.
-    result.apply(TextIO.Write.to(options.getOutput()).named("WriteOutput").withoutSharding());
+    result.apply(TextIO.Write.to(pipelineOptions.getOutput()).named("WriteOutput").withoutSharding());
 
     p.run();
 
@@ -329,10 +329,10 @@ public class VerifyBamId {
         return true;
       } else {
         byte[] msg;
-        Position p = input.getKey();
+        Position position = input.getKey();
         try {
-          msg = (samplingPrefix + p.getReferenceName() + ":" + p.getPosition() + ":"
-              + p.getReverseStrand()).getBytes("UTF-8");
+          msg = (samplingPrefix + position.getReferenceName() + ":" + position.getPosition() + ":"
+              + position.getReverseStrand()).getBytes("UTF-8");
         } catch (UnsupportedEncodingException e) {
           throw new AssertionError("UTF-8 not available - should not happen");
         }
@@ -363,7 +363,7 @@ public class VerifyBamId {
     public void processElement(ProcessContext c) throws Exception {
       ListValue lv = c.element().getInfo().get("AF");
       if (lv != null && lv.getValuesCount() > 0) {
-        Position p = Position.newBuilder()
+        Position position = Position.newBuilder()
             .setPosition(c.element().getStart())
             .setReferenceName(c.element().getReferenceName())
             .build();
@@ -371,7 +371,7 @@ public class VerifyBamId {
         af.setRefFreq(lv.getValues(0).getNumberValue());
         af.setAltBases(c.element().getAlternateBasesList());
         af.setRefBases(c.element().getReferenceBases());
-        c.output(KV.of(p, af));
+        c.output(KV.of(position, af));
       } else {
         // AF field wasn't populated in info, so we don't have frequency information
         // for this Variant.
