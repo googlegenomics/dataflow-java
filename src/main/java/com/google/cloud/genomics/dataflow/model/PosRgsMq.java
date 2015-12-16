@@ -114,4 +114,12 @@ public class PosRgsMq extends GenericJson {
   public PosRgsMq clone() {
     return (PosRgsMq) super.clone();
   }
+
+  /* (non-Javadoc)
+   * @see java.lang.Object#toString()
+   */
+  @Override
+  public String toString() {
+    return "PosRgsMq [pos=" + pos + ", rgsId=" + rgsId + ", mq=" + mq + "]";
+  }
 }

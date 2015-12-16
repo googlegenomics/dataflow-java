@@ -58,4 +58,13 @@ public class AlleleFreq extends GenericJson {
   public void setRefFreq(double refFreq) {
     this.refFreq = refFreq;
   }
+
+  /* (non-Javadoc)
+   * @see java.lang.Object#toString()
+   */
+  @Override
+  public String toString() {
+    return "AlleleFreq [refBases=" + refBases + ", altBases=" + altBases + ", refFreq=" + refFreq
+        + "]";
+  }
 }

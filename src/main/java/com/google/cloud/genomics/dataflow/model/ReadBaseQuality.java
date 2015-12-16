@@ -76,4 +76,12 @@ public class ReadBaseQuality extends GenericJson {
     hash = 37 * hash + this.quality;
     return hash;
   }
+
+  /* (non-Javadoc)
+   * @see java.lang.Object#toString()
+   */
+  @Override
+  public String toString() {
+    return "ReadBaseQuality [base=" + base + ", quality=" + quality + "]";
+  }
 }

@@ -37,4 +37,13 @@ public class Allele {
   public String getAllele() {
     return allele;
   }
+
+  /* (non-Javadoc)
+   * @see java.lang.Object#toString()
+   */
+  @Override
+  public String toString() {
+    return "Allele [referenceName=" + referenceName + ", position=" + position + ", allele="
+        + allele + "]";
+  }
 }
