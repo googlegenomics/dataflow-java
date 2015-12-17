@@ -16,56 +16,51 @@ dataflow-java |Build Status|_ |Build Coverage|_
 Getting started
 ---------------
 
-* First, follow the Google Cloud Dataflow `getting started instructions
-  <https://cloud.google.com/dataflow/getting-started>`_ to set up your environment
-  for Dataflow. You will need your Project ID and Google Cloud Storage bucket in the following steps.
+#. First git clone this repository.
 
-* To use this code, build the client using `Apache Maven`_::
+#. If you have not already done so, follow the Google Genomics `getting started instructions <https://cloud.google.com/genomics/install-genomics-tools>`_ to set up your environment including `installing gcloud <https://cloud.google.com/sdk/>`_ and running ``gcloud init``.
+
+#. If you have not already done so, follow the Google Cloud Dataflow `getting started instructions <https://cloud.google.com/dataflow/getting-started>`_ to set up your environment for Dataflow.
+
+#. This project now includes code for calling the Genomics API using `gRPC <http://www.grpc.io>`_.  To use gRPC, you'll need a version of ALPN that matches your JRE version. 
+
+ #. See the `ALPN documentation <http://www.eclipse.org/jetty/documentation/9.2.10.v20150310/alpn-chapter.html>`_ for a table of which ALPN jar to use for your JRE version.
+ #. Then download the correct version from `here <http://mvnrepository.com/artifact/org.mortbay.jetty.alpn/alpn-boot>`_.
+
+Local Run
+---------
+To use this code, build the client using `Apache Maven`_::
 
     cd dataflow-java
     mvn package
 
-* Then, follow the Google Genomics `sign up instructions`_ to generate a valid
-  ``client_secrets.json`` file.
+Then you can run a pipeline locally with the command line, passing in the Project ID and Google Cloud Storage bucket you made in the first step.  This command runs the VariantSimilarity pipeline (which runs PCoA on a dataset)::
 
-* Move the ``client_secrets.json`` file into the dataflow-java directory.
-  (Authentication will take place the first time you run a pipeline.)
+    java -Xbootclasspath/p:/YOUR/PATH/TO/alpn-boot-YOUR-VERSION.jar \
+      -cp target/google-genomics-dataflow*-runnable.jar \
+      com.google.cloud.genomics.dataflow.pipelines.VariantSimilarity \
+      --variantSetId=3049512673186936334 \
+      --references=chr17:41196311:41277499 \
+      --output=gs://your-bucket/output/localtest.txt
 
-* run "gcloud auth login" to log into the account that has access to your
-  Google Cloud Storage bucket.
-
-* Then you can run a pipeline locally with the command line, passing in the
-  Project ID and Google Cloud Storage bucket you made in the first step.
-  This command runs the VariantSimilarity pipeline (which runs PCoA on a dataset)::
+Run on Google Compute Engine
+----------------------------
+To deploy your pipeline (which runs on Google Compute Engine), ALPN is no longer needed but some additional command line arguments are required::
 
     java -cp target/google-genomics-dataflow*-runnable.jar \
       com.google.cloud.genomics.dataflow.pipelines.VariantSimilarity \
       --project=your-project-id \
-      --output=gs://your-bucket/output/localtest.txt \
-      --secretsFile=client_secrets.json
-
-  Note: when running locally, you may run into memory issues depending on the
-  capacity of your local machine.
-
-* To deploy your pipeline (which runs on Google Compute Engine), some additional
-  command line arguments are required::
-
-    java -cp target/google-genomics-dataflow*-runnable.jar \
-      com.google.cloud.genomics.dataflow.pipelines.VariantSimilarity \
+      --variantSetId=3049512673186936334 \
+      --references=chr17:41196311:41277499 \
+      --output=gs://your-bucket/output/test.txt \
       --runner=BlockingDataflowPipelineRunner \
       --project=your-project-id \
       --stagingLocation=gs://your-bucket/staging \
-      --output=gs://your-bucket/output/test.txt \
-      --secretsFile=client_secrets.json \
-      --numWorkers=4
-
-  Note: By default, the max workers you can have without requesting more GCE quota
-  is 16. (That's the default limit on VMs)
+      --numWorkers=1
 
 **See the** `Google Genomics Cookbook <http://googlegenomics.readthedocs.org/>`_ **for more sample command lines for the various pipelines.**
 
 .. _Apache Maven: http://maven.apache.org/download.cgi
-.. _sign up instructions: https://cloud.google.com/genomics/install-genomics-tools#authenticate
 
 Command Line Options
 --------------------

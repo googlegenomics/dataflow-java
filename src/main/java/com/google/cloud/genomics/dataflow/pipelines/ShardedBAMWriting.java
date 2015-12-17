@@ -13,6 +13,19 @@
  */
 package com.google.cloud.genomics.dataflow.pipelines;
 
+import htsjdk.samtools.SAMFileHeader;
+import htsjdk.samtools.SAMRecord;
+import htsjdk.samtools.SAMRecordIterator;
+import htsjdk.samtools.SamReader;
+import htsjdk.samtools.ValidationStringency;
+
+import java.io.IOException;
+import java.security.GeneralSecurityException;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.logging.Logger;
+
 import com.google.api.services.genomics.model.Read;
 import com.google.api.services.storage.Storage;
 import com.google.cloud.dataflow.sdk.Pipeline;
@@ -32,26 +45,14 @@ import com.google.cloud.genomics.dataflow.readers.bam.ReadBAMTransform;
 import com.google.cloud.genomics.dataflow.readers.bam.ReaderOptions;
 import com.google.cloud.genomics.dataflow.readers.bam.ShardingPolicy;
 import com.google.cloud.genomics.dataflow.utils.GCSOptions;
-import com.google.cloud.genomics.dataflow.utils.GenomicsDatasetOptions;
+import com.google.cloud.genomics.dataflow.utils.GCSOutputOptions;
 import com.google.cloud.genomics.dataflow.utils.GenomicsOptions;
+import com.google.cloud.genomics.dataflow.utils.ShardOptions;
 import com.google.cloud.genomics.dataflow.utils.ShardReadsTransform;
 import com.google.cloud.genomics.dataflow.writers.WriteReadsTransform;
 import com.google.cloud.genomics.utils.Contig;
 import com.google.cloud.genomics.utils.OfflineAuth;
 import com.google.common.collect.Lists;
-
-import htsjdk.samtools.SAMFileHeader;
-import htsjdk.samtools.SAMRecord;
-import htsjdk.samtools.SAMRecordIterator;
-import htsjdk.samtools.SamReader;
-import htsjdk.samtools.ValidationStringency;
-
-import java.io.IOException;
-import java.security.GeneralSecurityException;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Comparator;
-import java.util.logging.Logger;
 
 /**
  * Demonstrates loading some Reads, sharding them, writing them to various BAM files in parallel,
@@ -59,35 +60,45 @@ import java.util.logging.Logger;
  */
 public class ShardedBAMWriting {
 
-  static interface Options extends ShardReadsTransform.Options, WriteReadsTransform.Options {
+  static interface Options extends ShardOptions, ShardReadsTransform.Options,
+    WriteReadsTransform.Options, GCSOutputOptions {
     @Description("The Google Cloud Storage path to the BAM file to get reads data from")
     @Default.String("")
     String getBAMFilePath();
 
     void setBAMFilePath(String filePath);
+    
+    public static class Methods {
+      public static void validateOptions(Options options) {
+        GCSOutputOptions.Methods.validateOptions(options);
+      }
+    }
+
   }
 
   private static final Logger LOG = Logger.getLogger(ShardedBAMWriting.class.getName());
   private static final String BAM_INDEX_FILE_MIME_TYPE = "application/octet-stream";
   private static final int MAX_FILES_FOR_COMPOSE = 32;
-  private static Options options;
+  private static Options pipelineOptions;
   private static Pipeline pipeline;
   private static OfflineAuth auth;
   private static Iterable<Contig> contigs;
 
   public static void main(String[] args) throws GeneralSecurityException, IOException {
-    // Register the options so that they show up via --help.
+    // Register the options so that they show up via --help
     PipelineOptionsFactory.register(Options.class);
-    options = PipelineOptionsFactory.fromArgs(args).withValidation().as(Options.class);
+    pipelineOptions = PipelineOptionsFactory.fromArgs(args)
+        .withValidation().as(Options.class);
     // Option validation is not yet automatic, we make an explicit call here.
-    GenomicsDatasetOptions.Methods.validateOptions(options);
-    auth = GenomicsOptions.Methods.getGenomicsAuth(options);
-    pipeline = Pipeline.create(options);
+    Options.Methods.validateOptions(pipelineOptions);
+
+    auth = GenomicsOptions.Methods.getGenomicsAuth(pipelineOptions);
+    pipeline = Pipeline.create(pipelineOptions);
     // Register coders.
     pipeline.getCoderRegistry().setFallbackCoderProvider(GenericJsonCoder.PROVIDER);
     pipeline.getCoderRegistry().registerCoder(Contig.class, CONTIG_CODER);
     // Process options.
-    contigs = Contig.parseContigsFromCommandLine(options.getReferences());
+    contigs = Contig.parseContigsFromCommandLine(pipelineOptions.getReferences());
     // Get header info.
     final HeaderInfo headerInfo = getHeader();
     
@@ -95,11 +106,11 @@ public class ShardedBAMWriting {
     final PCollection<Read> reads = getReadsFromBAMFile();
     final PCollection<KV<Contig,Iterable<Read>>> shardedReads = ShardReadsTransform.shard(reads);
     final PCollection<String> writtenShards = WriteReadsTransform.write(
-        shardedReads, headerInfo, options.getOutput(), pipeline);
+        shardedReads, headerInfo, pipelineOptions.getOutput(), pipeline);
     writtenShards
         .apply(
             TextIO.Write
-              .to(options.getOutput() + "-result")
+              .to(pipelineOptions.getOutput() + "-result")
         .named("Write Output Result")
         .withoutSharding());
     pipeline.run();            
@@ -137,16 +148,16 @@ public class ShardedBAMWriting {
     
     // Open and read start of BAM
     final Storage.Objects storage = Transport.newStorageClient(
-        options
+        pipelineOptions
           .as(GCSOptions.class))
           .build()
           .objects();
-    LOG.info("Reading header from " + options.getBAMFilePath());
+    LOG.info("Reading header from " + pipelineOptions.getBAMFilePath());
     final SamReader samReader = BAMIO
-        .openBAM(storage, options.getBAMFilePath(), ValidationStringency.DEFAULT_STRINGENCY);
+        .openBAM(storage, pipelineOptions.getBAMFilePath(), ValidationStringency.DEFAULT_STRINGENCY);
     final SAMFileHeader header = samReader.getFileHeader();
     
-    LOG.info("Reading first chunk of reads from " + options.getBAMFilePath());
+    LOG.info("Reading first chunk of reads from " + pipelineOptions.getBAMFilePath());
     final SAMRecordIterator recordIterator = samReader.query(
         firstContig.referenceName, (int)firstContig.start + 1, (int)firstContig.end + 1, false);
    
@@ -155,7 +166,7 @@ public class ShardedBAMWriting {
       SAMRecord record = recordIterator.next();
       final int alignmentStart = record.getAlignmentStart();
       if (firstShard == null && alignmentStart > firstContig.start && alignmentStart < firstContig.end) {
-        firstShard = shardFromAlignmentStart(firstContig.referenceName, alignmentStart, options.getLociPerWritingShard());
+        firstShard = shardFromAlignmentStart(firstContig.referenceName, alignmentStart, pipelineOptions.getLociPerWritingShard());
         LOG.info("Determined first shard to be " + firstShard);
         result = new HeaderInfo(header, firstShard);
       }
@@ -166,7 +177,7 @@ public class ShardedBAMWriting {
     if (result == null) {
       throw new IOException("Did not find reads for the first contig " + firstContig.toString());
     }
-    LOG.info("Finished header reading from " + options.getBAMFilePath());
+    LOG.info("Finished header reading from " + pipelineOptions.getBAMFilePath());
     return result;
   }
 
@@ -186,7 +197,7 @@ public class ShardedBAMWriting {
   private static final ShardingPolicy READ_SHARDING_POLICY = ShardingPolicy.BYTE_SIZE_POLICY;
       
   private static PCollection<Read> getReadsFromBAMFile() throws IOException {
-    LOG.info("Sharded reading of "+ options.getBAMFilePath());
+    LOG.info("Sharded reading of "+ pipelineOptions.getBAMFilePath());
     
     final ReaderOptions readerOptions = new ReaderOptions(
         ValidationStringency.DEFAULT_STRINGENCY,
@@ -196,7 +207,7 @@ public class ShardedBAMWriting {
         auth,
         contigs,
         readerOptions,
-        options.getBAMFilePath(),
+        pipelineOptions.getBAMFilePath(),
         READ_SHARDING_POLICY);
   }
   

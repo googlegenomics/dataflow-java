@@ -209,8 +209,8 @@ public class CalculateCoverageTest {
     expectedOutput[11] = KV.of(pTest, 1.0);
     Pipeline p = TestPipeline.create();
     p.getCoderRegistry().setFallbackCoderProvider(GenericJsonCoder.PROVIDER);
-    PCollection<Read> input = p.apply(Create.of(testSet));
-    PCollection<KV<PosRgsMq, Double>> output = input.apply(new CalculateCoverageMean());
+    PCollection<Read> inputReads = p.apply(Create.of(testSet));
+    PCollection<KV<PosRgsMq, Double>> output = inputReads.apply(new CalculateCoverageMean());
     DataflowAssert.that(output).containsInAnyOrder(expectedOutput);
   }
 
@@ -221,8 +221,8 @@ public class CalculateCoverageTest {
   public void testCalculateQuantiles() {
     Pipeline p = TestPipeline.create();
     p.getCoderRegistry().setFallbackCoderProvider(GenericJsonCoder.PROVIDER);
-    PCollection<KV<PosRgsMq, Double>> input = p.apply(Create.of(testSet2));
-    PCollection<KV<Position, KV<PosRgsMq.MappingQuality, List<Double>>>> output = input.apply(
+    PCollection<KV<PosRgsMq, Double>> inputMappingQualities = p.apply(Create.of(testSet2));
+    PCollection<KV<Position, KV<PosRgsMq.MappingQuality, List<Double>>>> output = inputMappingQualities.apply(
         new CalculateQuantiles(3));
     Position pos = new Position().setPosition(1L).setReferenceName("chr1");
     List<Double> low = Lists.newArrayList(3.0, 4.6, 8.0);
@@ -268,8 +268,8 @@ public class CalculateCoverageTest {
     a2.getInfo().put("H", Lists.newArrayList("0.5", "1.0", "1.0"));
     a2.getInfo().put("A", Lists.newArrayList("2.0", "3.0", "3.0"));
     expectedOutput.add(a2);
-    CalculateCoverage.CoverageOptions popts = PipelineOptionsFactory.create().as(
-        CalculateCoverage.CoverageOptions.class);
+    CalculateCoverage.Options popts = PipelineOptionsFactory.create().as(
+        CalculateCoverage.Options.class);
     popts.setBucketWidth(TEST_BUCKET_WIDTH);
     popts.setNumQuantiles(TEST_NUM_QUANTILES);
     Pipeline p = TestPipeline.create(popts);

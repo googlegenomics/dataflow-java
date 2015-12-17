@@ -52,10 +52,10 @@ import com.google.cloud.genomics.dataflow.model.ReadQualityCount;
 import com.google.cloud.genomics.dataflow.pipelines.CalculateCoverage.CheckMatchingReferenceSet;
 import com.google.cloud.genomics.dataflow.readers.ReadGroupStreamer;
 import com.google.cloud.genomics.dataflow.readers.VariantStreamer;
-import com.google.cloud.genomics.dataflow.utils.GCSOptions;
-import com.google.cloud.genomics.dataflow.utils.GenomicsDatasetOptions;
+import com.google.cloud.genomics.dataflow.utils.GCSOutputOptions;
 import com.google.cloud.genomics.dataflow.utils.GenomicsOptions;
 import com.google.cloud.genomics.dataflow.utils.ReadFunctions;
+import com.google.cloud.genomics.dataflow.utils.ShardOptions;
 import com.google.cloud.genomics.dataflow.utils.Solver;
 import com.google.cloud.genomics.dataflow.utils.VariantFunctions;
 import com.google.cloud.genomics.utils.GenomicsUtils;
@@ -91,23 +91,10 @@ import com.google.protobuf.ListValue;
  */
 public class VerifyBamId {
 
-  private static VerifyBamId.VerifyBamIdOptions options;
-  private static Pipeline p;
-  private static OfflineAuth auth;
-  
-  /**
-   * String prefix used for sampling hash function
-   */
-  private static final String HASH_PREFIX = "";
-  
-  // TODO: this value is not quite correct. Test again after
-  // https://github.com/googlegenomics/utils-java/issues/48
-  private static final String VARIANT_FIELDS = "variants(start,calls(genotype,callSetName))";
-
   /**
    * Options required to run this pipeline.
    */
-  public static interface VerifyBamIdOptions extends GenomicsDatasetOptions, GCSOptions {
+  public static interface Options extends ShardOptions, GCSOutputOptions {
 
     @Description("A comma delimited list of the IDs of the Google Genomics ReadGroupSets this "
         + "pipeline is working with. Default (empty) indicates all ReadGroupSets in InputDatasetId."
@@ -118,16 +105,6 @@ public class VerifyBamId {
 
     void setReadGroupSetIds(String readGroupSetId);
 
-    public String DEFAULT_VARIANTSET = "10473108253681171589";
-    @Description("The ID of the Google Genomics VariantSet this pipeline is working with."
-        + "  It assumes the variant set has INFO field 'AF' from which it retrieves the"
-        + " allele frequency for the variant, such as 1,000 Genomes phase 1 or phase 3 variants."
-        + "  Defaults to the 1,000 Genomes phase 1 VariantSet with id " + DEFAULT_VARIANTSET + ".")
-    @Default.String(DEFAULT_VARIANTSET)
-    String getVariantSetId();
-
-    void setVariantSetId(String variantSetId);
-
     @Description("The ID of the Google Genomics Dataset that the pipeline will get its input reads"
         + " from.  Default (empty) means to use ReadGroupSetIds and VariantSetIds instead.  This or"
         + " ReadGroupSetIds and VariantSetIds must be set.  InputDatasetId overrides"
@@ -137,6 +114,16 @@ public class VerifyBamId {
     String getInputDatasetId();
 
     void setInputDatasetId(String inputDatasetId);
+
+    public String DEFAULT_VARIANTSET = "10473108253681171589";
+    @Description("The ID of the Google Genomics VariantSet this pipeline is working with."
+        + "  It assumes the variant set has INFO field 'AF' from which it retrieves the"
+        + " allele frequency for the variant, such as 1,000 Genomes phase 1 or phase 3 variants."
+        + "  Defaults to the 1,000 Genomes phase 1 VariantSet with id " + DEFAULT_VARIANTSET + ".")
+    @Default.String(DEFAULT_VARIANTSET)
+    String getVariantSetId();
+
+    void setVariantSetId(String variantSetId);
 
     @Description("The minimum allele frequency to use in analysis.  Defaults to 0.01.")
     @Default.Double(0.01)
@@ -149,33 +136,53 @@ public class VerifyBamId {
     double getSamplingFraction();
 
     void setSamplingFraction(double minFrequency);
+
+    public static class Methods {
+      public static void validateOptions(Options options) {
+        GCSOutputOptions.Methods.validateOptions(options);
+      }
+    }
+
   }
+
+  private static Pipeline p;
+  private static Options pipelineOptions;
+  private static OfflineAuth auth;
+
+  /**
+   * String prefix used for sampling hash function
+   */
+  private static final String HASH_PREFIX = "";
+
+  // TODO: this value is not quite correct. Test again after
+  // https://github.com/googlegenomics/utils-java/issues/48
+  private static final String VARIANT_FIELDS = "variants(start,calls(genotype,callSetName))";
 
   /**
    * Run the VerifyBamId algorithm and output the resulting contamination estimate.
    */
   public static void main(String[] args) throws GeneralSecurityException, IOException {
     // Register the options so that they show up via --help
-    PipelineOptionsFactory.register(VerifyBamIdOptions.class);
-    options = PipelineOptionsFactory.fromArgs(args)
-        .withValidation()
-        .as(VerifyBamId.VerifyBamIdOptions.class);
+    PipelineOptionsFactory.register(Options.class);
+    pipelineOptions = PipelineOptionsFactory.fromArgs(args)
+        .withValidation().as(Options.class);
     // Option validation is not yet automatic, we make an explicit call here.
-    GenomicsDatasetOptions.Methods.validateOptions(options);
-    auth = GenomicsOptions.Methods.getGenomicsAuth(options);
+    Options.Methods.validateOptions(pipelineOptions);
     
-    p = Pipeline.create(options);
+    auth = GenomicsOptions.Methods.getGenomicsAuth(pipelineOptions);
+    
+    p = Pipeline.create(pipelineOptions);
     p.getCoderRegistry().setFallbackCoderProvider(GenericJsonCoder.PROVIDER);
 
-    if (options.getInputDatasetId().isEmpty() && options.getReadGroupSetIds().isEmpty()) {
+    if (pipelineOptions.getInputDatasetId().isEmpty() && pipelineOptions.getReadGroupSetIds().isEmpty()) {
       throw new IllegalArgumentException("InputDatasetId or ReadGroupSetIds must be specified");
     }
 
     List<String> rgsIds;
-    if (options.getInputDatasetId().isEmpty()) {
-      rgsIds = Lists.newArrayList(options.getReadGroupSetIds().split(","));
+    if (pipelineOptions.getInputDatasetId().isEmpty()) {
+      rgsIds = Lists.newArrayList(pipelineOptions.getReadGroupSetIds().split(","));
     } else {
-      rgsIds = GenomicsUtils.getReadGroupSetIds(options.getInputDatasetId(), auth);
+      rgsIds = GenomicsUtils.getReadGroupSetIds(pipelineOptions.getInputDatasetId(), auth);
     }
 
     // Grab one ReferenceSetId to be used within the pipeline to confirm that all ReadGroupSets
@@ -206,18 +213,18 @@ public class VerifyBamId {
     */
 
     // Reads in Variants.  TODO potentially provide an option to load the Variants from a file.
-    List<StreamVariantsRequest> variantRequests = options.isAllReferences() ?
-        ShardUtils.getVariantRequests(options.getDatasetId(), ShardUtils.SexChromosomeFilter.INCLUDE_XY,
-            options.getBasesPerShard(), auth) :
-          ShardUtils.getVariantRequests(options.getDatasetId(), options.getReferences(), options.getBasesPerShard());
+    List<StreamVariantsRequest> variantRequests = pipelineOptions.isAllReferences() ?
+        ShardUtils.getVariantRequests(pipelineOptions.getVariantSetId(), ShardUtils.SexChromosomeFilter.INCLUDE_XY,
+            pipelineOptions.getBasesPerShard(), auth) :
+          ShardUtils.getVariantRequests(pipelineOptions.getVariantSetId(), pipelineOptions.getReferences(), pipelineOptions.getBasesPerShard());
 
     PCollection<Variant> variants = p.apply(Create.of(variantRequests))
     .apply(new VariantStreamer(auth, ShardBoundary.Requirement.STRICT, VARIANT_FIELDS));
     
-    PCollection<KV<Position, AlleleFreq>> refFreq = getFreq(variants, options.getMinFrequency());
+    PCollection<KV<Position, AlleleFreq>> refFreq = getFreq(variants, pipelineOptions.getMinFrequency());
 
     PCollection<KV<Position, ReadCounts>> readCountsTable =
-        combineReads(reads, options.getSamplingFraction(), HASH_PREFIX, refFreq);
+        combineReads(reads, pipelineOptions.getSamplingFraction(), HASH_PREFIX, refFreq);
     
     // Converts our results to a single Map of Position keys to ReadCounts values.
     PCollectionView<Map<Position, ReadCounts>> view = readCountsTable
@@ -228,7 +235,7 @@ public class VerifyBamId {
         .apply(ParDo.of(new Maximizer(view)).withSideInputs(view));
 
     // Writes the result to the given output location in Cloud Storage.
-    result.apply(TextIO.Write.to(options.getOutput()).named("WriteOutput").withoutSharding());
+    result.apply(TextIO.Write.to(pipelineOptions.getOutput()).named("WriteOutput").withoutSharding());
 
     p.run();
 
@@ -322,10 +329,10 @@ public class VerifyBamId {
         return true;
       } else {
         byte[] msg;
-        Position p = input.getKey();
+        Position position = input.getKey();
         try {
-          msg = (samplingPrefix + p.getReferenceName() + ":" + p.getPosition() + ":"
-              + p.getReverseStrand()).getBytes("UTF-8");
+          msg = (samplingPrefix + position.getReferenceName() + ":" + position.getPosition() + ":"
+              + position.getReverseStrand()).getBytes("UTF-8");
         } catch (UnsupportedEncodingException e) {
           throw new AssertionError("UTF-8 not available - should not happen");
         }
@@ -356,7 +363,7 @@ public class VerifyBamId {
     public void processElement(ProcessContext c) throws Exception {
       ListValue lv = c.element().getInfo().get("AF");
       if (lv != null && lv.getValuesCount() > 0) {
-        Position p = Position.newBuilder()
+        Position position = Position.newBuilder()
             .setPosition(c.element().getStart())
             .setReferenceName(c.element().getReferenceName())
             .build();
@@ -364,7 +371,7 @@ public class VerifyBamId {
         af.setRefFreq(lv.getValues(0).getNumberValue());
         af.setAltBases(c.element().getAlternateBasesList());
         af.setRefBases(c.element().getReferenceBases());
-        c.output(KV.of(p, af));
+        c.output(KV.of(position, af));
       } else {
         // AF field wasn't populated in info, so we don't have frequency information
         // for this Variant.
