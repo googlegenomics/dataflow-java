@@ -29,6 +29,7 @@ import com.google.cloud.dataflow.sdk.Pipeline;
 import com.google.cloud.dataflow.sdk.options.Default;
 import com.google.cloud.dataflow.sdk.options.Description;
 import com.google.cloud.dataflow.sdk.options.PipelineOptionsFactory;
+import com.google.cloud.dataflow.sdk.options.Validation;
 import com.google.cloud.dataflow.sdk.transforms.ApproximateQuantiles;
 import com.google.cloud.dataflow.sdk.transforms.Combine;
 import com.google.cloud.dataflow.sdk.transforms.Create;
@@ -42,9 +43,8 @@ import com.google.cloud.dataflow.sdk.values.PCollection;
 import com.google.cloud.genomics.dataflow.coders.GenericJsonCoder;
 import com.google.cloud.genomics.dataflow.model.PosRgsMq;
 import com.google.cloud.genomics.dataflow.readers.ReadGroupStreamer;
-import com.google.cloud.genomics.dataflow.utils.GCSOptions;
-import com.google.cloud.genomics.dataflow.utils.GenomicsDatasetOptions;
 import com.google.cloud.genomics.dataflow.utils.GenomicsOptions;
+import com.google.cloud.genomics.dataflow.utils.ShardOptions;
 import com.google.cloud.genomics.utils.Contig;
 import com.google.cloud.genomics.utils.GenomicsFactory;
 import com.google.cloud.genomics.utils.GenomicsUtils;
@@ -75,10 +75,6 @@ import com.google.genomics.v1.Read;
  */
 public class CalculateCoverage {
 
-  private static CoverageOptions options;
-  private static Pipeline p;
-  private static OfflineAuth auth;
-
   /**
    * Options required to run this pipeline.
    *
@@ -86,7 +82,7 @@ public class CalculateCoverage {
    * reads that start before that reference, even if they overlap with the reference, will NOT be
    * counted.
    */
-  public static interface CoverageOptions extends GenomicsDatasetOptions, GCSOptions {
+  public static interface Options extends ShardOptions {
 
     @Description("A comma delimited list of the IDs of the Google Genomics ReadGroupSets this "
         + "pipeline is working with. Default (empty) indicates all ReadGroupSets in InputDatasetId."
@@ -110,9 +106,9 @@ public class CalculateCoverage {
 
     void setInputDatasetId(String inputDatasetId);
 
+    @Validation.Required
     @Description("The ID of the Google Genomics Dataset that the output AnnotationSet will be "
-        + "posted to.  If one is not specified, the InputDatasetId or the DatasetId field will be "
-        + "used (Defaults to 1000 Genomes).")
+        + "posted to.")
     @Default.String("")
     String getOutputDatasetId();
 
@@ -137,12 +133,15 @@ public class CalculateCoverage {
     void setNumQuantiles(int numQuantiles);
   }
 
+  private static Options options;
+  private static Pipeline p;
+  private static OfflineAuth auth;
+
   public static void main(String[] args) throws GeneralSecurityException, IOException {
     // Register the options so that they show up via --help
-    PipelineOptionsFactory.register(CoverageOptions.class);
-    options = PipelineOptionsFactory.fromArgs(args).withValidation().as(CoverageOptions.class);
-    // Option validation is not yet automatic, we make an explicit call here.
-    GenomicsDatasetOptions.Methods.validateOptions(options);
+    PipelineOptionsFactory.register(Options.class);
+    options = PipelineOptionsFactory.fromArgs(args).withValidation().as(Options.class);
+
     auth = GenomicsOptions.Methods.getGenomicsAuth(options);
 
     p = Pipeline.create(options);
@@ -257,7 +256,7 @@ public class CalculateCoverage {
           }
         }
         // Get options for getting references/bucket width
-        CoverageOptions pOptions = c.getPipelineOptions().as(CoverageOptions.class);
+        Options pOptions = c.getPipelineOptions().as(Options.class);
         // Calculate readEnd by shifting readStart by readLength
         long readStart = c.element().getAlignment().getPosition().getPosition();
         long readEnd = readStart + readLength;
@@ -292,7 +291,7 @@ public class CalculateCoverage {
           long dist = Math.min(bucket + pOptions.getBucketWidth(), readEnd) - readCurr;
           readCurr += dist;
           baseCount += dist;
-          Position p = new Position()
+          Position position = new Position()
               .setPosition(bucket)
               .setReferenceName(c.element().getAlignment().getPosition().getReferenceName());
           Integer mq = c.element().getAlignment().getMappingQuality();
@@ -307,9 +306,9 @@ public class CalculateCoverage {
           } else {
             mqEnum = PosRgsMq.MappingQuality.H;
           }
-          c.output(KV.of(new PosRgsMq(p, c.element().getReadGroupSetId(), mqEnum), baseCount));
+          c.output(KV.of(new PosRgsMq(position, c.element().getReadGroupSetId(), mqEnum), baseCount));
           c.output(KV.of(new PosRgsMq(
-              p, c.element().getReadGroupSetId(), PosRgsMq.MappingQuality.A), baseCount));
+              position, c.element().getReadGroupSetId(), PosRgsMq.MappingQuality.A), baseCount));
           bucket += pOptions.getBucketWidth();
         }
       }
@@ -334,7 +333,7 @@ public class CalculateCoverage {
     public void processElement(ProcessContext c) {
       KV ans = KV.of(c.element().getKey(),
           (double) c.element().getValue()
-          / (double) c.getPipelineOptions().as(CoverageOptions.class).getBucketWidth());
+          / (double) c.getPipelineOptions().as(Options.class).getBucketWidth());
       c.output(ans);
     }
   }
@@ -410,7 +409,7 @@ public class CalculateCoverage {
 
     @Override
     public void processElement(ProcessContext c) throws GeneralSecurityException, IOException {
-      CoverageOptions pOptions = c.getPipelineOptions().as(CoverageOptions.class);
+      Options pOptions = c.getPipelineOptions().as(Options.class);
       Position bucket = c.element().getKey();
       Annotation a = new Annotation()
           .setAnnotationSetId(asId)
@@ -420,13 +419,13 @@ public class CalculateCoverage {
               .setReferenceName(bucket.getReferenceName()))
           .setType("GENERIC")
           .setInfo(new HashMap<String, List<String>>());
-      for (KV<PosRgsMq.MappingQuality, List<Double>> p : c.element().getValue()) {
+      for (KV<PosRgsMq.MappingQuality, List<Double>> mappingQualityKV : c.element().getValue()) {
         List<String> output = Lists.newArrayList();
-        for (int i = 0; i < p.getValue().size(); i++) {
-          double value = Math.round(p.getValue().get(i) * 1000000.0) / 1000000.0;
+        for (int i = 0; i < mappingQualityKV.getValue().size(); i++) {
+          double value = Math.round(mappingQualityKV.getValue().get(i) * 1000000.0) / 1000000.0;
           output.add(Double.toString(value));
         }
-        a.getInfo().put(p.getKey().toString(), output);
+        a.getInfo().put(mappingQualityKV.getKey().toString(), output);
       }
       if (write) {
         currAnnotations.add(a);
@@ -464,13 +463,8 @@ public class CalculateCoverage {
     // Create a new annotation set using the given datasetId, or the one that this data was from if
     // one was not provided
     AnnotationSet as = new AnnotationSet();
-    if (options.getOutputDatasetId().isEmpty() && options.getInputDatasetId().isEmpty()) {
-      as.setDatasetId(options.getDatasetId());
-    } else if (options.getOutputDatasetId().isEmpty()) {
-      as.setDatasetId(options.getInputDatasetId());
-    } else {
-      as.setDatasetId(options.getOutputDatasetId());
-    }
+    as.setDatasetId(options.getOutputDatasetId());
+
     if (!options.isAllReferences()) {
       as.setName("Read Depth for " + options.getReferences());
     } else {

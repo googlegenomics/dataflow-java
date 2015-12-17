@@ -20,7 +20,7 @@ import java.util.logging.Logger;
 import com.google.api.services.genomics.Genomics;
 import com.google.api.services.genomics.model.SearchVariantsRequest;
 import com.google.api.services.genomics.model.Variant;
-import com.google.cloud.genomics.dataflow.utils.GenomicsDatasetOptions;
+import com.google.cloud.genomics.dataflow.utils.GenomicsOptions;
 import com.google.cloud.genomics.utils.OfflineAuth;
 import com.google.cloud.genomics.utils.Paginator;
 import com.google.cloud.genomics.utils.ShardBoundary;
@@ -52,12 +52,9 @@ public class VariantReader extends GenomicsApiReader<SearchVariantsRequest, Vari
   @Override
   protected void processApiCall(Genomics genomics, ProcessContext c, final SearchVariantsRequest request) {
     SearchVariantsRequest updatedRequest = request.clone();
-    GenomicsDatasetOptions options = c.getPipelineOptions().as(GenomicsDatasetOptions.class);
+    GenomicsOptions options = c.getPipelineOptions().as(GenomicsOptions.class);
     if (options.getPageSize() > 0) {
       updatedRequest.setPageSize(options.getPageSize());
-    }
-    if (options.getMaxCalls() > 0) {
-      updatedRequest.setMaxCalls(options.getMaxCalls());
     }
 
     LOG.info("Starting Variants read loop: " + updatedRequest);

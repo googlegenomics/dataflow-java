@@ -93,7 +93,7 @@ public class VariantSimilarityITCase {
   public void testPaginatedLocal() throws IOException, GeneralSecurityException {
     String[] ARGS = {
         "--references=" + helper.PLATINUM_GENOMES_BRCA1_REFERENCES,
-        "--datasetId=" + helper.PLATINUM_GENOMES_DATASET,
+        "--variantSetId=" + helper.PLATINUM_GENOMES_DATASET,
         "--output=" + outputPrefix,
         "--useGrpc=false"
         };
@@ -104,7 +104,7 @@ public class VariantSimilarityITCase {
   public void testPaginatedCloud() throws IOException, GeneralSecurityException {
     String[] ARGS = {
         "--references=" + helper.PLATINUM_GENOMES_BRCA1_REFERENCES,
-        "--datasetId=" + helper.PLATINUM_GENOMES_DATASET,
+        "--variantSetId=" + helper.PLATINUM_GENOMES_DATASET,
         "--output=" + outputPrefix,
         "--project=" + helper.getTestProject(),
         "--runner=BlockingDataflowPipelineRunner",
@@ -118,7 +118,7 @@ public class VariantSimilarityITCase {
   public void testStreamingLocal() throws IOException, GeneralSecurityException {
     String[] ARGS = {
         "--references=" + helper.PLATINUM_GENOMES_BRCA1_REFERENCES,
-        "--datasetId=" + helper.PLATINUM_GENOMES_DATASET,
+        "--variantSetId=" + helper.PLATINUM_GENOMES_DATASET,
         "--output=" + outputPrefix,
         "--useGrpc=true"
         };
@@ -129,7 +129,7 @@ public class VariantSimilarityITCase {
   public void testStreamingCloud() throws IOException, GeneralSecurityException {
     String[] ARGS = {
         "--references=" + helper.PLATINUM_GENOMES_BRCA1_REFERENCES,
-        "--datasetId=" + helper.PLATINUM_GENOMES_DATASET,
+        "--variantSetId=" + helper.PLATINUM_GENOMES_DATASET,
         "--output=" + outputPrefix,
         "--project=" + helper.getTestProject(),
         "--runner=BlockingDataflowPipelineRunner",

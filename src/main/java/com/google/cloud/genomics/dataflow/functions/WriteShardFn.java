@@ -15,11 +15,19 @@
  */
 package com.google.cloud.genomics.dataflow.functions;
 
-import com.google.cloud.dataflow.sdk.transforms.Aggregator;
+import htsjdk.samtools.BAMBlockWriter;
+import htsjdk.samtools.SAMFileHeader;
+import htsjdk.samtools.SAMRecord;
+import htsjdk.samtools.util.BlockCompressedStreamConstants;
+
+import java.io.IOException;
+import java.io.OutputStream;
+import java.nio.channels.Channels;
+import java.util.logging.Logger;
 
 import com.google.api.services.genomics.model.Read;
 import com.google.api.services.storage.Storage;
-
+import com.google.cloud.dataflow.sdk.transforms.Aggregator;
 import com.google.cloud.dataflow.sdk.transforms.DoFn;
 import com.google.cloud.dataflow.sdk.transforms.Sum.SumIntegerFn;
 import com.google.cloud.dataflow.sdk.util.GcsUtil;
@@ -27,32 +35,19 @@ import com.google.cloud.dataflow.sdk.util.Transport;
 import com.google.cloud.dataflow.sdk.util.gcsfs.GcsPath;
 import com.google.cloud.dataflow.sdk.values.KV;
 import com.google.cloud.dataflow.sdk.values.PCollectionView;
-
 import com.google.cloud.genomics.dataflow.pipelines.ShardedBAMWriting.HeaderInfo;
-
 import com.google.cloud.genomics.dataflow.utils.GCSOptions;
-import com.google.cloud.genomics.dataflow.utils.GenomicsDatasetOptions;
+import com.google.cloud.genomics.dataflow.utils.GCSOutputOptions;
 import com.google.cloud.genomics.dataflow.utils.TruncatedOutputStream;
-import com.google.cloud.genomics.utils.ReadUtils;
-
 import com.google.cloud.genomics.utils.Contig;
-
-import htsjdk.samtools.BAMBlockWriter;
-import htsjdk.samtools.util.BlockCompressedStreamConstants;
-import htsjdk.samtools.SAMFileHeader;
-import htsjdk.samtools.SAMRecord;
-
-import java.io.IOException;
-import java.io.OutputStream;
-import java.nio.channels.Channels;
-import java.util.logging.Logger;
+import com.google.cloud.genomics.utils.ReadUtils;
 
 /*
  * Takes a set of Reads associated with a Contig and writes them to a BAM file.
  */
 public class WriteShardFn extends DoFn<KV<Contig, Iterable<Read>>, String> {
 
-  public static interface Options extends GenomicsDatasetOptions {}
+  public static interface Options extends GCSOutputOptions {}
 
   private static final int MAX_RETRIES_FOR_WRITING_A_SHARD = 4;
   private static final String BAM_INDEX_FILE_MIME_TYPE = "application/octet-stream";

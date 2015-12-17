@@ -20,15 +20,18 @@ import java.util.LinkedList;
 import java.util.List;
 
 import com.google.api.client.util.Lists;
+import com.google.cloud.dataflow.sdk.options.Default;
+import com.google.cloud.dataflow.sdk.options.Description;
+import com.google.cloud.dataflow.sdk.options.PipelineOptions;
 import com.google.cloud.dataflow.sdk.transforms.DoFn;
 import com.google.cloud.dataflow.sdk.transforms.GroupByKey;
 import com.google.cloud.dataflow.sdk.transforms.ParDo;
 import com.google.cloud.dataflow.sdk.values.KV;
 import com.google.cloud.dataflow.sdk.values.PCollection;
-import com.google.cloud.genomics.dataflow.utils.GenomicsDatasetOptions;
 import com.google.cloud.genomics.utils.grpc.VariantUtils;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Function;
+import com.google.common.base.Preconditions;
 import com.google.common.collect.Ordering;
 import com.google.genomics.v1.Variant;
 import com.google.genomics.v1.Variant.Builder;
@@ -46,6 +49,27 @@ import com.google.genomics.v1.Variant.Builder;
  * 
  */
 public class JoinNonVariantSegmentsWithVariants {
+  
+  public static interface Options extends PipelineOptions {
+    @Description("If querying a dataset with non-variant segments (such as Complete Genomics data "
+        + "or data in Genome VCF (gVCF) format), specify this flag so that the pipeline correctly "
+        + "takes into account non-variant segment records that overlap variants within the dataset.")
+    @Default.Boolean(false)
+    boolean getHasNonVariantSegments();
+    void setHasNonVariantSegments(boolean hasNonVariantSegments);
+
+    @Description("Genomic window \"bin\" size to use for data containing non-variant segments when "
+        + "joining those non-variant segment records with variant records.")
+    @Default.Integer(1000)
+    int getBinSize();
+    void setBinSize(int binSize);
+
+    public static class Methods {
+      public static void validateOptions(Options options) {
+        Preconditions.checkArgument(0 < options.getBinSize(), "binSize must be greater than zero");
+      }
+    }
+  }
 
   /**
    * Use this transform for correct handling of data with non-variant segments in DataFlow jobs that
@@ -107,8 +131,8 @@ public class JoinNonVariantSegmentsWithVariants {
 
     @Override
     public void processElement(ProcessContext context) {
-      GenomicsDatasetOptions options =
-          context.getPipelineOptions().as(GenomicsDatasetOptions.class);
+      Options options =
+          context.getPipelineOptions().as(Options.class);
       Variant variant = context.element();
       long startBin = getStartBin(options.getBinSize(), variant);
       long endBin =

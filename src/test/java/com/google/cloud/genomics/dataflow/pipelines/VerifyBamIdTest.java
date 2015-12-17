@@ -281,8 +281,8 @@ public class VerifyBamIdTest {
   
   @Test
   public void testPileupAndJoinReads() {
-    VerifyBamId.VerifyBamIdOptions popts =
-        PipelineOptionsFactory.create().as(VerifyBamId.VerifyBamIdOptions.class);
+    VerifyBamId.Options popts =
+        PipelineOptionsFactory.create().as(VerifyBamId.Options.class);
     Pipeline p = TestPipeline.create(popts);
     p.getCoderRegistry().setFallbackCoderProvider(GenericJsonCoder.PROVIDER);
     ReadBaseQuality srq = new ReadBaseQuality("A", 10);
@@ -305,8 +305,8 @@ public class VerifyBamIdTest {
   
   @Test
   public void testCombineReads() {
-    VerifyBamId.VerifyBamIdOptions popts =
-        PipelineOptionsFactory.create().as(VerifyBamId.VerifyBamIdOptions.class);
+    VerifyBamId.Options popts =
+        PipelineOptionsFactory.create().as(VerifyBamId.Options.class);
     Pipeline p = TestPipeline.create(popts);
     p.getCoderRegistry().setFallbackCoderProvider(GenericJsonCoder.PROVIDER);
     PCollection<KV<Position, AlleleFreq>> refCounts = p.apply(Create.of(this.refCountList));

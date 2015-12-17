@@ -22,6 +22,8 @@ import java.util.List;
 import com.google.api.services.genomics.model.SearchVariantsRequest;
 import com.google.cloud.dataflow.sdk.Pipeline;
 import com.google.cloud.dataflow.sdk.io.TextIO;
+import com.google.cloud.dataflow.sdk.options.Default;
+import com.google.cloud.dataflow.sdk.options.Description;
 import com.google.cloud.dataflow.sdk.options.PipelineOptionsFactory;
 import com.google.cloud.dataflow.sdk.transforms.Create;
 import com.google.cloud.dataflow.sdk.transforms.DoFn;
@@ -33,8 +35,9 @@ import com.google.cloud.genomics.dataflow.functions.CalculateTransmissionProbabi
 import com.google.cloud.genomics.dataflow.functions.ExtractAlleleTransmissionStatus;
 import com.google.cloud.genomics.dataflow.model.Allele;
 import com.google.cloud.genomics.dataflow.readers.VariantReader;
-import com.google.cloud.genomics.dataflow.utils.GenomicsDatasetOptions;
+import com.google.cloud.genomics.dataflow.utils.GCSOutputOptions;
 import com.google.cloud.genomics.dataflow.utils.GenomicsOptions;
+import com.google.cloud.genomics.dataflow.utils.ShardOptions;
 import com.google.cloud.genomics.utils.OfflineAuth;
 import com.google.cloud.genomics.utils.ShardBoundary;
 import com.google.cloud.genomics.utils.ShardUtils;
@@ -44,22 +47,47 @@ import com.google.cloud.genomics.utils.ShardUtils;
  * See the README for running instructions.
  */
 public class TransmissionProbability {
+
+  public static interface Options extends ShardOptions, GCSOutputOptions {
+
+    @Description("The ID of the Google Genomics variant set this pipeline is accessing. "
+        + "Defaults to 1000 Genomes.")
+    @Default.String("10473108253681171589")
+    String getVariantSetId();
+
+    void setVariantSetId(String variantSetId);
+
+    @Description("Whether to use the gRPC API endpoint for variants.  Defaults to 'true';")
+    @Default.Boolean(true)
+    Boolean getUseGrpc();
+
+    void setUseGrpc(Boolean value);
+
+    public static class Methods {
+      public static void validateOptions(Options options) {
+        GCSOutputOptions.Methods.validateOptions(options);
+      }
+    }
+
+  }
+
+  // TODO https://github.com/googlegenomics/utils-java/issues/48
   private static final String VARIANT_FIELDS
       = "nextPageToken,variants(id,start,names,calls(info,callSetName))";
 
   public static void main(String[] args) throws IOException, GeneralSecurityException {
     // Register the options so that they show up via --help
-    PipelineOptionsFactory.register(GenomicsDatasetOptions.class);
-    GenomicsDatasetOptions options = PipelineOptionsFactory.fromArgs(args)
-        .withValidation().as(GenomicsDatasetOptions.class);
+    PipelineOptionsFactory.register(Options.class);
+    Options options = PipelineOptionsFactory.fromArgs(args)
+        .withValidation().as(Options.class);
     // Option validation is not yet automatic, we make an explicit call here.
-    GenomicsDatasetOptions.Methods.validateOptions(options);
+    Options.Methods.validateOptions(options);
 
     OfflineAuth auth = GenomicsOptions.Methods.getGenomicsAuth(options);
     List<SearchVariantsRequest> requests = options.isAllReferences() ?
-        ShardUtils.getPaginatedVariantRequests(options.getDatasetId(), ShardUtils.SexChromosomeFilter.EXCLUDE_XY,
+        ShardUtils.getPaginatedVariantRequests(options.getVariantSetId(), ShardUtils.SexChromosomeFilter.EXCLUDE_XY,
             options.getBasesPerShard(), auth) :
-              ShardUtils.getPaginatedVariantRequests(options.getDatasetId(), options.getReferences(), options.getBasesPerShard());
+              ShardUtils.getPaginatedVariantRequests(options.getVariantSetId(), options.getReferences(), options.getBasesPerShard());
 
     Pipeline p = Pipeline.create(options);
     p.getCoderRegistry().setFallbackCoderProvider(GenericJsonCoder.PROVIDER);

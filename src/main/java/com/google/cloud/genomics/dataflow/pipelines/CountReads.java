@@ -44,8 +44,9 @@ import com.google.cloud.genomics.dataflow.readers.bam.Reader;
 import com.google.cloud.genomics.dataflow.readers.bam.ReaderOptions;
 import com.google.cloud.genomics.dataflow.readers.bam.ShardingPolicy;
 import com.google.cloud.genomics.dataflow.utils.GCSOptions;
-import com.google.cloud.genomics.dataflow.utils.GenomicsDatasetOptions;
+import com.google.cloud.genomics.dataflow.utils.GCSOutputOptions;
 import com.google.cloud.genomics.dataflow.utils.GenomicsOptions;
+import com.google.cloud.genomics.dataflow.utils.ShardOptions;
 import com.google.cloud.genomics.utils.Contig;
 import com.google.cloud.genomics.utils.OfflineAuth;
 import com.google.cloud.genomics.utils.ShardBoundary;
@@ -60,12 +61,9 @@ import com.google.common.base.Strings;
  * for running instructions.
  */
 public class CountReads {
-  private static final Logger LOG = Logger.getLogger(CountReads.class.getName());
-  private static CountReadsOptions options;
-  private static Pipeline p;
-  private static OfflineAuth auth;
 
-  public static interface CountReadsOptions extends GenomicsDatasetOptions, GCSOptions {
+  public static interface Options extends GCSOptions, ShardOptions, GCSOutputOptions {
+    
     @Description("The ID of the Google Genomics ReadGroupSet this pipeline is working with. "
         + "Default (empty) indicates all ReadGroupSets.")
     @Default.String("")
@@ -91,20 +89,33 @@ public class CountReads {
 
     void setIncludeUnmapped(boolean newValue);
 
+    public static class Methods {
+      public static void validateOptions(Options options) {
+        GCSOutputOptions.Methods.validateOptions(options);
+      }
+    }
+
   }
 
+  private static final Logger LOG = Logger.getLogger(CountReads.class.getName());
+  private static Pipeline p;
+  private static Options pipelineOptions;
+  private static OfflineAuth auth;
+  
   public static void main(String[] args) throws GeneralSecurityException, IOException {
     // Register the options so that they show up via --help
-    PipelineOptionsFactory.register(CountReadsOptions.class);
-    options = PipelineOptionsFactory.fromArgs(args).withValidation().as(CountReadsOptions.class);
+    PipelineOptionsFactory.register(Options.class);
+    pipelineOptions = PipelineOptionsFactory.fromArgs(args)
+        .withValidation().as(Options.class);
     // Option validation is not yet automatic, we make an explicit call here.
-    GenomicsDatasetOptions.Methods.validateOptions(options);
-    auth = GenomicsOptions.Methods.getGenomicsAuth(options);
-    p = Pipeline.create(options);
+    Options.Methods.validateOptions(pipelineOptions);
+
+    auth = GenomicsOptions.Methods.getGenomicsAuth(pipelineOptions);
+    p = Pipeline.create(pipelineOptions);
     p.getCoderRegistry().setFallbackCoderProvider(GenericJsonCoder.PROVIDER);
 
     // ensure data is accessible
-    String BAMFilePath = options.getBAMFilePath();
+    String BAMFilePath = pipelineOptions.getBAMFilePath();
     if (!Strings.isNullOrEmpty(BAMFilePath)) {
       if (GCSURLExists(BAMFilePath)) {
         System.out.println(BAMFilePath + " is present, good.");
@@ -112,7 +123,7 @@ public class CountReads {
         System.out.println("Error: " + BAMFilePath + " not found.");
         return;
       }
-      if (options.isShardBAMReading()) {
+      if (pipelineOptions.isShardBAMReading()) {
         // the BAM code expects an index at BAMFilePath+".bai"
         // and sharded reading will fail if the index isn't there.
         String BAMIndexPath = BAMFilePath + ".bai";
@@ -124,7 +135,7 @@ public class CountReads {
         }
       }
     }
-    System.out.println("Output will be written to "+options.getOutput());
+    System.out.println("Output will be written to "+pipelineOptions.getOutput());
 
     PCollection<Read> reads = getReads();
     PCollection<Long> readCount = reads.apply(Count.<Read>globally());
@@ -134,7 +145,7 @@ public class CountReads {
         c.output(String.valueOf(c.element()));
       }
     }).named("toString"));
-    readCountText.apply(TextIO.Write.to(options.getOutput()).named("WriteOutput").withoutSharding());
+    readCountText.apply(TextIO.Write.to(pipelineOptions.getOutput()).named("WriteOutput").withoutSharding());
 
     p.run();
   }
@@ -144,7 +155,7 @@ public class CountReads {
     try {
       // if we can read the size, then surely we can read the file
       GcsPath fn = GcsPath.fromUri(url);
-      Storage.Objects storageClient = GCSOptions.Methods.createStorageClient(options, auth);
+      Storage.Objects storageClient = GCSOptions.Methods.createStorageClient(pipelineOptions, auth);
       Storage.Objects.Get getter = storageClient.get(fn.getBucket(), fn.getObject());
       StorageObject object = getter.execute();
       BigInteger size = object.getSize();
@@ -155,10 +166,10 @@ public class CountReads {
   }
 
   private static PCollection<Read> getReads() throws IOException {
-    if (!options.getBAMFilePath().isEmpty()) {
+    if (!pipelineOptions.getBAMFilePath().isEmpty()) {
       return getReadsFromBAMFile();
     }
-    if (!options.getReadGroupSetId().isEmpty()) {
+    if (!pipelineOptions.getReadGroupSetId().isEmpty()) {
       return getReadsFromAPI();
     }
     throw new IOException("Either BAM file or ReadGroupSet must be specified");
@@ -166,8 +177,8 @@ public class CountReads {
 
   private static PCollection<Read> getReadsFromAPI() {
     List<SearchReadsRequest> requests =
-        ShardUtils.getPaginatedReadRequests(Collections.singletonList(options.getReadGroupSetId()),
-        options.getReferences(), options.getBasesPerShard());
+        ShardUtils.getPaginatedReadRequests(Collections.singletonList(pipelineOptions.getReadGroupSetId()),
+        pipelineOptions.getReferences(), pipelineOptions.getBasesPerShard());
     PCollection<SearchReadsRequest> readRequests = p.begin()
         .apply(Create.of(requests));
     PCollection<Read> reads =
@@ -181,25 +192,25 @@ public class CountReads {
   private static PCollection<Read> getReadsFromBAMFile() throws IOException {
     LOG.info("getReadsFromBAMFile");
 
-    final Iterable<Contig> contigs = Contig.parseContigsFromCommandLine(options.getReferences());
+    final Iterable<Contig> contigs = Contig.parseContigsFromCommandLine(pipelineOptions.getReferences());
     final ReaderOptions readerOptions = new ReaderOptions(
         ValidationStringency.LENIENT,
-        options.isIncludeUnmapped());
-    if (options.isShardBAMReading()) {
-      LOG.info("Sharded reading of "+ options.getBAMFilePath());
+        pipelineOptions.isIncludeUnmapped());
+    if (pipelineOptions.isShardBAMReading()) {
+      LOG.info("Sharded reading of "+ pipelineOptions.getBAMFilePath());
       return ReadBAMTransform.getReadsFromBAMFilesSharded(p,
           auth,
           contigs,
           readerOptions,
-          options.getBAMFilePath(),
+          pipelineOptions.getBAMFilePath(),
           ShardingPolicy.BYTE_SIZE_POLICY);
     } else {  // For testing and comparing sharded vs. not sharded only
-      LOG.info("Unsharded reading of " + options.getBAMFilePath());
+      LOG.info("Unsharded reading of " + pipelineOptions.getBAMFilePath());
       return p.apply(
           Create.of(
               Reader.readSequentiallyForTesting(
-                  GCSOptions.Methods.createStorageClient(options, auth),
-                  options.getBAMFilePath(),
+                  GCSOptions.Methods.createStorageClient(pipelineOptions, auth),
+                  pipelineOptions.getBAMFilePath(),
                   contigs.iterator().next(),
                   readerOptions)));
     }

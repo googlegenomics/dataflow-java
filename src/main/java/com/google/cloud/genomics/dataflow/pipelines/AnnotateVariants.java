@@ -36,6 +36,8 @@ import com.google.api.services.genomics.model.Variant;
 import com.google.api.services.genomics.model.VariantAnnotation;
 import com.google.cloud.dataflow.sdk.Pipeline;
 import com.google.cloud.dataflow.sdk.io.TextIO;
+import com.google.cloud.dataflow.sdk.options.Default;
+import com.google.cloud.dataflow.sdk.options.Description;
 import com.google.cloud.dataflow.sdk.options.PipelineOptionsFactory;
 import com.google.cloud.dataflow.sdk.transforms.Create;
 import com.google.cloud.dataflow.sdk.transforms.DoFn;
@@ -45,8 +47,9 @@ import com.google.cloud.dataflow.sdk.values.KV;
 import com.google.cloud.genomics.dataflow.coders.GenericJsonCoder;
 import com.google.cloud.genomics.dataflow.utils.AnnotationUtils;
 import com.google.cloud.genomics.dataflow.utils.AnnotationUtils.VariantEffect;
-import com.google.cloud.genomics.dataflow.utils.GenomicsDatasetOptions;
+import com.google.cloud.genomics.dataflow.utils.GCSOutputOptions;
 import com.google.cloud.genomics.dataflow.utils.GenomicsOptions;
+import com.google.cloud.genomics.dataflow.utils.ShardOptions;
 import com.google.cloud.genomics.utils.GenomicsFactory;
 import com.google.cloud.genomics.utils.OfflineAuth;
 import com.google.cloud.genomics.utils.Paginator;
@@ -83,6 +86,42 @@ import com.google.common.collect.Range;
  * for running instructions.
  */
 public final class AnnotateVariants extends DoFn<SearchVariantsRequest, KV<String, VariantAnnotation>> {
+  
+  public static interface Options extends ShardOptions, GCSOutputOptions {
+
+    @Description("The ID of the Google Genomics variant set this pipeline is accessing. "
+        + "Defaults to 1000 Genomes.")
+    @Default.String("10473108253681171589")
+    String getVariantSetId();
+
+    void setVariantSetId(String variantSetId);
+
+    @Description("The IDs of the Google Genomics call sets this pipeline is working with, comma "
+        + "delimited.Defaults to 1000 Genomes HG00261.")
+    @Default.String("10473108253681171589-0")
+    String getCallSetIds();
+    void setCallSetIds(String callSetIds);
+
+    @Description("The IDs of the Google Genomics transcript sets this pipeline is working with, "
+        + "comma delimited. Defaults to UCSC refGene (hg19).")
+    @Default.String("CIjfoPXj9LqPlAEQ5vnql4KewYuSAQ")
+    String getTranscriptSetIds();
+    void setTranscriptSetIds(String transcriptSetIds);
+
+    @Description("The IDs of the Google Genomics variant annotation sets this pipeline is working "
+        + "with, comma delimited. Defaults to ClinVar (GRCh37).")
+    @Default.String("CILSqfjtlY6tHxC0nNH-4cu-xlQ")
+    String getVariantAnnotationSetIds();
+    void setVariantAnnotationSetIds(String variantAnnotationSetIds);
+
+    public static class Methods {
+      public static void validateOptions(Options options) {
+        GCSOutputOptions.Methods.validateOptions(options);
+      }
+    }
+
+  }
+
   private static final Logger LOG = Logger.getLogger(AnnotateVariants.class.getName());
   private static final int VARIANTS_PAGE_SIZE = 5000;
   private static final String VARIANT_FIELDS
@@ -253,31 +292,31 @@ public final class AnnotateVariants extends DoFn<SearchVariantsRequest, KV<Strin
 
   public static void main(String[] args) throws Exception {
     // Register the options so that they show up via --help
-    PipelineOptionsFactory.register(GenomicsDatasetOptions.class);
-    GenomicsDatasetOptions opts = PipelineOptionsFactory.fromArgs(args)
-        .withValidation().as(GenomicsDatasetOptions.class);
+    PipelineOptionsFactory.register(Options.class);
+    Options options = PipelineOptionsFactory.fromArgs(args)
+        .withValidation().as(Options.class);
     // Option validation is not yet automatic, we make an explicit call here.
-    GenomicsDatasetOptions.Methods.validateOptions(opts);
-
-    OfflineAuth auth = GenomicsOptions.Methods.getGenomicsAuth(opts);
+    Options.Methods.validateOptions(options);
+    
+    OfflineAuth auth = GenomicsOptions.Methods.getGenomicsAuth(options);
     Genomics genomics = GenomicsFactory.builder().build().fromOfflineAuth(auth);
 
     List<String> callSetIds = ImmutableList.of();
-    if (!Strings.isNullOrEmpty(opts.getCallSetIds().trim())) {
-      callSetIds = ImmutableList.copyOf(opts.getCallSetIds().split(","));
+    if (!Strings.isNullOrEmpty(options.getCallSetIds().trim())) {
+      callSetIds = ImmutableList.copyOf(options.getCallSetIds().split(","));
     }
     List<String> transcriptSetIds =
-        validateAnnotationSetsFlag(genomics, opts.getTranscriptSetIds(), "TRANSCRIPT");
+        validateAnnotationSetsFlag(genomics, options.getTranscriptSetIds(), "TRANSCRIPT");
     List<String> variantAnnotationSetIds =
-        validateAnnotationSetsFlag(genomics, opts.getVariantAnnotationSetIds(), "VARIANT");
+        validateAnnotationSetsFlag(genomics, options.getVariantAnnotationSetIds(), "VARIANT");
     validateRefsetForAnnotationSets(genomics, transcriptSetIds);
 
-    List<SearchVariantsRequest> requests = opts.isAllReferences() ?
-        ShardUtils.getPaginatedVariantRequests(opts.getDatasetId(), ShardUtils.SexChromosomeFilter.EXCLUDE_XY,
-            opts.getBasesPerShard(), auth) :
-              ShardUtils.getPaginatedVariantRequests(opts.getDatasetId(), opts.getReferences(), opts.getBasesPerShard());
+    List<SearchVariantsRequest> requests = options.isAllReferences() ?
+        ShardUtils.getPaginatedVariantRequests(options.getVariantSetId(), ShardUtils.SexChromosomeFilter.EXCLUDE_XY,
+            options.getBasesPerShard(), auth) :
+              ShardUtils.getPaginatedVariantRequests(options.getVariantSetId(), options.getReferences(), options.getBasesPerShard());
 
-    Pipeline p = Pipeline.create(opts);
+    Pipeline p = Pipeline.create(options);
     p.getCoderRegistry().setFallbackCoderProvider(GenericJsonCoder.PROVIDER);
 
     p.begin()
@@ -290,7 +329,7 @@ public final class AnnotateVariants extends DoFn<SearchVariantsRequest, KV<Strin
           c.output(c.element().getKey() + ": " + c.element().getValue());
         }
       }))
-      .apply(TextIO.Write.to(opts.getOutput()));
+      .apply(TextIO.Write.to(options.getOutput()));
     p.run();
   }
 
