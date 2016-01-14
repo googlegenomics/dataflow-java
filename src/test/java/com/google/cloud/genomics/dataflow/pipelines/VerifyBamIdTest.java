@@ -15,16 +15,11 @@
  */
 package com.google.cloud.genomics.dataflow.pipelines;
 
-import static org.junit.Assert.assertEquals;
-
-import java.util.Map;
-
 import org.hamcrest.CoreMatchers;
 import org.junit.Assert;
 import org.junit.Ignore;
 import org.junit.Test;
 
-import com.beust.jcommander.internal.Lists;
 import com.google.cloud.dataflow.sdk.Pipeline;
 import com.google.cloud.dataflow.sdk.options.PipelineOptionsFactory;
 import com.google.cloud.dataflow.sdk.testing.DataflowAssert;
@@ -32,7 +27,6 @@ import com.google.cloud.dataflow.sdk.testing.TestPipeline;
 import com.google.cloud.dataflow.sdk.transforms.Create;
 import com.google.cloud.dataflow.sdk.transforms.DoFnTester;
 import com.google.cloud.dataflow.sdk.transforms.ParDo;
-import com.google.cloud.dataflow.sdk.transforms.SerializableFunction;
 import com.google.cloud.dataflow.sdk.transforms.join.CoGbkResult;
 import com.google.cloud.dataflow.sdk.transforms.join.CoGroupByKey;
 import com.google.cloud.dataflow.sdk.transforms.join.KeyedPCollectionTuple;
@@ -50,6 +44,7 @@ import com.google.cloud.genomics.dataflow.pipelines.VerifyBamId.PileupAndJoinRea
 import com.google.cloud.genomics.dataflow.pipelines.VerifyBamId.SampleReads;
 import com.google.cloud.genomics.dataflow.pipelines.VerifyBamId.SplitReads;
 import com.google.common.collect.ImmutableList;
+import com.google.common.collect.Lists;
 import com.google.genomics.v1.CigarUnit;
 import com.google.genomics.v1.CigarUnit.Operation;
 import com.google.genomics.v1.LinearAlignment;
