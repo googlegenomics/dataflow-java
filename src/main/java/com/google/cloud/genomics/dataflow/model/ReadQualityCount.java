@@ -60,4 +60,12 @@ public class ReadQualityCount {
   public void setCount(long count) {
     this.count = count;
   }
+
+  /* (non-Javadoc)
+   * @see java.lang.Object#toString()
+   */
+  @Override
+  public String toString() {
+    return "ReadQualityCount [base=" + base + ", quality=" + quality + ", count=" + count + "]";
+  }
 }

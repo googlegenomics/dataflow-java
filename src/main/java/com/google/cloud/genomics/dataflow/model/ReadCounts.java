@@ -66,4 +66,12 @@ public class ReadCounts extends GenericJson {
   public void setRefFreq(double refFreq) {
     this.refFreq = refFreq;
   }
+
+  /* (non-Javadoc)
+   * @see java.lang.Object#toString()
+   */
+  @Override
+  public String toString() {
+    return "ReadCounts [readQualityCounts=" + readQualityCounts + ", refFreq=" + refFreq + "]";
+  }
 }
