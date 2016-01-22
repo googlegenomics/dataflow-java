@@ -17,9 +17,11 @@ package com.google.cloud.genomics.dataflow.readers.bam;
 
 import com.google.api.services.storage.Storage;
 
+import htsjdk.samtools.DefaultSAMRecordFactory;
 import htsjdk.samtools.SamInputResource;
 import htsjdk.samtools.SamReader;
 import htsjdk.samtools.SamReaderFactory;
+import htsjdk.samtools.SeekingBAMFileReader;
 import htsjdk.samtools.ValidationStringency;
 import htsjdk.samtools.seekablestream.SeekableStream;
 
@@ -33,6 +35,7 @@ import java.util.logging.Logger;
  * a stream for an index file.
  */
 public class BAMIO {
+  public static final String BAM_INDEX_FILE_MIME_TYPE = "application/octet-stream";
   public static class ReaderAndIndex {
     public SamReader reader;
     public SeekableStream index;
@@ -43,14 +46,20 @@ public class BAMIO {
     ReaderAndIndex result = new ReaderAndIndex();
     result.index = openIndexForPath(storageClient, gcsStoragePath);
     result.reader = openBAMReader(
-        openBAMFile(storageClient, gcsStoragePath,result.index), stringency, false);
+        openBAMFile(storageClient, gcsStoragePath,result.index), stringency, false, 0);
     return result;
   }
   
   public static SamReader openBAM(Storage.Objects storageClient, String gcsStoragePath, 
       ValidationStringency stringency, boolean includeFileSource) throws IOException {
     return openBAMReader(openBAMFile(storageClient, gcsStoragePath,
-        openIndexForPath(storageClient, gcsStoragePath)), stringency, includeFileSource);
+        openIndexForPath(storageClient, gcsStoragePath)), stringency, includeFileSource, 0);
+  }
+  
+  public static SamReader openBAM(Storage.Objects storageClient, String gcsStoragePath, 
+      ValidationStringency stringency, boolean includeFileSource, long offset) throws IOException {
+    return openBAMReader(openBAMFile(storageClient, gcsStoragePath,
+        null), stringency, includeFileSource, offset);
   }
   
   public static SamReader openBAM(Storage.Objects storageClient, String gcsStoragePath, ValidationStringency stringency) throws IOException {
@@ -69,8 +78,10 @@ public class BAMIO {
   }
   
   private static SamInputResource openBAMFile(Storage.Objects storageClient, String gcsStoragePath, SeekableStream index) throws IOException {
+    SeekableGCSStream s = new SeekableGCSStream(storageClient, gcsStoragePath);
     SamInputResource samInputResource =
-        SamInputResource.of(new SeekableGCSStream(storageClient, gcsStoragePath));
+        SamInputResource.of(s);
+    
     if (index != null) {
       samInputResource.index(index);
     }
@@ -79,7 +90,19 @@ public class BAMIO {
     return samInputResource;
   }
   
-  private static SamReader openBAMReader(SamInputResource resource, ValidationStringency stringency, boolean includeFileSource) {
+  public static class SeekingReaderAdapter extends SamReader.PrimitiveSamReaderToSamReaderAdapter {
+     SeekingBAMFileReader underlyingReader;
+     public SeekingReaderAdapter(SeekingBAMFileReader reader, SamInputResource resource){
+         super(reader, resource);
+         underlyingReader = reader;
+     }
+     
+     public SeekingBAMFileReader underlyingSeekingReader() {
+       return underlyingReader;
+     }
+  }
+  
+  private static SamReader openBAMReader(SamInputResource resource, ValidationStringency stringency, boolean includeFileSource, long offset) throws IOException {
     SamReaderFactory samReaderFactory = SamReaderFactory
         .makeDefault()
         .validationStringency(stringency)
@@ -87,7 +110,18 @@ public class BAMIO {
     if (includeFileSource) {
       samReaderFactory.enable(SamReaderFactory.Option.INCLUDE_SOURCE_IN_RECORDS);
     }
-    final SamReader samReader = samReaderFactory.open(resource);
-    return samReader;
+    if (offset == 0) {
+      return samReaderFactory.open(resource);
+    }
+    LOG.info("Initializing seeking reader with the offset of " + offset);
+    SeekingBAMFileReader primitiveReader = new SeekingBAMFileReader(resource,
+        false,
+        stringency,
+        DefaultSAMRecordFactory.getInstance(),
+        offset);
+    final SeekingReaderAdapter reader =
+        new SeekingReaderAdapter(primitiveReader, resource);
+    samReaderFactory.reapplyOptions(reader);
+    return reader;
   }
 }

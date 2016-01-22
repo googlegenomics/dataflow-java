@@ -13,17 +13,6 @@
  */
 package com.google.cloud.genomics.dataflow.pipelines;
 
-import htsjdk.samtools.ValidationStringency;
-
-import java.io.IOException;
-import java.math.BigInteger;
-import java.security.GeneralSecurityException;
-import java.util.Collections;
-import java.util.List;
-import java.util.logging.Logger;
-
-import com.google.api.services.genomics.model.Read;
-import com.google.api.services.genomics.model.SearchReadsRequest;
 import com.google.api.services.storage.Storage;
 import com.google.api.services.storage.model.StorageObject;
 import com.google.cloud.dataflow.sdk.Pipeline;
@@ -38,7 +27,7 @@ import com.google.cloud.dataflow.sdk.transforms.ParDo;
 import com.google.cloud.dataflow.sdk.util.gcsfs.GcsPath;
 import com.google.cloud.dataflow.sdk.values.PCollection;
 import com.google.cloud.genomics.dataflow.coders.GenericJsonCoder;
-import com.google.cloud.genomics.dataflow.readers.ReadReader;
+import com.google.cloud.genomics.dataflow.readers.ReadGroupStreamer;
 import com.google.cloud.genomics.dataflow.readers.bam.ReadBAMTransform;
 import com.google.cloud.genomics.dataflow.readers.bam.Reader;
 import com.google.cloud.genomics.dataflow.readers.bam.ReaderOptions;
@@ -50,8 +39,17 @@ import com.google.cloud.genomics.dataflow.utils.ShardOptions;
 import com.google.cloud.genomics.utils.Contig;
 import com.google.cloud.genomics.utils.OfflineAuth;
 import com.google.cloud.genomics.utils.ShardBoundary;
-import com.google.cloud.genomics.utils.ShardUtils;
+import com.google.cloud.genomics.utils.ShardUtils.SexChromosomeFilter;
 import com.google.common.base.Strings;
+import com.google.genomics.v1.Read;
+
+import htsjdk.samtools.ValidationStringency;
+
+import java.io.IOException;
+import java.math.BigInteger;
+import java.security.GeneralSecurityException;
+import java.util.Collections;
+import java.util.logging.Logger;
 
 /**
  * Simple read counting pipeline, intended as an example for reading data from
@@ -176,16 +174,9 @@ public class CountReads {
   }
 
   private static PCollection<Read> getReadsFromAPI() {
-    List<SearchReadsRequest> requests =
-        ShardUtils.getPaginatedReadRequests(Collections.singletonList(pipelineOptions.getReadGroupSetId()),
-        pipelineOptions.getReferences(), pipelineOptions.getBasesPerShard());
-    PCollection<SearchReadsRequest> readRequests = p.begin()
-        .apply(Create.of(requests));
-    PCollection<Read> reads =
-        readRequests.apply(
-            ParDo.of(
-                new ReadReader(auth, ShardBoundary.Requirement.STRICT))
-                .named(ReadReader.class.getSimpleName()));
+    final PCollection<Read> reads = p.begin()
+        .apply(Create.of(Collections.singletonList(pipelineOptions.getReadGroupSetId())))
+        .apply(new ReadGroupStreamer(auth, ShardBoundary.Requirement.STRICT, null, SexChromosomeFilter.INCLUDE_XY));
     return reads;
   }
 

@@ -166,7 +166,7 @@ public class SeekableGCSStream extends SeekableStream {
     if (LOG.isLoggable(Level.FINEST)) {
       LOG.finest("Read at offset " + offset + " length " + len);
     }
-    if (len == 0 || offset >= len) {
+    if (len == 0 || offset >= buf.length) {
       return 0;
     }
 
