@@ -17,8 +17,10 @@ import java.util.Collections;
 import java.util.List;
 
 import com.google.cloud.dataflow.sdk.transforms.DoFn;
+import com.google.cloud.dataflow.sdk.transforms.GroupByKey;
 import com.google.cloud.dataflow.sdk.transforms.PTransform;
 import com.google.cloud.dataflow.sdk.transforms.ParDo;
+import com.google.cloud.dataflow.sdk.values.KV;
 import com.google.cloud.dataflow.sdk.values.PCollection;
 import com.google.cloud.genomics.dataflow.utils.ShardOptions;
 import com.google.cloud.genomics.utils.OfflineAuth;
@@ -61,13 +63,17 @@ public class ReadGroupStreamer extends PTransform<PCollection<String>, PCollecti
   @Override
   public PCollection<Read> apply(PCollection<String> readGroupSetIds) {
     return readGroupSetIds.apply(ParDo.of(new CreateReadRequests()))
+        // Force a shuffle operation here to break the fusion of these steps.
+        // By breaking fusion, the work will be distributed to all available workers.
+        .apply(GroupByKey.<Integer, StreamReadsRequest>create())
+        .apply(ParDo.of(new ConvergeStreamReadsRequestList()))
         .apply(new ReadStreamer(auth, ShardBoundary.Requirement.STRICT, null));
   }
 
-  private class CreateReadRequests extends DoFn<String, StreamReadsRequest> {
+  private class CreateReadRequests extends DoFn<String, KV<Integer, StreamReadsRequest>> {
 
     @Override
-    public void processElement(DoFn<String, StreamReadsRequest>.ProcessContext c)
+    public void processElement(DoFn<String, KV<Integer, StreamReadsRequest>>.ProcessContext c)
         throws Exception {
       ShardOptions options = c.getPipelineOptions().as(ShardOptions.class);
       String readGroupSetId = c.element();
@@ -80,9 +86,18 @@ public class ReadGroupStreamer extends PTransform<PCollection<String>, PCollecti
             ShardUtils.getReadRequests(Collections.singletonList(readGroupSetId), options.getReferences(), options.getBasesPerShard());
       }
       for(StreamReadsRequest request : requests) {
-        c.output(request);
+        c.output(KV.of(request.hashCode(), request));
       }
     }
-  }  
+  }
+  
+  private class ConvergeStreamReadsRequestList extends DoFn<KV<Integer, Iterable<StreamReadsRequest>>, StreamReadsRequest> {
+    @Override
+    public void processElement(ProcessContext c) {
+      for (StreamReadsRequest r : c.element().getValue()) {
+        c.output(r);
+      }
+    }
+  }
 }
 
