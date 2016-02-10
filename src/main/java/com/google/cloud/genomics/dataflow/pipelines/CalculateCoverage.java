@@ -132,7 +132,9 @@ public class CalculateCoverage {
 
     void setNumQuantiles(int numQuantiles);
 
-    @Description("The annotation set name")
+    @Description("This provides the name for the AnnotationSet. Default (empty) will set the "
+        + "name to the input References. For more information on AnnotationSets, please visit: "
+        + "https://cloud.google.com/genomics/v1beta2/reference/annotationSets#resource")
     @Default.String("")
     String getAnnotationSetName();
 
