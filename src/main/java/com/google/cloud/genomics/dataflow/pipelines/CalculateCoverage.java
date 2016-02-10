@@ -131,6 +131,14 @@ public class CalculateCoverage {
     int getNumQuantiles();
 
     void setNumQuantiles(int numQuantiles);
+
+    @Description("This provides the name for the AnnotationSet. Default (empty) will set the "
+        + "name to the input References. For more information on AnnotationSets, please visit: "
+        + "https://cloud.google.com/genomics/v1beta2/reference/annotationSets#resource")
+    @Default.String("")
+    String getAnnotationSetName();
+
+    void setAnnotationSetName(String name);
   }
 
   private static Options options;
@@ -429,7 +437,7 @@ public class CalculateCoverage {
       }
       if (write) {
         currAnnotations.add(a);
-        if (currAnnotations.size() == 4096) {
+        if (currAnnotations.size() == 512) {
           // Batch create annotations once we hit the max amount for a batch
           batchCreateAnnotations();
         }
@@ -465,10 +473,14 @@ public class CalculateCoverage {
     AnnotationSet as = new AnnotationSet();
     as.setDatasetId(options.getOutputDatasetId());
 
-    if (!options.isAllReferences()) {
-      as.setName("Read Depth for " + options.getReferences());
+    if (!"".equals(options.getAnnotationSetName())) {
+      as.setName(options.getAnnotationSetName());
     } else {
-      as.setName("Read Depth for all references");
+      if (!options.isAllReferences()) {
+        as.setName("Read Depth for " + options.getReferences());
+      } else {
+        as.setName("Read Depth for all references");
+      }
     }
     as.setReferenceSetId(referenceSetId);
     as.setType("GENERIC");
