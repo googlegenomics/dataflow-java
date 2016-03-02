@@ -22,11 +22,13 @@ import java.io.OutputStream;
 /**
  * FilterOutputStream that writes all but the last bytesToTruncate bytes to
  * the underlying OutputStream.
+ * Can also return total bytes written (not counting truncated).
  */
 public class TruncatedOutputStream extends FilterOutputStream {
   private byte[] buf;
   private int count;
   private int bytesToTruncate;
+  private long bytesWritten;
   OutputStream os;
   
   public TruncatedOutputStream(OutputStream os, int bytesToTruncate) {
@@ -35,6 +37,7 @@ public class TruncatedOutputStream extends FilterOutputStream {
     this.buf = new byte[ Math.max(1024, bytesToTruncate) ];
     this.count = 0;
     this.bytesToTruncate = bytesToTruncate;
+    this.bytesWritten = 0;
   }
   
   @Override
@@ -43,6 +46,7 @@ public class TruncatedOutputStream extends FilterOutputStream {
       flushBuffer();
     }
     buf[count++] = (byte)b;
+    bytesWritten++;
   }
   
   @Override
@@ -76,6 +80,7 @@ public class TruncatedOutputStream extends FilterOutputStream {
       System.arraycopy(data, offset, buf, keepInBuffer, length);
       count = bytesToTruncate;
     }
+    bytesWritten+=length;
   }
   
   @Override
@@ -97,5 +102,9 @@ public class TruncatedOutputStream extends FilterOutputStream {
       System.arraycopy(buf, bytesWeCanSafelyWrite, buf, 0, bytesToTruncate);
       count = bytesToTruncate;
     }
+  }
+  
+  public long getBytesWrittenExceptingTruncation() {
+    return bytesWritten - bytesToTruncate;
   }
 }

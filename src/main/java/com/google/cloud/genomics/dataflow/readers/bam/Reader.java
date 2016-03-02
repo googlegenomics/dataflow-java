@@ -15,18 +15,17 @@
  */
 package com.google.cloud.genomics.dataflow.readers.bam;
 
-import com.google.api.services.genomics.model.Read;
 import com.google.api.services.storage.Storage;
 import com.google.api.services.storage.Storage.Objects;
 import com.google.cloud.dataflow.sdk.transforms.DoFn;
 import com.google.cloud.genomics.utils.Contig;
-import com.google.cloud.genomics.utils.ReadUtils;
+import com.google.cloud.genomics.utils.grpc.ReadUtils;
 import com.google.common.base.Stopwatch;
+import com.google.genomics.v1.Read;
 
 import htsjdk.samtools.SAMRecord;
 import htsjdk.samtools.SAMRecordIterator;
 import htsjdk.samtools.SamReader;
-import htsjdk.samtools.ValidationStringency;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -174,7 +173,7 @@ public class Reader {
       recordsAfterEnd++;
       return;
     }
-    c.output(ReadUtils.makeRead(record));
+    c.output(ReadUtils.makeReadGrpc(record));
     readsGenerated++;
   }
   
@@ -227,7 +226,7 @@ public class Reader {
         recordsAfterEnd++;
         continue;
       }
-      reads.add(ReadUtils.makeRead(record));
+      reads.add(ReadUtils.makeReadGrpc(record));
       recordsProcessed++;
     }
     timer.stop();
