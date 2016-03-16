@@ -8,7 +8,7 @@
   <groupId>com.google.cloud.genomics</groupId>
   <artifactId>google-genomics-dataflow</artifactId>
   <packaging>jar</packaging>
-  <version>v1beta2-0.21-SNAPSHOT</version>
+  <version>v1beta2-0.22-SNAPSHOT</version>
 
   <organization>
     <name>Google</name>
@@ -127,7 +127,7 @@
     <dependency>
       <groupId>com.google.cloud.genomics</groupId>
       <artifactId>google-genomics-utils</artifactId>
-      <version>v1beta2-0.42</version>
+      <version>v1beta2-0.43</version>
       <exclusions>
         <!-- Exclude an old version of guava which is being pulled
              in by a transitive dependency google-api-client 1.19.0 -->
@@ -248,7 +248,7 @@
           <jdk>[1.8, 1.9)</jdk>
         </activation>
       <properties>
-        <alpn.jar>${basedir}/lib/alpn-boot-8.1.3.v20150130.jar</alpn.jar>
+        <alpn.jar>${basedir}/lib/alpn-boot-8.1.7.v20160121.jar</alpn.jar>
       </properties>
     </profile>
   </profiles>
