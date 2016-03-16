@@ -44,7 +44,7 @@ import com.google.cloud.dataflow.sdk.util.gcsfs.GcsPath;
  *      mvn install -DskipITs
  *
  * To run one test:
- *      mvn -Dit.test=IdentityByStateITCase#testPaginatedLocal verify
+ *      mvn -Dit.test=IdentityByStateITCase#testStreamingLocal verify
  *
  * See also http://maven.apache.org/surefire/maven-failsafe-plugin/examples/single-test.html
  */
@@ -206,40 +206,12 @@ public class IdentityByStateITCase {
   }
 
   @Test
-  public void testPaginatedLocal() throws Exception {
-    String[] ARGS = {
-        "--references=" + helper.PLATINUM_GENOMES_BRCA1_REFERENCES,
-        "--variantSetId=" + helper.PLATINUM_GENOMES_DATASET,
-        "--hasNonVariantSegments",
-        "--output=" + outputPrefix,
-        "--useGrpc=false"
-        };
-    testBase(ARGS);
-  }
-
-  @Test
-  public void testPaginatedCloud() throws Exception {
-    String[] ARGS = {
-        "--references=" + helper.PLATINUM_GENOMES_BRCA1_REFERENCES,
-        "--variantSetId=" + helper.PLATINUM_GENOMES_DATASET,
-        "--hasNonVariantSegments",
-        "--output=" + outputPrefix,
-        "--project=" + helper.getTestProject(),
-        "--runner=BlockingDataflowPipelineRunner",
-        "--stagingLocation=" + helper.getTestStagingGcsFolder(),
-        "--useGrpc=false"
-        };
-    testBase(ARGS);
-  }
-
-  @Test
   public void testStreamingLocal() throws Exception {
     String[] ARGS = {
         "--references=" + helper.PLATINUM_GENOMES_BRCA1_REFERENCES,
         "--variantSetId=" + helper.PLATINUM_GENOMES_DATASET,
         "--hasNonVariantSegments",
-        "--output=" + outputPrefix,
-        "--useGrpc=true"
+        "--output=" + outputPrefix
         };
     testBase(ARGS);
   }
@@ -253,8 +225,7 @@ public class IdentityByStateITCase {
         "--output=" + outputPrefix,
         "--project=" + helper.getTestProject(),
         "--runner=BlockingDataflowPipelineRunner",
-        "--stagingLocation=" + helper.getTestStagingGcsFolder(),
-        "--useGrpc=true"
+        "--stagingLocation=" + helper.getTestStagingGcsFolder()
         };
     testBase(ARGS);
   }
