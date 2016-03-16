@@ -40,15 +40,15 @@ import com.google.cloud.genomics.dataflow.functions.PCoAnalysis.GraphResult;
  * - a Google Cloud project name in TEST_PROJECT,
  * - a Cloud Storage folder path in TEST_OUTPUT_GCS_FOLDER to store temporary test outputs,
  * - a Cloud Storage folder path in TEST_STAGING_GCS_FOLDER to store temporary files,
- * 
+ *
  * Cloud Storage folder paths should be of the form "gs://bucket/folder/"
  *
  * When doing e.g. mvn install, you can skip integration tests using:
  *      mvn install -DskipITs
  *
  * To run one test:
- *      mvn -Dit.test=VariantSimilarityITCase#testLocal verify
- *      
+ *      mvn -Dit.test=VariantSimilarityITCase#testStreamingLocal verify
+ *
  * See also http://maven.apache.org/surefire/maven-failsafe-plugin/examples/single-test.html
  */
 public class VariantSimilarityITCase {
@@ -72,10 +72,10 @@ public class VariantSimilarityITCase {
       new GraphResult("NA12892", -7.64, 2.1),
       new GraphResult("NA12893", 5.18, -1.18)
       };
-  
+
   static String outputPrefix;
   static IntegrationTestHelper helper;
-  
+
   @BeforeClass
   public static void setUpBeforeClass() throws Exception {
     helper = new IntegrationTestHelper();
@@ -138,11 +138,11 @@ public class VariantSimilarityITCase {
         };
     testBase(ARGS);
   }
-  
+
   private void testBase(String[] ARGS) throws IOException, GeneralSecurityException {
     // Run the pipeline.
     VariantSimilarity.main(ARGS);
-   
+
     // Download the pipeline results.
     List<GraphResult> results = Lists.newArrayList();
     for (GcsPath path : helper.gcsUtil.expand(GcsPath.fromUri(outputPrefix + "*"))) {
@@ -154,7 +154,7 @@ public class VariantSimilarityITCase {
 
     // Check the pipeline results.
     assertEquals(helper.PLATINUM_GENOMES_NUMBER_OF_SAMPLES, results.size());
-    
+
     assertThat(results,
         CoreMatchers.allOf(CoreMatchers.hasItems(EXPECTED_RESULT)));
   }
