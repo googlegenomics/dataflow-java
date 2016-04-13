@@ -13,7 +13,7 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package com.google.cloud.genomics.dataflow.functions;
+package com.google.cloud.genomics.dataflow.writers.bam;
 
 import com.google.api.services.storage.Storage;
 import com.google.cloud.dataflow.sdk.transforms.Aggregator;
@@ -28,6 +28,7 @@ import com.google.cloud.dataflow.sdk.util.gcsfs.GcsPath;
 import com.google.cloud.dataflow.sdk.values.KV;
 import com.google.cloud.dataflow.sdk.values.PCollectionView;
 import com.google.cloud.dataflow.sdk.values.TupleTag;
+import com.google.cloud.genomics.dataflow.functions.KeyReadsFn;
 import com.google.cloud.genomics.dataflow.readers.bam.BAMIO;
 import com.google.cloud.genomics.dataflow.readers.bam.HeaderInfo;
 import com.google.cloud.genomics.dataflow.utils.GCSOptions;

@@ -11,7 +11,7 @@
  * or implied. See the License for the specific language governing permissions and limitations under
  * the License.
  */
-package com.google.cloud.genomics.dataflow.functions.grpc;
+package com.google.cloud.genomics.dataflow.functions;
 
 import java.util.Collections;
 import java.util.Comparator;

@@ -11,7 +11,7 @@
  * or implied. See the License for the specific language governing permissions and limitations under
  * the License.
  */
-package com.google.cloud.genomics.dataflow.utils;
+package com.google.cloud.genomics.dataflow.functions.verifybamid;
 
 import java.util.regex.Pattern;
 

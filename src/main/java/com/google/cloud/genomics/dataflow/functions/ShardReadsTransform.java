@@ -13,7 +13,7 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package com.google.cloud.genomics.dataflow.utils;
+package com.google.cloud.genomics.dataflow.functions;
 
 import com.google.cloud.dataflow.sdk.transforms.GroupByKey;
 import com.google.cloud.dataflow.sdk.transforms.ParDo;
@@ -22,7 +22,6 @@ import com.google.cloud.dataflow.sdk.values.PCollection;
 import com.google.cloud.dataflow.sdk.values.KV;
 import com.google.cloud.genomics.utils.Contig;
 import com.google.genomics.v1.Read;
-import com.google.cloud.genomics.dataflow.functions.KeyReadsFn;
 
 /*
  * Takes a collection of reads and shards them out by Contig.

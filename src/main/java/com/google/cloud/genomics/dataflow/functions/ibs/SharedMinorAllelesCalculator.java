@@ -13,7 +13,7 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package com.google.cloud.genomics.dataflow.functions;
+package com.google.cloud.genomics.dataflow.functions.ibs;
 
 import com.google.common.base.Predicate;
 import com.google.common.collect.Iterables;

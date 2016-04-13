@@ -12,7 +12,7 @@
  * the License.
  */
 
-package com.google.cloud.genomics.dataflow.functions;
+package com.google.cloud.genomics.dataflow.functions.ibs;
 
 import com.google.cloud.dataflow.sdk.transforms.DoFn;
 import com.google.cloud.dataflow.sdk.values.KV;

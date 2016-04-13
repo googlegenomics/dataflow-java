@@ -14,7 +14,7 @@
  * the License.
  */
 
-package com.google.cloud.genomics.dataflow.functions;
+package com.google.cloud.genomics.dataflow.functions.pca;
 
 import java.io.Serializable;
 import java.util.Collection;

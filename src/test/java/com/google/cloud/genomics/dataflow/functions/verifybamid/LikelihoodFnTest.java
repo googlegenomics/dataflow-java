@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.google.cloud.genomics.dataflow.functions;
+package com.google.cloud.genomics.dataflow.functions.verifybamid;
 
 import com.google.cloud.genomics.dataflow.model.ReadCounts;
 import com.google.cloud.genomics.dataflow.model.ReadQualityCount;

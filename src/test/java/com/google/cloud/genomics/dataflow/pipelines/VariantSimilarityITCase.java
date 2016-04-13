@@ -30,7 +30,7 @@ import org.junit.Test;
 
 import com.google.api.client.util.Lists;
 import com.google.cloud.dataflow.sdk.util.gcsfs.GcsPath;
-import com.google.cloud.genomics.dataflow.functions.PCoAnalysis.GraphResult;
+import com.google.cloud.genomics.dataflow.functions.pca.PCoAnalysis.GraphResult;
 
 /**
  * This integration test will call the Genomics API and write to Cloud Storage.
