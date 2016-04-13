@@ -54,7 +54,7 @@ public class CombineShardsFn extends DoFn<String, String> {
   private static final Logger LOG = Logger.getLogger(CombineShardsFn.class.getName());
 
   final PCollectionView<Iterable<String>> shards;
-  final PCollectionView<byte[]> eofContent;
+  final PCollectionView<byte[]> eofContents;
   Aggregator<Integer, Integer> filesToCombineAggregator;
   Aggregator<Integer, Integer> combinedFilesAggregator;
   Aggregator<Integer, Integer> createdFilesAggregator;
@@ -62,7 +62,7 @@ public class CombineShardsFn extends DoFn<String, String> {
   
   public CombineShardsFn(PCollectionView<Iterable<String>> shards, PCollectionView<byte[]> eofContent) {
     this.shards = shards;
-    this.eofContent = eofContent;
+    this.eofContents = eofContent;
     filesToCombineAggregator = createAggregator("Files to combine", new SumIntegerFn());
     combinedFilesAggregator = createAggregator("Files combined", new SumIntegerFn());
     createdFilesAggregator = createAggregator("Created files", new SumIntegerFn());
@@ -76,12 +76,12 @@ public class CombineShardsFn extends DoFn<String, String> {
             c.getPipelineOptions().as(Options.class), 
             c.element(),
             c.sideInput(shards),
-            c.sideInput(eofContent));
+            c.sideInput(eofContents));
     c.output(result);
   }
 
   String combineShards(Options options, String dest,
-      Iterable<String> shards, byte[] eofContent) throws IOException {
+      Iterable<String> srcShards, byte[] eofContent) throws IOException {
     LOG.info("Combining shards into " + dest);
     final Storage.Objects storage = Transport.newStorageClient(
         options
@@ -89,7 +89,7 @@ public class CombineShardsFn extends DoFn<String, String> {
           .build()
           .objects();
 
-    ArrayList<String> sortedShardsNames = Lists.newArrayList(shards);
+    ArrayList<String> sortedShardsNames = Lists.newArrayList(srcShards);
     Collections.sort(sortedShardsNames);
 
     // Write an EOF block (empty gzip block), and put it at the end.
