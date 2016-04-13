@@ -16,7 +16,7 @@ public class BAMShardIndexer {
   private final BAMIndexBuilder indexBuilder;
   
   // Index of the reference for which the index is being written
-  int reference;
+  int referenceIndex;
 
   public BAMShardIndexer(OutputStream output, SAMFileHeader header, int reference) {
     indexBuilder = new BAMIndexBuilder(header.getSequenceDictionary(), reference);
@@ -24,7 +24,7 @@ public class BAMShardIndexer {
     final int numReferencesToWriteInTheHeader = isFirstIndexShard ? 
         header.getSequenceDictionary().size() : 0;
     outputWriter = new BinaryBAMShardIndexWriter(numReferencesToWriteInTheHeader, output);
-    this.reference = reference;
+    this.referenceIndex = reference;
   }
   
   public void processAlignment(final SAMRecord rec) {
@@ -40,7 +40,7 @@ public class BAMShardIndexer {
    * @return count of records with no coordinates.
    */
   public long finish() {
-    final BAMIndexContent content = indexBuilder.processReference(reference);
+    final BAMIndexContent content = indexBuilder.processReference(referenceIndex);
     outputWriter.writeReference(content);
     outputWriter.close();
     return indexBuilder.getNoCoordinateRecordCount();
