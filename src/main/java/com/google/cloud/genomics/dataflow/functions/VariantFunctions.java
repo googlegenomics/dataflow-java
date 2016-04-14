@@ -17,6 +17,7 @@ import java.util.regex.Pattern;
 
 import com.google.cloud.dataflow.sdk.transforms.SerializableFunction;
 import com.google.cloud.genomics.utils.grpc.VariantUtils;
+import com.google.genomics.v1.Variant;
 
 /**
  * Utility methods for working with genetic variant data.
@@ -28,10 +29,10 @@ public class VariantFunctions {
    * required by the VCF 4.2 standard. This means that the filter field of the variant must
    * contain either only "PASS" or ".".
    */
-  public static final SerializableFunction<com.google.genomics.v1.Variant, Boolean> IS_PASSING
-      = new SerializableFunction<com.google.genomics.v1.Variant, Boolean>() {
+  public static final SerializableFunction<Variant, Boolean> IS_PASSING
+      = new SerializableFunction<Variant, Boolean>() {
         @Override
-        public Boolean apply(com.google.genomics.v1.Variant v) {
+        public Boolean apply(Variant v) {
           return (v.getFilterCount() == 1) && (v.getFilter(0).equalsIgnoreCase("PASS")
                                                  || v.getFilter(0).equalsIgnoreCase("."));
         }
@@ -40,10 +41,10 @@ public class VariantFunctions {
   /**
    * Determines whether a Variant is from a chromosome.
    */
-  public static final SerializableFunction<com.google.genomics.v1.Variant, Boolean> IS_ON_CHROMOSOME
-      = new SerializableFunction<com.google.genomics.v1.Variant, Boolean>() {
+  public static final SerializableFunction<Variant, Boolean> IS_ON_CHROMOSOME
+      = new SerializableFunction<Variant, Boolean>() {
         @Override
-        public Boolean apply(com.google.genomics.v1.Variant v) {
+        public Boolean apply(Variant v) {
           return Pattern.compile("^(chr)?(X|Y|([12]?\\d))$")
               .matcher(v.getReferenceName())
               .matches();
@@ -53,10 +54,10 @@ public class VariantFunctions {
   /**
    * Determines whether a Variant's quality is the lowest level (Phred score 0).
    */
-  public static final SerializableFunction<com.google.genomics.v1.Variant, Boolean>
-      IS_NOT_LOW_QUALITY = new SerializableFunction<com.google.genomics.v1.Variant, Boolean>() {
+  public static final SerializableFunction<Variant, Boolean>
+      IS_NOT_LOW_QUALITY = new SerializableFunction<Variant, Boolean>() {
         @Override
-        public Boolean apply(com.google.genomics.v1.Variant v) {
+        public Boolean apply(Variant v) {
           return (v.getQuality() != 0.0);
         }
       };
@@ -67,10 +68,10 @@ public class VariantFunctions {
    * <p>To the output of @link{VariantRatios.IsSnpFn} we add the condition that
    * the variant has exactly one alternative base.
    */
-  public static final SerializableFunction<com.google.genomics.v1.Variant, Boolean>
-      IS_SINGLE_ALTERNATE_SNP = new SerializableFunction<com.google.genomics.v1.Variant, Boolean>(){
+  public static final SerializableFunction<Variant, Boolean>
+      IS_SINGLE_ALTERNATE_SNP = new SerializableFunction<Variant, Boolean>(){
         @Override
-        public Boolean apply(com.google.genomics.v1.Variant v) {
+        public Boolean apply(Variant v) {
           return (v.getAlternateBasesList().size() == 1) && VariantUtils.IS_SNP.apply(v);
         }
       };
