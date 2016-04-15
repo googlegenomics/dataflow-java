@@ -17,30 +17,24 @@ package com.google.cloud.genomics.dataflow.functions.pca;
 
 import static org.junit.Assert.assertEquals;
 
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.List;
 
-import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 
-import com.google.api.services.genomics.model.Call;
 import com.google.cloud.genomics.dataflow.utils.DataUtils;
-import com.google.common.collect.BiMap;
-import com.google.common.collect.HashBiMap;
 import com.google.genomics.v1.Variant;
 import com.google.genomics.v1.VariantCall;
 
 @RunWith(JUnit4.class)
 public class ExtractSimilarCallsetsTest {
-  
+
   @Test
   public void testGetSamplesWithVariant() throws Exception {
-    ExtractSimilarCallsets.v1 doFn = new ExtractSimilarCallsets.v1();
-    
+    ExtractSimilarCallsets doFn = new ExtractSimilarCallsets();
+
     Variant variant = Variant.newBuilder().build();
     assertEquals(Collections.emptyList(), doFn.getSamplesWithVariant(variant));
 
@@ -58,25 +52,4 @@ public class ExtractSimilarCallsetsTest {
         .addCalls(alt1).addCalls(alt2).addCalls(alt3).build();
     assertEquals(Arrays.asList("alt1", "alt2", "alt3"), doFn.getSamplesWithVariant(variant));
   }
-
-  @Test
-  public void testGetSamplesWithVariantv1beta2() throws Exception {
-    ExtractSimilarCallsets.v1beta2 doFn = new ExtractSimilarCallsets.v1beta2();
-
-    com.google.api.services.genomics.model.Variant variant = new com.google.api.services.genomics.model.Variant();
-    List<Call> calls = new ArrayList<Call>();
-
-    variant.setCalls(calls);
-    assertEquals(Collections.emptyList(), doFn.getSamplesWithVariant(variant));
-
-    calls.add(DataUtils.makeCall("ref", 0, 0));
-    assertEquals(Collections.emptyList(), doFn.getSamplesWithVariant(variant));
-
-    calls.add(DataUtils.makeCall("alt1", 1, 0));
-    assertEquals(Collections.singletonList("alt1"), doFn.getSamplesWithVariant(variant));
-
-    calls.add(DataUtils.makeCall("alt2", 0, 1));
-    calls.add(DataUtils.makeCall("alt3", 1, 1));
-    assertEquals(Arrays.asList("alt1", "alt2", "alt3"), doFn.getSamplesWithVariant(variant));
-  }  
 }

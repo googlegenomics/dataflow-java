@@ -55,7 +55,7 @@ import com.google.genomics.v1.Variant;
 public class IdentityByState {
 
   public static interface Options extends
-    // Options for calculating over regions and whole genomes.
+    // Options for calculating over regions, chromosomes, or whole genomes.
     ShardOptions,
     // Options for calculating over a list of sites.
     SitesToShards.Options,

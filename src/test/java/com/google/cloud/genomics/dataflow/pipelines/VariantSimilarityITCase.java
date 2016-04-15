@@ -53,25 +53,45 @@ import com.google.cloud.genomics.dataflow.functions.pca.PCoAnalysis.GraphResult;
  */
 public class VariantSimilarityITCase {
 
-  static final GraphResult[] EXPECTED_RESULT = {
-      new GraphResult("NA12877", 5.18, 0.22),
-      new GraphResult("NA12878", -7.39, -1.7),
-      new GraphResult("NA12879", 5.26, 1.37),
-      new GraphResult("NA12880", -7.41, -2.74),
-      new GraphResult("NA12881", 5.27, -1.06),
-      new GraphResult("NA12882", 5.21, 1.19),
-      new GraphResult("NA12883", -7.57, -3.73),
-      new GraphResult("NA12884", 5.33, 0.95),
-      new GraphResult("NA12885", 5.21, 1.07),
-      new GraphResult("NA12886", 5.28, -0.15),
-      new GraphResult("NA12887", -7.44, 1.69),
-      new GraphResult("NA12888", -7.47, 2.72),
-      new GraphResult("NA12889", -7.34, 1.65),
-      new GraphResult("NA12890", 5.04, -1.61),
-      new GraphResult("NA12891", 5.24, -0.88),
-      new GraphResult("NA12892", -7.64, 2.1),
-      new GraphResult("NA12893", 5.18, -1.18)
-      };
+  static final GraphResult[] EXPECTED_SITES_RESULT = {
+    new GraphResult("NA12892", -0.6, -0.07),
+    new GraphResult("NA12887", -0.6, -0.07),
+    new GraphResult("NA12880", -0.6, -0.07),
+    new GraphResult("NA12877", 0.35, 0.23),
+    new GraphResult("NA12878", -0.6, -0.07),
+    new GraphResult("NA12889", -0.6, -0.07),
+    new GraphResult("NA12888", -0.6, -0.07),
+    new GraphResult("NA12879", 0.65, -0.72),
+    new GraphResult("NA12881", 0.35, 0.23),
+    new GraphResult("NA12885", 0.35, 0.23),
+    new GraphResult("NA12891", 0.35, 0.23),
+    new GraphResult("NA12884", 0.35, 0.23),
+    new GraphResult("NA12883", -0.6, -0.07),
+    new GraphResult("NA12886", 0.35, 0.23),
+    new GraphResult("NA12893", 0.65, -0.72),
+    new GraphResult("NA12882", 0.35, 0.23),
+    new GraphResult("NA12890", 0.35, 0.23)
+  };
+
+  static final GraphResult[] EXPECTED_BRCA1_RESULT = {
+    new GraphResult("NA12877", 5.18, 0.22),
+    new GraphResult("NA12878", -7.39, -1.7),
+    new GraphResult("NA12879", 5.26, 1.37),
+    new GraphResult("NA12880", -7.41, -2.74),
+    new GraphResult("NA12881", 5.27, -1.06),
+    new GraphResult("NA12882", 5.21, 1.19),
+    new GraphResult("NA12883", -7.57, -3.73),
+    new GraphResult("NA12884", 5.33, 0.95),
+    new GraphResult("NA12885", 5.21, 1.07),
+    new GraphResult("NA12886", 5.28, -0.15),
+    new GraphResult("NA12887", -7.44, 1.69),
+    new GraphResult("NA12888", -7.47, 2.72),
+    new GraphResult("NA12889", -7.34, 1.65),
+    new GraphResult("NA12890", 5.04, -1.61),
+    new GraphResult("NA12891", 5.24, -0.88),
+    new GraphResult("NA12892", -7.64, 2.1),
+    new GraphResult("NA12893", 5.18, -1.18)
+  };
 
   static String outputPrefix;
   static IntegrationTestHelper helper;
@@ -90,39 +110,23 @@ public class VariantSimilarityITCase {
   }
 
   @Test
-  public void testPaginatedLocal() throws IOException, GeneralSecurityException {
-    String[] ARGS = {
-        "--references=" + helper.PLATINUM_GENOMES_BRCA1_REFERENCES,
-        "--variantSetId=" + helper.PLATINUM_GENOMES_DATASET,
-        "--output=" + outputPrefix,
-        "--useGrpc=false"
-        };
-    testBase(ARGS);
-  }
-
-  @Test
-  public void testPaginatedCloud() throws IOException, GeneralSecurityException {
-    String[] ARGS = {
-        "--references=" + helper.PLATINUM_GENOMES_BRCA1_REFERENCES,
-        "--variantSetId=" + helper.PLATINUM_GENOMES_DATASET,
-        "--output=" + outputPrefix,
-        "--project=" + helper.getTestProject(),
-        "--runner=BlockingDataflowPipelineRunner",
-        "--stagingLocation=" + helper.getTestStagingGcsFolder(),
-        "--useGrpc=false"
-        };
-    testBase(ARGS);
-  }
-
-  @Test
   public void testStreamingLocal() throws IOException, GeneralSecurityException {
     String[] ARGS = {
         "--references=" + helper.PLATINUM_GENOMES_BRCA1_REFERENCES,
         "--variantSetId=" + helper.PLATINUM_GENOMES_DATASET,
         "--output=" + outputPrefix,
-        "--useGrpc=true"
         };
-    testBase(ARGS);
+    testBase(ARGS, EXPECTED_BRCA1_RESULT);
+  }
+
+  @Test
+  public void testSitesFilepathStreamingLocal() throws IOException, GeneralSecurityException {
+    String[] ARGS = {
+        "--sitesFilepath=" + IdentityByStateITCase.SITES_FILEPATH,
+        "--variantSetId=" + helper.PLATINUM_GENOMES_DATASET,
+        "--output=" + outputPrefix,
+        };
+    testBase(ARGS, EXPECTED_SITES_RESULT);
   }
 
   @Test
@@ -134,12 +138,11 @@ public class VariantSimilarityITCase {
         "--project=" + helper.getTestProject(),
         "--runner=BlockingDataflowPipelineRunner",
         "--stagingLocation=" + helper.getTestStagingGcsFolder(),
-        "--useGrpc=true"
         };
-    testBase(ARGS);
+    testBase(ARGS, EXPECTED_BRCA1_RESULT);
   }
 
-  private void testBase(String[] ARGS) throws IOException, GeneralSecurityException {
+  private void testBase(String[] ARGS, GraphResult[] expectedResult) throws IOException, GeneralSecurityException {
     // Run the pipeline.
     VariantSimilarity.main(ARGS);
 
@@ -156,7 +159,7 @@ public class VariantSimilarityITCase {
     assertEquals(helper.PLATINUM_GENOMES_NUMBER_OF_SAMPLES, results.size());
 
     assertThat(results,
-        CoreMatchers.allOf(CoreMatchers.hasItems(EXPECTED_RESULT)));
+        CoreMatchers.allOf(CoreMatchers.hasItems(expectedResult)));
   }
 }
 

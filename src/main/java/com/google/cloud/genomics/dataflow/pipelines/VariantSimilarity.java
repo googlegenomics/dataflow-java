@@ -20,19 +20,17 @@ import java.security.GeneralSecurityException;
 import java.util.Collections;
 import java.util.List;
 
-import com.google.api.services.genomics.model.SearchVariantsRequest;
 import com.google.cloud.dataflow.sdk.Pipeline;
+import com.google.cloud.dataflow.sdk.io.TextIO;
 import com.google.cloud.dataflow.sdk.options.Default;
 import com.google.cloud.dataflow.sdk.options.Description;
 import com.google.cloud.dataflow.sdk.options.PipelineOptionsFactory;
 import com.google.cloud.dataflow.sdk.transforms.Create;
 import com.google.cloud.dataflow.sdk.transforms.ParDo;
-import com.google.cloud.dataflow.sdk.values.KV;
 import com.google.cloud.dataflow.sdk.values.PCollection;
-import com.google.cloud.genomics.dataflow.coders.GenericJsonCoder;
+import com.google.cloud.genomics.dataflow.functions.SitesToShards;
 import com.google.cloud.genomics.dataflow.functions.pca.ExtractSimilarCallsets;
 import com.google.cloud.genomics.dataflow.functions.pca.OutputPCoAFile;
-import com.google.cloud.genomics.dataflow.readers.VariantReader;
 import com.google.cloud.genomics.dataflow.readers.VariantStreamer;
 import com.google.cloud.genomics.dataflow.utils.GCSOutputOptions;
 import com.google.cloud.genomics.dataflow.utils.GenomicsOptions;
@@ -53,7 +51,13 @@ import com.google.genomics.v1.StreamVariantsRequest;
  */
 public class VariantSimilarity {
 
-  public static interface Options extends ShardOptions, GCSOutputOptions {
+  public static interface Options extends
+  // Options for calculating over regions, chromosomes, or whole genomes.
+  ShardOptions,
+  // Options for calculating over a list of sites.
+  SitesToShards.Options,
+  // Options for the output destination.
+  GCSOutputOptions {
 
     @Description("The ID of the Google Genomics variant set this pipeline is accessing. "
         + "Defaults to 1000 Genomes.")
@@ -62,23 +66,16 @@ public class VariantSimilarity {
 
     void setVariantSetId(String variantSetId);
 
-    @Description("Whether to use the gRPC API endpoint for variants.  Defaults to 'true';")
-    @Default.Boolean(true)
-    Boolean getUseGrpc();
-
-    void setUseGrpc(Boolean value);
-
     public static class Methods {
       public static void validateOptions(Options options) {
         GCSOutputOptions.Methods.validateOptions(options);
       }
     }
-
   }
 
   // TODO https://github.com/googlegenomics/utils-java/issues/48
   private static final String VARIANT_FIELDS = "nextPageToken,variants(start,calls(genotype,callSetName))";
-  
+
   public static void main(String[] args) throws IOException, GeneralSecurityException {
     // Register the options so that they show up via --help
     PipelineOptionsFactory.register(Options.class);
@@ -97,32 +94,26 @@ public class VariantSimilarity {
     }
 
     Pipeline p = Pipeline.create(options);
-
     p.begin();
-    PCollection<KV<KV<String, String>, Long>> similarCallsets = null;
 
-    if(options.getUseGrpc()) {
-      List<StreamVariantsRequest> requests = options.isAllReferences() ?
+    PCollection<StreamVariantsRequest> requests ;
+    if(null != options.getSitesFilepath()) {
+      // Compute PCA on a list of sites.
+      requests = p.apply(TextIO.Read.named("ReadSites")
+          .from(options.getSitesFilepath()))
+          .apply(new SitesToShards.SitesToStreamVariantsShardsTransform(options.getVariantSetId()));
+    } else {
+      List<StreamVariantsRequest> shardRequests = options.isAllReferences() ?
           ShardUtils.getVariantRequests(options.getVariantSetId(), ShardUtils.SexChromosomeFilter.EXCLUDE_XY,
               options.getBasesPerShard(), auth) :
             ShardUtils.getVariantRequests(options.getVariantSetId(), options.getReferences(), options.getBasesPerShard());
-      
-      similarCallsets = p.apply(Create.of(requests))     
-      .apply(new VariantStreamer(auth, ShardBoundary.Requirement.STRICT, VARIANT_FIELDS))
-      .apply(ParDo.of(new ExtractSimilarCallsets.v1()));
-    } else {
-      p.getCoderRegistry().setFallbackCoderProvider(GenericJsonCoder.PROVIDER);
-      List<SearchVariantsRequest> requests = options.isAllReferences() ?
-          ShardUtils.getPaginatedVariantRequests(options.getVariantSetId(), ShardUtils.SexChromosomeFilter.EXCLUDE_XY,
-              options.getBasesPerShard(), auth) :
-                ShardUtils.getPaginatedVariantRequests(options.getVariantSetId(), options.getReferences(), options.getBasesPerShard());
 
-      similarCallsets = p.apply(Create.of(requests))
-          .apply(ParDo.of(new VariantReader(auth, ShardBoundary.Requirement.STRICT, VARIANT_FIELDS)))
-          .apply(ParDo.of(new ExtractSimilarCallsets.v1beta2()));
+      requests = p.apply(Create.of(shardRequests));
     }
 
-    similarCallsets.apply(new OutputPCoAFile(dataIndices, options.getOutput()));
+    requests.apply(new VariantStreamer(auth, ShardBoundary.Requirement.STRICT, VARIANT_FIELDS))
+        .apply(ParDo.of(new ExtractSimilarCallsets()))
+        .apply(new OutputPCoAFile(dataIndices, options.getOutput()));
 
     p.run();
   }
