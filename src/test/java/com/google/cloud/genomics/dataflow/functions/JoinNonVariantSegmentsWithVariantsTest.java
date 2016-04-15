@@ -1,11 +1,11 @@
 /*
  * Copyright (C) 2015 Google Inc.
- * 
+ *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
- * 
+ *
  * http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing, software distributed under the License
  * is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express
  * or implied. See the License for the specific language governing permissions and limitations under
@@ -19,11 +19,13 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertThat;
 import static org.junit.Assert.assertTrue;
 
+import java.util.Arrays;
 import java.util.Comparator;
 import java.util.List;
 
 import org.hamcrest.CoreMatchers;
 import org.hamcrest.collection.IsIterableWithSize;
+import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -34,8 +36,6 @@ import com.google.cloud.dataflow.sdk.testing.DataflowAssert;
 import com.google.cloud.dataflow.sdk.testing.TestPipeline;
 import com.google.cloud.dataflow.sdk.transforms.Create;
 import com.google.cloud.dataflow.sdk.transforms.DoFnTester;
-import com.google.cloud.dataflow.sdk.transforms.GroupByKey;
-import com.google.cloud.dataflow.sdk.transforms.ParDo;
 import com.google.cloud.dataflow.sdk.transforms.SerializableFunction;
 import com.google.cloud.dataflow.sdk.values.KV;
 import com.google.cloud.dataflow.sdk.values.PCollection;
@@ -104,7 +104,7 @@ public class JoinNonVariantSegmentsWithVariantsTest {
 
   @Test
   public void testVariantVariantComparator() {
-    Comparator<Variant> comparator = JoinNonVariantSegmentsWithVariants.NON_VARIANT_SEGMENT_COMPARATOR;
+    Comparator<Variant> comparator = JoinNonVariantSegmentsWithVariants.CombineVariantsFn.NON_VARIANT_SEGMENT_COMPARATOR;
 
     assertEquals(-1, comparator.compare(blockRecord1, snp1));
     assertEquals(1, comparator.compare(blockRecord2, snp1));
@@ -140,17 +140,25 @@ public class JoinNonVariantSegmentsWithVariantsTest {
 
   @Test
   public void testIsOverlapping() {
-    assertTrue(JoinNonVariantSegmentsWithVariants.isOverlapping(blockRecord1, snp1));
-    assertTrue(JoinNonVariantSegmentsWithVariants.isOverlapping(blockRecord1, snp2));
-    assertFalse(JoinNonVariantSegmentsWithVariants.isOverlapping(blockRecord2, snp1));
-    assertTrue(JoinNonVariantSegmentsWithVariants.isOverlapping(blockRecord2, snp2));
+    assertTrue(JoinNonVariantSegmentsWithVariants.CombineVariantsFn.isOverlapping(blockRecord1, snp1));
+    assertTrue(JoinNonVariantSegmentsWithVariants.CombineVariantsFn.isOverlapping(blockRecord1, snp2));
+    assertFalse(JoinNonVariantSegmentsWithVariants.CombineVariantsFn.isOverlapping(blockRecord2, snp1));
+    assertTrue(JoinNonVariantSegmentsWithVariants.CombineVariantsFn.isOverlapping(blockRecord2, snp2));
+  }
+
+  @Test
+  public void testCombineVariantsFn() {
+    DoFnTester<Iterable<Variant>, Variant> fn =
+      DoFnTester.of(new JoinNonVariantSegmentsWithVariants.CombineVariantsFn());
+
+    Assert.assertThat(fn.processBatch(Arrays.asList(input)),
+        CoreMatchers.hasItems(expectedSnp1, expectedSnp2, expectedInsert));
   }
 
   @Test
   public void testBinVariantsFn() {
-
     DoFnTester<Variant, KV<KV<String, Long>, Variant>> binVariantsFn =
-        DoFnTester.of(new JoinNonVariantSegmentsWithVariants.BinVariants());
+        DoFnTester.of(new JoinNonVariantSegmentsWithVariants.BinShuffleAndCombineTransform.BinVariantsFn());
 
     List<KV<KV<String, Long>, Variant>> binVariantsOutput = binVariantsFn.processBatch(input);
     assertThat(binVariantsOutput, CoreMatchers.hasItem(KV.of(KV.of("chr7", 200L), snp1)));
@@ -165,21 +173,12 @@ public class JoinNonVariantSegmentsWithVariantsTest {
   }
 
   @Test
-  public void testJoinVariantsPipeline() {
+  public void testBinShuffleAndCombine() {
 
     Pipeline p = TestPipeline.create();
 
-    PCollection<Variant> inputVariants =
-        p.apply(Create.of(input));
-
-    PCollection<KV<KV<String, Long>, Variant>> binnedVariants =
-        inputVariants.apply(ParDo.of(new JoinNonVariantSegmentsWithVariants.BinVariants()));
-
-    PCollection<KV<KV<String, Long>, Iterable<Variant>>> groupedBinnedVariants =
-        binnedVariants.apply(GroupByKey.<KV<String, Long>, Variant>create());
-
-    PCollection<Variant> mergedVariants =
-        groupedBinnedVariants.apply(ParDo.of(new JoinNonVariantSegmentsWithVariants.MergeVariants())); 
+    PCollection<Variant> mergedVariants = p.apply(Create.of(input))
+        .apply(new JoinNonVariantSegmentsWithVariants.BinShuffleAndCombineTransform());
 
     DataflowAssert.that(mergedVariants).satisfies(
         new AssertThatHasExpectedContentsForTestJoinVariants());

@@ -20,14 +20,16 @@ import com.google.cloud.dataflow.sdk.io.TextIO;
 import com.google.cloud.dataflow.sdk.options.Default;
 import com.google.cloud.dataflow.sdk.options.Description;
 import com.google.cloud.dataflow.sdk.options.PipelineOptionsFactory;
-import com.google.cloud.dataflow.sdk.options.Validation;
 import com.google.cloud.dataflow.sdk.transforms.Combine;
 import com.google.cloud.dataflow.sdk.transforms.Create;
+import com.google.cloud.dataflow.sdk.transforms.Filter;
 import com.google.cloud.dataflow.sdk.transforms.ParDo;
 import com.google.cloud.dataflow.sdk.values.KV;
 import com.google.cloud.dataflow.sdk.values.PCollection;
 import com.google.cloud.genomics.dataflow.coders.GenericJsonCoder;
 import com.google.cloud.genomics.dataflow.functions.JoinNonVariantSegmentsWithVariants;
+import com.google.cloud.genomics.dataflow.functions.SitesToShards;
+import com.google.cloud.genomics.dataflow.functions.VariantFunctions;
 import com.google.cloud.genomics.dataflow.functions.ibs.AlleleSimilarityCalculator;
 import com.google.cloud.genomics.dataflow.functions.ibs.CallSimilarityCalculatorFactory;
 import com.google.cloud.genomics.dataflow.functions.ibs.FormatIBSData;
@@ -51,9 +53,19 @@ import com.google.genomics.v1.Variant;
  */
 
 public class IdentityByState {
-  
-  public static interface Options extends ShardOptions,
-    JoinNonVariantSegmentsWithVariants.Options, GCSOutputOptions {
+
+  public static interface Options extends
+    // Options for calculating over regions and whole genomes.
+    ShardOptions,
+    // Options for calculating over a list of sites.
+    SitesToShards.Options,
+    // Options for special handling of data with non-variant segment records.  This
+    // is needed since IBS must take into account reference-matches in addition
+    // to the variants (unlike other analyses such as PCA).
+    JoinNonVariantSegmentsWithVariants.Options,
+    // Options for the output destination.
+    GCSOutputOptions
+    {
 
     @Description("The ID of the Google Genomics variant set this pipeline is accessing. "
         + "Defaults to 1000 Genomes.")
@@ -79,7 +91,7 @@ public class IdentityByState {
 
   // TODO: https://github.com/googlegenomics/utils-java/issues/48
   private static final String VARIANT_FIELDS = "variants(start,calls(genotype,callSetName))";
-  
+
   public static void main(String[] args) throws Exception {
     // Register the options so that they show up via --help
     PipelineOptionsFactory.register(Options.class);
@@ -87,30 +99,45 @@ public class IdentityByState {
         PipelineOptionsFactory.fromArgs(args).withValidation().as(Options.class);
     // Option validation is not yet automatic, we make an explicit call here.
     Options.Methods.validateOptions(options);
-
     OfflineAuth auth = GenomicsOptions.Methods.getGenomicsAuth(options);
-    List<StreamVariantsRequest> requests = options.isAllReferences() ?
-        ShardUtils.getVariantRequests(options.getVariantSetId(), ShardUtils.SexChromosomeFilter.EXCLUDE_XY,
-            options.getBasesPerShard(), auth) :
-              ShardUtils.getVariantRequests(options.getVariantSetId(), options.getReferences(), options.getBasesPerShard());
 
     Pipeline p = Pipeline.create(options);
     p.getCoderRegistry().setFallbackCoderProvider(GenericJsonCoder.PROVIDER);
-    PCollection<Variant> variants = p.begin()
-        .apply(Create.of(requests))
-        .apply(new VariantStreamer(auth, ShardBoundary.Requirement.STRICT, VARIANT_FIELDS));
+    PCollection<Variant> processedVariants = null;
 
-    PCollection<Variant> processedVariants;
-    if(options.getHasNonVariantSegments()) {
-        // Special handling is needed for data with non-variant segment records since IBS must
-        // take into account reference-matches in addition to the variants (unlike
-        // other analyses such as PCA).
-      processedVariants = JoinNonVariantSegmentsWithVariants.joinVariantsTransform(variants);
+    if(null != options.getSitesFilepath()) {
+      // Compute IBS on a list of sites (e.g., SNPs).
+      PCollection<StreamVariantsRequest> requests = p.apply(TextIO.Read.named("ReadSites")
+          .from(options.getSitesFilepath()))
+          .apply(new SitesToShards.SitesToStreamVariantsShardsTransform(options.getVariantSetId()));
+
+      if(options.getHasNonVariantSegments()) {
+        processedVariants = requests.apply(new JoinNonVariantSegmentsWithVariants.RetrieveAndCombineTransform(auth));
+      } else {
+        processedVariants = requests.apply(new VariantStreamer(auth, ShardBoundary.Requirement.NON_VARIANT_OVERLAPS, VARIANT_FIELDS));
+      }
     } else {
-      processedVariants = variants;
+      // Computing IBS over genomic region(s) or the whole genome.
+      List<StreamVariantsRequest> requests = options.isAllReferences() ?
+          ShardUtils.getVariantRequests(options.getVariantSetId(), ShardUtils.SexChromosomeFilter.EXCLUDE_XY,
+              options.getBasesPerShard(), auth) :
+                ShardUtils.getVariantRequests(options.getVariantSetId(), options.getReferences(), options.getBasesPerShard());
+          PCollection<Variant> variants = p.begin()
+              .apply(Create.of(requests))
+              .apply(new VariantStreamer(auth, ShardBoundary.Requirement.STRICT, VARIANT_FIELDS));
+
+          if(options.getHasNonVariantSegments()) {
+            // Note that this is less exact compared to the above approach on sites.
+            // When not run on a whole chromosome or genome, any non-variant segments at the beginning of the region(s)
+            // are not considered due to the STRICT shard boundary used to avoid repeated data.
+            processedVariants = variants.apply(new JoinNonVariantSegmentsWithVariants.BinShuffleAndCombineTransform());
+          } else {
+            processedVariants = variants;
+          }
     }
 
     processedVariants
+        .apply(Filter.byPredicate(VariantFunctions.IS_SINGLE_ALTERNATE_SNP))
         .apply(
             ParDo.named(AlleleSimilarityCalculator.class.getSimpleName()).of(
                 new AlleleSimilarityCalculator(getCallSimilarityCalculatorFactory(options))))
