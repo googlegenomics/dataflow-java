@@ -58,7 +58,7 @@ public class SitesToShards {
 
   private static final Logger LOG = Logger.getLogger(SitesToShards.class.getName());
 
-  private static final Pattern SITE_PATTERN = Pattern.compile("^\\s*(\\w+)\\W+(\\d+)\\W+(\\d+).*$");
+  private static final Pattern SITE_PATTERN = Pattern.compile("^\\s*([\\w\\.]+)\\W+(\\d+)\\W+(\\d+).*$");
 
   public static class SitesToContigsFn extends SimpleFunction<String, Contig> {
 

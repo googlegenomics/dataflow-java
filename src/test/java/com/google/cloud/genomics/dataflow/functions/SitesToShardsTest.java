@@ -46,6 +46,11 @@ public class SitesToShardsTest {
     assertEquals(new Contig("chrX", 2000000, 3000000), fn.apply("chrX 2000000 3000000")); // space
     assertEquals(new Contig("chrX", 2000000, 3000000), fn.apply("chrX:2000000:3000000"));
 
+    assertEquals(new Contig("17", 2000000, 3000000), fn.apply("17,2000000,3000000"));
+    assertEquals(new Contig("M", 2000000, 3000000), fn.apply("M,2000000,3000000"));
+    assertEquals(new Contig("chr9_gl000199_random", 2000000, 3000000), fn.apply("chr9_gl000199_random,2000000,3000000"));
+    assertEquals(new Contig("GL.123", 2000000, 3000000), fn.apply("GL.123,2000000,3000000"));
+
     // More white space
     assertEquals(new Contig("chrX", 2000000, 3000000), fn.apply(" chrX  2000000     3000000 "));
     // Additional fields
