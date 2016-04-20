@@ -35,9 +35,9 @@ import com.google.cloud.dataflow.sdk.values.PCollectionTuple;
 import com.google.cloud.dataflow.sdk.values.PCollectionView;
 import com.google.cloud.dataflow.sdk.values.TupleTag;
 import com.google.cloud.dataflow.sdk.values.TupleTagList;
+import com.google.cloud.genomics.dataflow.functions.BreakFusionTransform;
 import com.google.cloud.genomics.dataflow.functions.GetReferencesFromHeaderFn;
 import com.google.cloud.genomics.dataflow.readers.bam.HeaderInfo;
-import com.google.cloud.genomics.dataflow.utils.BreakFusionTransform;
 import com.google.cloud.genomics.utils.Contig;
 import com.google.genomics.v1.Read;
 
