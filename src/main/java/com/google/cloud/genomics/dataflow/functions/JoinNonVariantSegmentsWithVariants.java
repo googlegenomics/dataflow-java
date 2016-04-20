@@ -13,6 +13,7 @@
  */
 package com.google.cloud.genomics.dataflow.functions;
 
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.Iterator;
@@ -34,6 +35,7 @@ import com.google.cloud.genomics.utils.grpc.VariantStreamIterator;
 import com.google.cloud.genomics.utils.grpc.VariantUtils;
 import com.google.common.base.Function;
 import com.google.common.base.Preconditions;
+import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Ordering;
 import com.google.genomics.v1.StreamVariantsRequest;
@@ -161,25 +163,33 @@ public class JoinNonVariantSegmentsWithVariants {
    */
   public static class RetrieveAndCombineTransform extends PTransform<PCollection<StreamVariantsRequest>, PCollection<Variant>> {
     private final OfflineAuth auth;
+    private String fields;
 
-    public RetrieveAndCombineTransform(OfflineAuth auth) {
+    /**
+     * @param auth The OfflineAuth to use for the request.
+     * @param fields Which fields to include in a partial response or null for all.
+     */
+    public RetrieveAndCombineTransform(OfflineAuth auth, String fields) {
       super();
       this.auth = auth;
+      this.fields = fields;
     }
 
     @Override
     public PCollection<Variant> apply(PCollection<StreamVariantsRequest> input) {
       return input
-          .apply(ParDo.of(new RetrieveFn(auth)))
+          .apply(ParDo.of(new RetrieveFn(auth, fields)))
           .apply(ParDo.of(new CombineVariantsFn()));
     }
 
     static final class RetrieveFn extends DoFn<StreamVariantsRequest, Iterable<Variant>> {
       private final OfflineAuth auth;
+      private String fields;
 
-      public RetrieveFn(OfflineAuth auth) {
+      public RetrieveFn(OfflineAuth auth, String fields) {
         super();
         this.auth = auth;
+        this.fields = fields;
       }
 
       @Override
@@ -187,8 +197,16 @@ public class JoinNonVariantSegmentsWithVariants {
           throws Exception {
 
         Iterator<StreamVariantsResponse> iter = VariantStreamIterator.enforceShardBoundary(auth, context.element(),
-            ShardBoundary.Requirement.NON_VARIANT_OVERLAPS, null);
-        context.output(iter.next().getVariantsList());
+            ShardBoundary.Requirement.NON_VARIANT_OVERLAPS, fields);
+
+        if(iter.hasNext()) {
+          // We do have some data overlapping this site.
+          List<Iterable<Variant>> allVariantsForRequest = new ArrayList<>();
+          while (iter.hasNext()) {
+            allVariantsForRequest.add(iter.next().getVariantsList());
+          }
+          context.output(Iterables.concat(allVariantsForRequest));
+        }
       }
     }
   }

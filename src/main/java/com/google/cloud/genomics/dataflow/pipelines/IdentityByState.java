@@ -112,9 +112,11 @@ public class IdentityByState {
           .apply(new SitesToShards.SitesToStreamVariantsShardsTransform(options.getVariantSetId()));
 
       if(options.getHasNonVariantSegments()) {
-        processedVariants = requests.apply(new JoinNonVariantSegmentsWithVariants.RetrieveAndCombineTransform(auth));
+        processedVariants = requests.apply(
+            new JoinNonVariantSegmentsWithVariants.RetrieveAndCombineTransform(auth, VARIANT_FIELDS));
       } else {
-        processedVariants = requests.apply(new VariantStreamer(auth, ShardBoundary.Requirement.NON_VARIANT_OVERLAPS, VARIANT_FIELDS));
+        processedVariants = requests.apply(
+            new VariantStreamer(auth, ShardBoundary.Requirement.NON_VARIANT_OVERLAPS, VARIANT_FIELDS));
       }
     } else {
       // Computing IBS over genomic region(s) or the whole genome.
