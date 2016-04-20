@@ -90,7 +90,7 @@ public class SitesToShards {
 
     @Override
     public StreamVariantsRequest apply(Contig contig) {
-      if(null == contig) {
+      if (null == contig) {
         return null;
       }
       return contig.getStreamVariantsRequest(variantSetId);

@@ -199,7 +199,7 @@ public class JoinNonVariantSegmentsWithVariants {
         Iterator<StreamVariantsResponse> iter = VariantStreamIterator.enforceShardBoundary(auth, context.element(),
             ShardBoundary.Requirement.NON_VARIANT_OVERLAPS, fields);
 
-        if(iter.hasNext()) {
+        if (iter.hasNext()) {
           // We do have some data overlapping this site.
           List<Iterable<Variant>> allVariantsForRequest = new ArrayList<>();
           while (iter.hasNext()) {
