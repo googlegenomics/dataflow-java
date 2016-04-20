@@ -19,8 +19,10 @@ import java.util.regex.Pattern;
 
 import com.google.cloud.dataflow.sdk.options.Description;
 import com.google.cloud.dataflow.sdk.options.PipelineOptions;
+import com.google.cloud.dataflow.sdk.transforms.DoFn;
 import com.google.cloud.dataflow.sdk.transforms.MapElements;
 import com.google.cloud.dataflow.sdk.transforms.PTransform;
+import com.google.cloud.dataflow.sdk.transforms.ParDo;
 import com.google.cloud.dataflow.sdk.transforms.SimpleFunction;
 import com.google.cloud.dataflow.sdk.values.PCollection;
 import com.google.cloud.genomics.utils.Contig;
@@ -60,17 +62,19 @@ public class SitesToShards {
 
   private static final Pattern SITE_PATTERN = Pattern.compile("^\\s*([\\w\\.]+)\\W+(\\d+)\\W+(\\d+).*$");
 
-  public static class SitesToContigsFn extends SimpleFunction<String, Contig> {
+  public static class SitesToContigsFn extends DoFn<String, Contig> {
 
     @Override
-    public Contig apply(String line) {
+    public void processElement(DoFn<String, Contig>.ProcessContext context) throws Exception {
+      String line = context.element();
       Matcher m = SITE_PATTERN.matcher(line);
       if (m.matches()) {
-        return new Contig(m.group(1), Integer.parseInt(m.group(2)), Integer.parseInt(m.group(3)));
+        context.output(new Contig(m.group(1),
+            Integer.parseInt(m.group(2)),
+            Integer.parseInt(m.group(3))));
       }
       // e.g., If we pass an actual BED file, it may have some header lines.
       LOG.warning("Skipping line from sites file: " + line);
-      return null;
     }
   }
 
@@ -86,6 +90,9 @@ public class SitesToShards {
 
     @Override
     public StreamVariantsRequest apply(Contig contig) {
+      if (null == contig) {
+        return null;
+      }
       return contig.getStreamVariantsRequest(variantSetId);
     }
 
@@ -103,8 +110,8 @@ public class SitesToShards {
 
     @Override
     public PCollection<StreamVariantsRequest> apply(PCollection<String> lines) {
-      return lines.apply("Sites to Contigs", MapElements.via(new SitesToContigsFn())).apply(
-          "Contigs to StreamVariantsRequests",
+      return lines.apply(ParDo.of(new SitesToContigsFn()))
+          .apply("Contigs to StreamVariantsRequests",
           MapElements.via(new ContigsToStreamVariantsRequestsFn(variantSetId)));
     }
   }

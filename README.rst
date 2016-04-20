@@ -78,13 +78,17 @@ The `Main code directory </src/main/java/com/google/cloud/genomics/dataflow>`_
 contains several useful utilities:
 
 coders:
-  includes ``Coder`` classes that are useful for Genomics pipelines. ``GenericJsonCoder``
-  can be used with any of the Java client library classes (like ``Read``, ``Variant``, etc)
+  includes ``Coder`` classes that are useful for Genomics pipelines.
 
 functions:
-  contains common DoFns that can be reused as part of any pipeline.
-  ``OutputPCoAFile`` is an example of a complex ``PTransform`` that provides a useful common analysis.
+  and its subdirectories contain common DoFns and other serializable function types that can be reused as part of any pipeline. ``OutputPCoAFile`` is an example of a complex ``PTransform`` that provides a useful common analysis.
 
+model:
+  pojos for intermediate data types used in the sample pipelines.  If you are instead looking for the Reads and Variants java objects:
+  
+  * REST API `javadocs <https://developers.google.com/resources/api-libraries/documentation/genomics/v1/java/latest/overview-summary.html>`_
+  * gRPC API `protobuf descriptors <https://github.com/googlegenomics/utils-java/tree/master/src/main/proto/google>`_
+  
 pipelines:
   contains example pipelines which demonstrate how Google Cloud Dataflow can work with Google Genomics
 
@@ -97,18 +101,17 @@ pipelines:
   * and several others!
 
 readers:
-  contains functions that perform API calls to read data from the genomics API
+  contains functions that perform API calls to read data from the genomics API and also from BAM files in Cloud Storage
+
+writers:
+  contains functions that perform API calls to write data to BAM files in Cloud Storage
 
 utils:
   contains utilities for running dataflow workflows against the genomics API
 
-  * ``DataflowWorkarounds``
-    contains workarounds needed to use the Google Cloud Dataflow APIs.
-
-  * ``GenomicsOptions.java`` and ``GenomicsDatasetOptions``
-    extend these classes for your command line options to take advantage of common command
+  * ``GenomicsOptions.java``, ``ShardOptions`` and ``GCSOutputOptions``
+    use these classes for your command line options to take advantage of common command
     line functionality
-
 
 Maven artifact
 --------------
@@ -132,6 +135,20 @@ You can find the latest version in
 `Maven's central repository <https://search.maven.org/#search%7Cga%7C1%7Ca%3A%22google-genomics-dataflow%22>`_
 
 For an example pipeline that depends on this code in another GitHub repository, see https://github.com/googlegenomics/codelabs/tree/master/Java/PlatinumGenomes-variant-transformation.
+
+Local development
+-----------------
+
+With Maven you can locally install a SNAPSHOT version of this code (or any of its dependencies), to use from other projects 
+directly without having to wait for the Maven repository. Use:
+
+``mvn install``
+
+to run the full tests and do a local install. You can also use
+
+``mvn install -DskipITs``
+
+to run only the unit tests and do a local install. This is faster.
 
 Project status
 --------------
