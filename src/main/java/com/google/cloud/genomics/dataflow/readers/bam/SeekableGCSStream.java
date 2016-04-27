@@ -35,12 +35,12 @@ import java.util.regex.Pattern;
  */
 public class SeekableGCSStream extends SeekableStream {
   private static final Logger LOG = Logger.getLogger(SeekableGCSStream.class.getName());
-  
+
   private static final Pattern SLASH = Pattern.compile("/");
   private static final String GCS_PREFIX = "gs://";
   private static final int MAX_RETRIES = 3;
   private static final long RETRY_SLEEP_TIME_MSEC = 1000;
-  
+
   private Storage.Objects client;
   private StorageObject object;
   private String name;
@@ -50,7 +50,7 @@ public class SeekableGCSStream extends SeekableStream {
   private long position = -1;
   private byte[] oneByte = new byte[1];
   private boolean atEof = false;
-  
+
   public SeekableGCSStream(Storage.Objects client, String name) throws IOException {
     LOG.info("Creating SeekableGCSStream: " + name);
     this.client = client;
@@ -86,7 +86,7 @@ public class SeekableGCSStream extends SeekableStream {
   public long position() throws IOException {
     return position;
   }
-  
+
   @Override
   public int read() throws IOException {
     final int bytesRead = read(oneByte, 0, 1);
@@ -102,7 +102,7 @@ public class SeekableGCSStream extends SeekableStream {
     position = arg0;
     openStream();
   }
-  
+
   protected void openStream()
       throws IOException {
     if (LOG.isLoggable(Level.FINEST)) {
@@ -145,7 +145,7 @@ public class SeekableGCSStream extends SeekableStream {
     atEof = size == 0;
     stream = response.getContent();
   }
-  
+
   protected void validatePosition(long newPosition) {
     if (newPosition < 0) {
       throw new IllegalArgumentException(
@@ -159,7 +159,7 @@ public class SeekableGCSStream extends SeekableStream {
               newPosition, size));
     }
   }
-  
+
   @Override
   public int read(byte[] buf, int offset, int len)
       throws IOException {
@@ -175,7 +175,7 @@ public class SeekableGCSStream extends SeekableStream {
 
     do {
       try {
-        final int numBytesRead = stream.read(buf, 
+        final int numBytesRead = stream.read(buf,
             offset + totalBytesRead, len - totalBytesRead);
         if (LOG.isLoggable(Level.FINEST)) {
           LOG.finest("Read returned: " + numBytesRead);
@@ -222,7 +222,7 @@ public class SeekableGCSStream extends SeekableStream {
     }
     return retVal;
   }
-  
+
   private static StorageObject uriToStorageObject(String uri) throws IOException {
     StorageObject object = new StorageObject();
     if (uri.startsWith(GCS_PREFIX)) {

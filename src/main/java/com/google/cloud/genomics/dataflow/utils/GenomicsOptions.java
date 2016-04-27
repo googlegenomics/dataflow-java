@@ -13,13 +13,13 @@
  */
 package com.google.cloud.genomics.dataflow.utils;
 
-import java.util.Scanner;
-
 import com.google.cloud.dataflow.sdk.options.Default;
 import com.google.cloud.dataflow.sdk.options.Description;
 import com.google.cloud.dataflow.sdk.options.GcsOptions;
 import com.google.cloud.dataflow.sdk.runners.DirectPipelineRunner;
 import com.google.cloud.genomics.utils.OfflineAuth;
+
+import java.util.Scanner;
 
 /**
  * Contains pipeline options relevant to the creation of Genomics API clients.
@@ -40,6 +40,7 @@ public interface GenomicsOptions extends GcsOptions {
         Scanner kbd = new Scanner(System.in);
         String decision;
         decision = kbd.nextLine();
+        kbd.close();
         switch(decision) {
           case "yes": case "Yes": case "YES": case "y": case "Y":
             break;

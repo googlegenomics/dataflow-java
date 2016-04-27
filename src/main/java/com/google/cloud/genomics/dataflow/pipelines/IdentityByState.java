@@ -13,8 +13,6 @@
  */
 package com.google.cloud.genomics.dataflow.pipelines;
 
-import java.util.List;
-
 import com.google.cloud.dataflow.sdk.Pipeline;
 import com.google.cloud.dataflow.sdk.io.TextIO;
 import com.google.cloud.dataflow.sdk.options.Default;
@@ -44,6 +42,8 @@ import com.google.cloud.genomics.utils.ShardBoundary;
 import com.google.cloud.genomics.utils.ShardUtils;
 import com.google.genomics.v1.StreamVariantsRequest;
 import com.google.genomics.v1.Variant;
+
+import java.util.List;
 
 /**
  * A pipeline that computes Identity by State (IBS) for each pair of individuals in a dataset.

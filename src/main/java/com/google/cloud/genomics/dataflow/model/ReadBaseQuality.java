@@ -18,6 +18,7 @@ package com.google.cloud.genomics.dataflow.model;
 import com.google.api.client.json.GenericJson;
 import com.google.cloud.dataflow.sdk.coders.DefaultCoder;
 import com.google.cloud.genomics.dataflow.coders.GenericJsonCoder;
+
 import java.util.Objects;
 
 /**

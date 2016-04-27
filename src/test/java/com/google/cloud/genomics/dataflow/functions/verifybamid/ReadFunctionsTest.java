@@ -188,7 +188,7 @@ public class ReadFunctionsTest {
             alignedRef.substring(i, i + 1),
             Position.newBuilder()
             .setReferenceName(chromosome)
-            .setPosition((long) (originalPos + refPositionOffset))
+            .setPosition(originalPos + refPositionOffset)
             .build());
         qualityOffset++;
         refPositionOffset++;

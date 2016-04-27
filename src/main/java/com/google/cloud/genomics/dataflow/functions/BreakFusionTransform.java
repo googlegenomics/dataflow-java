@@ -27,9 +27,9 @@ import com.google.cloud.dataflow.sdk.values.PCollection;
  * This is useful to insert in cases where a series of transforms deal with very small sets of data
  * that act as descriptors of very heavy workloads in subsequent steps (e.g. a collection of file names
  * where each file takes a long time to process).
- * In this case Dataflow might over-eagerly fuse steps dealing with small datasets with the "heavy" 
+ * In this case Dataflow might over-eagerly fuse steps dealing with small datasets with the "heavy"
  * processing steps, which will result in heavy steps being executed on a single worker.
- * If you insert a fusion break transform in between then Dataflow will be able to spin up many 
+ * If you insert a fusion break transform in between then Dataflow will be able to spin up many
  * parallel workers to handle the heavy processing.
  * @see https://cloud.google.com/dataflow/service/dataflow-service-desc#Optimization
  * Typical usage:
@@ -40,30 +40,30 @@ import com.google.cloud.dataflow.sdk.values.PCollection;
  *      .....
  */
 public class BreakFusionTransform<T> extends PTransform<PCollection<T>, PCollection<T>> {
-  
+
   public BreakFusionTransform() {
     super("Break Fusion Transform");
 
   }
-  
+
   @Override
   public PCollection<T> apply(PCollection<T> input) {
     return input
         .apply(
             ParDo.named("Break fusion mapper")
-              .of(new DummyMapFn<T>()))  
+              .of(new DummyMapFn<T>()))
         .apply(GroupByKey.<T, Integer>create())
-        .apply(Keys.<T>create());  
+        .apply(Keys.<T>create());
   }
-  
-  
-   static class DummyMapFn<T> extends DoFn<T, KV<T, Integer>> {  
+
+
+   static class DummyMapFn<T> extends DoFn<T, KV<T, Integer>> {
     private static final int DUMMY_VALUE = 42;
 
     @Override
     public void processElement(DoFn<T, KV<T, Integer>>.ProcessContext c) throws Exception {
       c.output( KV.of(c.element(), DUMMY_VALUE));
     }
-   } 
+   }
 }
 

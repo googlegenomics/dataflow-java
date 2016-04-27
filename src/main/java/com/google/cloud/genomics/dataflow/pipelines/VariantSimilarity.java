@@ -15,11 +15,6 @@
  */
 package com.google.cloud.genomics.dataflow.pipelines;
 
-import java.io.IOException;
-import java.security.GeneralSecurityException;
-import java.util.Collections;
-import java.util.List;
-
 import com.google.cloud.dataflow.sdk.Pipeline;
 import com.google.cloud.dataflow.sdk.io.TextIO;
 import com.google.cloud.dataflow.sdk.options.Default;
@@ -42,6 +37,11 @@ import com.google.cloud.genomics.utils.ShardUtils;
 import com.google.common.collect.BiMap;
 import com.google.common.collect.HashBiMap;
 import com.google.genomics.v1.StreamVariantsRequest;
+
+import java.io.IOException;
+import java.security.GeneralSecurityException;
+import java.util.Collections;
+import java.util.List;
 
 /**
  * A pipeline that generates similarity data for variants in a dataset.

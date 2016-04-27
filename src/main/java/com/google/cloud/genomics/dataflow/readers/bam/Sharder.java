@@ -17,7 +17,6 @@ package com.google.cloud.genomics.dataflow.readers.bam;
 
 import com.google.api.services.storage.Storage;
 import com.google.api.services.storage.Storage.Objects;
-import com.google.cloud.dataflow.sdk.transforms.DoFn;
 import com.google.cloud.genomics.utils.Contig;
 import com.google.common.base.Function;
 import com.google.common.collect.Iterables;
@@ -49,27 +48,27 @@ import javax.annotation.Nullable;
  */
 public class Sharder {
   private static final Logger LOG = Logger.getLogger(Sharder.class.getName());
-  
+
   public interface SharderOutput {
     public void output(BAMShard shard);
   }
-  
+
   Storage.Objects storageClient;
-  String filePath; 
+  String filePath;
   Iterable<Contig> requestedContigs;
   SharderOutput output;
   final ShardingPolicy shardingPolicy;
-  
+
   SamReader reader;
   SeekableStream indexStream;
   SAMFileHeader header;
   BAMFileIndexImpl index;
-  
+
   boolean allReferences;
   boolean hasIndex;
   HashMap<String, Contig> contigsByReference;
-  
-  public static List<BAMShard> shardBAMFile(Objects storageClient, 
+
+  public static List<BAMShard> shardBAMFile(Objects storageClient,
       String filePath, Iterable<Contig> requestedContigs,
       ShardingPolicy shardingPolicy) throws IOException {
     final List<BAMShard> shards = Lists.newArrayList();
@@ -83,7 +82,7 @@ public class Sharder {
       .process();
     return shards;
   }
-  
+
   public Sharder(Objects storageClient, String filePath, Iterable<Contig> requestedContigs,
       ShardingPolicy shardingPolicy,
       SharderOutput output) {
@@ -105,10 +104,10 @@ public class Sharder {
 
   public void process() throws IOException {
     LOG.info("Processing BAM file " + filePath);
-        
+
     openFile();
     processHeader();
- 
+
     for (SAMSequenceRecord sequenceRecord : header.getSequenceDictionary().getSequences()) {
       final Contig contig = desiredContigForReference(sequenceRecord);
       if (contig == null) {
@@ -126,7 +125,7 @@ public class Sharder {
       index.close();
     }
   }
-  
+
   void openFile() throws IOException {
     final BAMIO.ReaderAndIndex r = BAMIO.openBAMAndExposeIndex(storageClient, filePath, ValidationStringency.DEFAULT_STRINGENCY);
     reader = r.reader;
@@ -141,7 +140,7 @@ public class Sharder {
       index = null;
     }
   }
-  
+
   void processHeader() {
     contigsByReference = Maps.newHashMap();
     for (Contig contig : requestedContigs) {
@@ -156,9 +155,9 @@ public class Sharder {
     LOG.info("All references = " + allReferences);
     LOG.info("BAM has index = " + reader.hasIndex());
     LOG.info("BAM has browseable index = " + reader.indexing().hasBrowseableIndex());
-    LOG.info("Class for index = " + reader.indexing().getIndex().getClass().getName());  
+    LOG.info("Class for index = " + reader.indexing().getIndex().getClass().getName());
   }
-  
+
   Contig desiredContigForReference(SAMSequenceRecord reference) {
     Contig contig = contigsByReference.get(reference.getSequenceName());
     if (contig == null) {
@@ -176,7 +175,7 @@ public class Sharder {
     }
     return contig;
   }
-  
+
   void createShardsForReference(SAMSequenceRecord reference, Contig contig) {
     LOG.info("Creating shard for: " + contig);
     final BitSet overlappingBins = GenomicIndexUtil.regionToBins(
@@ -185,8 +184,8 @@ public class Sharder {
       LOG.warning("No overlapping bins for " + contig.start + ":" + contig.end);
       return;
     }
-    
-   
+
+
     BAMShard currentShard = null;
     for (int binIndex = overlappingBins.nextSetBit(0); binIndex >= 0; binIndex = overlappingBins.nextSetBit(binIndex + 1)) {
       final Bin bin = index.getBinData(reference.getSequenceIndex(), binIndex);
@@ -197,12 +196,12 @@ public class Sharder {
         LOG.fine("Processing bin " + index.getFirstLocusInBin(bin) + "-"
             + index.getLastLocusInBin(bin));
       }
-      
+
       if (index.getLevelForBin(bin) != (GenomicIndexUtil.LEVEL_STARTS.length - 1)) {
         if (LOG.isLoggable(Level.FINEST)) {
           LOG.finest("Skipping - not lowest");
         }
-        continue; 
+        continue;
         // Skip non-lowest level bins
         // Its ok to skip higher level bins
         // because in BAMShard#finalize we
@@ -219,9 +218,9 @@ public class Sharder {
       }
 
       if (currentShard == null) {
-        int startLocus = 
+        int startLocus =
             Math.max(index.getFirstLocusInBin(bin), (int)contig.start);
-        
+
         if (LOG.isLoggable(Level.FINE)) {
           LOG.fine("Creating shard starting from " + startLocus);
         }
@@ -234,7 +233,7 @@ public class Sharder {
       }
 
       if (shardingPolicy.shardBigEnough(currentShard)) {
-        LOG.info("Shard size is big enough to finalize: " + 
+        LOG.info("Shard size is big enough to finalize: " +
             currentShard.sizeInLoci() + ", " + currentShard.approximateSizeInBytes() + " bytes");
         final BAMShard bamShard = currentShard.finalize(index, Math.min(index.getLastLocusInBin(bin), (int)contig.end));
         LOG.info("Outputting shard: " + bamShard.contig);
@@ -243,8 +242,8 @@ public class Sharder {
       }
     }
     if (currentShard != null) {
-      LOG.info("Outputting last shard of size " + 
-          currentShard.sizeInLoci() + ", " + currentShard.approximateSizeInBytes() + " bytes " 
+      LOG.info("Outputting last shard of size " +
+          currentShard.sizeInLoci() + ", " + currentShard.approximateSizeInBytes() + " bytes "
           + currentShard.contig);
       output.output(currentShard.finalize(index, (int)contig.end));
     }

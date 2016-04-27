@@ -15,10 +15,6 @@
  */
 package com.google.cloud.genomics.dataflow.pipelines;
 
-import java.io.IOException;
-import java.security.GeneralSecurityException;
-import java.util.List;
-
 import com.google.api.services.genomics.model.SearchVariantsRequest;
 import com.google.cloud.dataflow.sdk.Pipeline;
 import com.google.cloud.dataflow.sdk.io.TextIO;
@@ -41,6 +37,10 @@ import com.google.cloud.genomics.dataflow.utils.ShardOptions;
 import com.google.cloud.genomics.utils.OfflineAuth;
 import com.google.cloud.genomics.utils.ShardBoundary;
 import com.google.cloud.genomics.utils.ShardUtils;
+
+import java.io.IOException;
+import java.security.GeneralSecurityException;
+import java.util.List;
 
 /**
  * A pipeline that calculates the transmission probability of each allele in parents.

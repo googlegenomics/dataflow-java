@@ -17,14 +17,6 @@ package com.google.cloud.genomics.dataflow.pipelines;
 
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
-import htsjdk.samtools.SamReader;
-import htsjdk.samtools.ValidationStringency;
-
-import java.io.BufferedReader;
-import java.io.IOException;
-import java.io.Writer;
-import java.nio.channels.Channels;
-import java.security.GeneralSecurityException;
 
 import com.google.api.services.storage.Storage;
 import com.google.cloud.dataflow.sdk.options.GcsOptions;
@@ -34,6 +26,15 @@ import com.google.cloud.dataflow.sdk.util.Transport;
 import com.google.cloud.dataflow.sdk.util.gcsfs.GcsPath;
 import com.google.cloud.genomics.dataflow.readers.bam.BAMIO;
 import com.google.cloud.genomics.dataflow.utils.GenomicsOptions;
+
+import htsjdk.samtools.SamReader;
+import htsjdk.samtools.ValidationStringency;
+
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.Writer;
+import java.nio.channels.Channels;
+import java.security.GeneralSecurityException;
 
 public class IntegrationTestHelper {
 
@@ -49,7 +50,7 @@ public class IntegrationTestHelper {
 
   private GenomicsOptions popts = PipelineOptionsFactory.create().as(GenomicsOptions.class);
   GcsUtil gcsUtil;
-  
+
   public IntegrationTestHelper() {
     assertNotNull("You must set the TEST_PROJECT environment variable for this test.", TEST_PROJECT);
     assertNotNull("You must set the TEST_OUTPUT_GCS_FOLDER environment variable for this test.", TEST_OUTPUT_GCS_FOLDER);
@@ -58,7 +59,7 @@ public class IntegrationTestHelper {
     assertTrue("TEST_OUTPUT_GCS_FOLDER must start with 'gs://'", TEST_OUTPUT_GCS_FOLDER.startsWith("gs://"));
     assertTrue("TEST_STAGING_GCS_FOLDER must start with 'gs://'", TEST_STAGING_GCS_FOLDER.startsWith("gs://"));
     // we don't care how TEST_STAGING_GCS_FOLDER ends, so no check for it.
-    
+
     gcsUtil = new GcsUtil.GcsUtilFactory().create(popts);
   }
 
@@ -85,7 +86,7 @@ public class IntegrationTestHelper {
 
   /**
    * Make sure we can get to the output.
-   * 
+   *
    * Also write a sentinel value to the file.  This protects against the possibility of prior
    * test output causing a newly failing test to appear to succeed.
    */
@@ -94,23 +95,23 @@ public class IntegrationTestHelper {
       writer.write("output will go here");
     }
   }
-  
+
   /**
    * Open test output for reading.
    */
   public BufferedReader openOutput(String outputPath) throws IOException {
     return new BufferedReader(Channels.newReader(gcsUtil.open(GcsPath.fromUri(outputPath)), "UTF-8"));
   }
-  
+
   /**
    * Open test output as BAM file - useful if your test writes out a BAM file
    * and you want to validate the contents.
-   * @throws IOException 
+   * @throws IOException
    */
   public SamReader openBAM(String bamFilePath) throws IOException {
     final GcsOptions gcsOptions = popts.as(GcsOptions.class);
     final Storage.Objects storage = Transport.newStorageClient(gcsOptions).build().objects();
-    return BAMIO.openBAM(storage, bamFilePath, ValidationStringency.LENIENT, true); 
+    return BAMIO.openBAM(storage, bamFilePath, ValidationStringency.LENIENT, true);
   }
 
   /**
@@ -119,10 +120,10 @@ public class IntegrationTestHelper {
   public void deleteOutput(String outputPath) throws IOException, GeneralSecurityException {
     // boilerplate
     GcsPath path = GcsPath.fromUri(outputPath);
-    GcsOptions gcsOptions = (GcsOptions)popts.as(GcsOptions.class);
+    GcsOptions gcsOptions = popts.as(GcsOptions.class);
     Storage storage = Transport.newStorageClient(gcsOptions).build();
     // do the actual work
     storage.objects().delete(path.getBucket(), path.getObject()).execute();
   }
-  
+
 }

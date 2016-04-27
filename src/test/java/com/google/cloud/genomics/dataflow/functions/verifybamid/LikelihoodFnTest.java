@@ -21,14 +21,14 @@ import com.google.cloud.genomics.dataflow.model.ReadQualityCount.Base;
 import com.google.common.collect.ImmutableMap;
 import com.google.genomics.v1.Position;
 
-import junit.framework.TestCase;
-
 import org.apache.commons.math3.util.Precision;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 
 import java.util.Map;
+
+import junit.framework.TestCase;
 
 /**
  * Unit tests for {@link LikelihoodFn}.
@@ -84,7 +84,7 @@ public class LikelihoodFnTest extends TestCase {
     // Likelihood of a single NONREF with the parameters above
     final double likNonref = 0.20368;
     assertEquals(Precision.compareTo(fn.value(alpha), Math.log(likNonref), tolerance), 0);
-  
+
     /*
      * Observe single OTHER read
      */

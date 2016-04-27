@@ -15,13 +15,13 @@
  */
 package com.google.cloud.genomics.dataflow.pipelines;
 
-import java.io.BufferedReader;
-
 import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
+
+import java.io.BufferedReader;
 
 /**
  * This integration test will read and write to Cloud Storage, and call the Genomics API.
@@ -31,7 +31,7 @@ import org.junit.runners.JUnit4;
  * - a Google Cloud project name in TEST_PROJECT,
  * - a Cloud Storage folder path in TEST_OUTPUT_GCS_FOLDER to store temporary test outputs,
  * - a Cloud Storage folder path in TEST_STAGING_GCS_FOLDER to store temporary files,
- * 
+ *
  * Cloud Storage folder paths should be of the form "gs://bucket/folder/"
  *
  * When doing e.g. mvn install, you can skip integration tests using:
@@ -39,7 +39,7 @@ import org.junit.runners.JUnit4;
  *
  * To run one test:
  *      mvn -Dit.test=CountReadsITCase#testLocal verify
- *      
+ *
  * See also http://maven.apache.org/surefire/maven-failsafe-plugin/examples/single-test.html
  */
 @RunWith(JUnit4.class)
@@ -55,22 +55,22 @@ public class CountReadsITCase {
   static final long TEST_EXPECTED = 685;
   // In this file there are no unmapped reads, so expecting the same number.
   static final long TEST_EXPECTED_WITH_UNMAPPED = TEST_EXPECTED;
-  
+
   // Same as the above variables, but for the NA12877_S1 dataset.
   static final String NA12877_S1_BAM_FILENAME = "gs://genomics-public-data/platinum-genomes/bam/NA12877_S1.bam";
   static final String NA12877_S1_READGROUPSET = "CMvnhpKTFhD3he72j4KZuyc";
   static final String NA12877_S1_CONTIG = "chr17:41196311:41277499";
   static final long NA12877_S1_EXPECTED = 45081;
-  // How many reads are in that region if we take unmapped ones too    
+  // How many reads are in that region if we take unmapped ones too
   static final long NA12877_S1_EXPECTED_WITH_UNMAPPED = 45142;
 
   static IntegrationTestHelper helper;
-  
+
   @BeforeClass
   public static void setUpBeforeClass() {
     helper = new IntegrationTestHelper();
   }
-  
+
   private void testLocalBase(String outputFilename, String contig, String bamFilename, long expectedCount,
       boolean includeUnmapped) throws Exception {
     final String OUTPUT = helper.getTestOutputGcsFolder()+ outputFilename;
@@ -102,23 +102,23 @@ public class CountReadsITCase {
     testLocalBase("CountReadsITCase-testLocal-output.txt",
         TEST_CONTIG, TEST_BAM_FNAME, TEST_EXPECTED, false);
   }
-  
+
   @Test
   public void testLocalUnmapped() throws Exception {
     testLocalBase("CountReadsITCase-testLocal-output.txt",
         TEST_CONTIG, TEST_BAM_FNAME, TEST_EXPECTED_WITH_UNMAPPED, true);
   }
-  
+
   @Test
   public void testLocalNA12877_S1() throws Exception {
     testLocalBase("CountReadsITCase-testLocal-NA12877_S1-output.txt",
         NA12877_S1_CONTIG, NA12877_S1_BAM_FILENAME, NA12877_S1_EXPECTED, false);
   }
-  
+
   @Test
   public void testLocalNA12877_S1_UNMAPPED() throws Exception {
     testLocalBase("CountReadsITCase-testLocal-NA12877_S1-output.txt",
-        NA12877_S1_CONTIG, NA12877_S1_BAM_FILENAME, 
+        NA12877_S1_CONTIG, NA12877_S1_BAM_FILENAME,
         NA12877_S1_EXPECTED_WITH_UNMAPPED, true);
   }
 
@@ -146,7 +146,7 @@ public class CountReadsITCase {
       helper.deleteOutput(OUTPUT);
     }
   }
-  
+
   /**
    * CountReads running on Dataflow.
    */
@@ -155,7 +155,7 @@ public class CountReadsITCase {
     testCloudBase("CountReadsITCase-testCloud-output.txt",
         TEST_CONTIG, TEST_BAM_FNAME, TEST_EXPECTED);
   }
-  
+
   @Test
   public void testCloudNA12877_S1() throws Exception {
     testCloudBase("CountReadsITCase-testCloud-NA12877_S1-output.txt",

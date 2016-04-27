@@ -4,29 +4,29 @@ import static org.hamcrest.Matchers.allOf;
 import static org.hamcrest.Matchers.containsString;
 import static org.junit.Assert.assertEquals;
 
-import java.io.Serializable;
-
-import org.junit.BeforeClass;
-import org.junit.Rule;
-import org.junit.Test;
-import org.junit.rules.ExpectedException;
-
 import com.google.cloud.dataflow.sdk.coders.CannotProvideCoderException;
 import com.google.cloud.dataflow.sdk.coders.Coder;
 import com.google.cloud.dataflow.sdk.coders.CoderRegistry;
 import com.google.cloud.dataflow.sdk.coders.Proto2Coder;
 import com.google.cloud.dataflow.sdk.coders.SerializableCoder;
 
+import org.junit.BeforeClass;
+import org.junit.Rule;
+import org.junit.Test;
+import org.junit.rules.ExpectedException;
+
+import java.io.Serializable;
+
 public class GenericJsonCoderProviderTest {
   private static CoderRegistry registry;
-  
+
   private static class NotGenericJsonClass {}
 
   private static class SerializableClass implements Serializable {}
 
   @Rule
   public ExpectedException thrown = ExpectedException.none();
-  
+
   @BeforeClass
   public static void setUpBeforeClass() throws Exception {
     registry = new CoderRegistry();

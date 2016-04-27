@@ -18,7 +18,7 @@ package com.google.cloud.genomics.dataflow.functions.ibs;
 import com.google.genomics.v1.VariantCall;
 
 public interface CallSimilarityCalculator {
-  
+
   double similarity(VariantCall call1, VariantCall call2);
 
 }

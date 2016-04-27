@@ -17,16 +17,16 @@ package com.google.cloud.genomics.dataflow.functions.pca;
 
 import static org.junit.Assert.assertEquals;
 
-import java.util.Arrays;
-import java.util.Collections;
+import com.google.cloud.genomics.dataflow.utils.DataUtils;
+import com.google.genomics.v1.Variant;
+import com.google.genomics.v1.VariantCall;
 
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 
-import com.google.cloud.genomics.dataflow.utils.DataUtils;
-import com.google.genomics.v1.Variant;
-import com.google.genomics.v1.VariantCall;
+import java.util.Arrays;
+import java.util.Collections;
 
 @RunWith(JUnit4.class)
 public class ExtractSimilarCallsetsTest {

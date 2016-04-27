@@ -15,8 +15,6 @@
  */
 package com.google.cloud.genomics.dataflow.readers;
 
-import java.util.logging.Logger;
-
 import com.google.api.client.json.GenericJson;
 import com.google.api.services.genomics.Genomics;
 import com.google.cloud.dataflow.sdk.transforms.Aggregator;
@@ -25,7 +23,9 @@ import com.google.cloud.dataflow.sdk.transforms.Sum;
 import com.google.cloud.genomics.utils.GenomicsFactory;
 import com.google.cloud.genomics.utils.OfflineAuth;
 
-public abstract class GenomicsApiReader<I extends GenericJson, O extends GenericJson> 
+import java.util.logging.Logger;
+
+public abstract class GenomicsApiReader<I extends GenericJson, O extends GenericJson>
     extends DoFn<I, O> {
   private static final Logger LOG = Logger.getLogger(GenomicsApiReader.class.getName());
 
@@ -36,7 +36,7 @@ public abstract class GenomicsApiReader<I extends GenericJson, O extends Generic
   protected Aggregator<Integer, Integer> unsuccessfulResponsesCount;
   protected Aggregator<Integer, Integer> ioExceptionsCount;
   protected Aggregator<Long, Long> itemCount;
-  
+
   public GenomicsApiReader(OfflineAuth auth, String fields) {
     this.auth = auth;
     this.fields = fields;
@@ -45,7 +45,7 @@ public abstract class GenomicsApiReader<I extends GenericJson, O extends Generic
     ioExceptionsCount = createAggregator("Genomics API IOException Response Count", new Sum.SumIntegerFn());
     itemCount = createAggregator("Genomics API Item Count", new Sum.SumLongFn());
   }
-  
+
   @Override
   public void processElement(ProcessContext c) {
     GenomicsFactory factory = GenomicsFactory.builder().build();

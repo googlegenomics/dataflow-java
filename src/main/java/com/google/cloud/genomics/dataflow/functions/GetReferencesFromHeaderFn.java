@@ -10,7 +10,7 @@ import java.util.logging.Logger;
 
 public class GetReferencesFromHeaderFn extends DoFn<HeaderInfo, String> {
   private static final Logger LOG = Logger.getLogger(GetReferencesFromHeaderFn.class.getName());
-      
+
   @Override
   public void processElement(DoFn<HeaderInfo, String>.ProcessContext c) throws Exception {
     final SAMFileHeader header = c.element().header;

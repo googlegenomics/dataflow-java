@@ -49,7 +49,7 @@ public class CombineShardsFn extends DoFn<String, String> {
 
   private static final int MAX_FILES_FOR_COMPOSE = 32;
   private static final int MAX_RETRY_COUNT = 3;
-  
+
   private static final String FILE_MIME_TYPE = "application/octet-stream";
   private static final Logger LOG = Logger.getLogger(CombineShardsFn.class.getName());
 
@@ -59,7 +59,7 @@ public class CombineShardsFn extends DoFn<String, String> {
   Aggregator<Integer, Integer> combinedFilesAggregator;
   Aggregator<Integer, Integer> createdFilesAggregator;
   Aggregator<Integer, Integer> deletedFilesAggregator;
-  
+
   public CombineShardsFn(PCollectionView<Iterable<String>> shards, PCollectionView<byte[]> eofContent) {
     this.shards = shards;
     this.eofContents = eofContent;
@@ -68,12 +68,12 @@ public class CombineShardsFn extends DoFn<String, String> {
     createdFilesAggregator = createAggregator("Created files", new SumIntegerFn());
     deletedFilesAggregator = createAggregator("Deleted files", new SumIntegerFn());
   }
-  
+
   @Override
   public void processElement(DoFn<String, String>.ProcessContext c) throws Exception {
-    final String result = 
+    final String result =
         combineShards(
-            c.getPipelineOptions().as(Options.class), 
+            c.getPipelineOptions().as(Options.class),
             c.element(),
             c.sideInput(shards),
             c.sideInput(eofContents));
@@ -102,32 +102,32 @@ public class CombineShardsFn extends DoFn<String, String> {
       os.write(eofContent);
       os.close();
       sortedShardsNames.add(eofFileName);
-      LOG.info("Written " + eofContent.length + " bytes into EOF file " + 
+      LOG.info("Written " + eofContent.length + " bytes into EOF file " +
           eofFileName);
     } else {
       LOG.info("No EOF content");
     }
-    
+
     int stageNumber = 0;
     /*
      * GCS Compose method takes only up to 32 files, so if we have more
-     * shards than that we need to do a hierarchical combine: 
+     * shards than that we need to do a hierarchical combine:
      * first combine all original shards in groups no more than 32
      * and then collect the results of these combines and so on until
      * we have a group of no more than 32 that we can finally combine into
      * a single file.
      */
     while (sortedShardsNames.size() > MAX_FILES_FOR_COMPOSE) {
-      LOG.info("Stage " + stageNumber + ": Have " + sortedShardsNames.size() + 
+      LOG.info("Stage " + stageNumber + ": Have " + sortedShardsNames.size() +
           " shards: must combine in groups of " + MAX_FILES_FOR_COMPOSE);
       final ArrayList<String> combinedShards = Lists.newArrayList();
       for (int idx = 0; idx < sortedShardsNames.size(); idx += MAX_FILES_FOR_COMPOSE) {
-        final int endIdx = Math.min(idx + MAX_FILES_FOR_COMPOSE, 
+        final int endIdx = Math.min(idx + MAX_FILES_FOR_COMPOSE,
             sortedShardsNames.size());
         final List<String> combinableShards = sortedShardsNames.subList(
             idx, endIdx);
         final String intermediateCombineResultName = dest + "-" +
-            String.format("%02d",stageNumber) + "-" + 
+            String.format("%02d",stageNumber) + "-" +
             String.format("%02d",idx) + "-" +
             String.format("%02d",endIdx);
         final String combineResult = composeAndCleanUpShards(storage,
@@ -136,18 +136,18 @@ public class CombineShardsFn extends DoFn<String, String> {
         LOG.info("Stage " + stageNumber + ": adding combine result for " +
             idx + "-" + endIdx + ": " + combineResult);
       }
-      LOG.info("Stage " + stageNumber + ": moving to next stage with " + 
+      LOG.info("Stage " + stageNumber + ": moving to next stage with " +
           combinedShards.size() + "shards");
       sortedShardsNames = combinedShards;
       stageNumber++;
     }
-    
+
     LOG.info("Combining a final group of " + sortedShardsNames.size() + " shards");
     final String combineResult = composeAndCleanUpShards(storage,
         sortedShardsNames, dest);
     return combineResult;
   }
-    
+
  String composeAndCleanUpShards(
       Storage.Objects storage, List<String> shardNames, String dest) throws IOException {
     LOG.info("Combining shards into " + dest);
@@ -166,7 +166,7 @@ public class CombineShardsFn extends DoFn<String, String> {
     }
     LOG.info("Added " + addedShardCount + " shards for composition");
     filesToCombineAggregator.addValue(addedShardCount);
-    
+
     final ComposeRequest composeRequest =
         new ComposeRequest().setDestination(destination).setSourceObjects(sourceObjects);
     final Compose compose =

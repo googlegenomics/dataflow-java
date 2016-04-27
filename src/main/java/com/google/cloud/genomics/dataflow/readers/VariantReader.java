@@ -15,8 +15,6 @@
  */
 package com.google.cloud.genomics.dataflow.readers;
 
-import java.util.logging.Logger;
-
 import com.google.api.services.genomics.Genomics;
 import com.google.api.services.genomics.model.SearchVariantsRequest;
 import com.google.api.services.genomics.model.Variant;
@@ -25,14 +23,16 @@ import com.google.cloud.genomics.utils.OfflineAuth;
 import com.google.cloud.genomics.utils.Paginator;
 import com.google.cloud.genomics.utils.ShardBoundary;
 
+import java.util.logging.Logger;
+
 public class VariantReader extends GenomicsApiReader<SearchVariantsRequest, Variant> {
   private static final Logger LOG = Logger.getLogger(VariantReader.class.getName());
   private final ShardBoundary.Requirement shardBoundary;
 
   /**
-   * Create a VariantReader using a auth and fields parameter. All fields not specified under 
+   * Create a VariantReader using a auth and fields parameter. All fields not specified under
    * variantFields will not be returned in the API response.
-   * 
+   *
    * @param auth Auth class containing credentials.
    * @param variantFields Fields to return in responses.
    */

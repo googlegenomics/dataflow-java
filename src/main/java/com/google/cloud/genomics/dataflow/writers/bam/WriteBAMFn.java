@@ -72,7 +72,7 @@ public class WriteBAMFn extends DoFn<Read, String> {
   Aggregator<Long, Long> shardReadCountMax;
   Aggregator<Long, Long> shardReadCountMin;
   Aggregator<Integer, Integer> outOfOrderCount;
-  
+
   Stopwatch stopWatch;
   int readCount;
   int unmappedReadCount;
@@ -83,7 +83,7 @@ public class WriteBAMFn extends DoFn<Read, String> {
   Options options;
   HeaderInfo headerInfo;
   int sequenceIndex;
-  
+
   SAMRecord prevRead = null;
   long minAlignment = Long.MAX_VALUE;
   long maxAlignment = Long.MIN_VALUE;
@@ -100,17 +100,17 @@ public class WriteBAMFn extends DoFn<Read, String> {
     shardReadCountMin = createAggregator("Minimum Reads Per Shard", new Min.MinLongFn());
     outOfOrderCount  = createAggregator("Out of order reads",  new Sum.SumIntegerFn());
   }
-  
+
   @Override
   public void startBundle(DoFn<Read, String>.Context c) throws IOException {
     LOG.info("Starting bundle ");
     storage = Transport.newStorageClient(c.getPipelineOptions().as(GCSOptions.class)).build().objects();
-    
+
     initializedShardCount.addValue(1);
     stopWatch = Stopwatch.createStarted();
-    
+
     options = c.getPipelineOptions().as(Options.class);
-    
+
     readCount = 0;
     unmappedReadCount = 0;
     headerInfo = null;
@@ -119,7 +119,7 @@ public class WriteBAMFn extends DoFn<Read, String> {
     maxAlignment = Long.MIN_VALUE;
     hadOutOfOrder = false;
   }
-  
+
   @Override
   public void finishBundle(DoFn<Read, String>.Context c) throws IOException {
     bw.close();
@@ -127,7 +127,7 @@ public class WriteBAMFn extends DoFn<Read, String> {
     LOG.info("Finished writing " + shardContig);
     finishedShardCount.addValue(1);
     final long bytesWritten = ts.getBytesWrittenExceptingTruncation();
-    LOG.info("Wrote " + readCount + " reads, " + unmappedReadCount + " unmapped, into " + shardName + 
+    LOG.info("Wrote " + readCount + " reads, " + unmappedReadCount + " unmapped, into " + shardName +
         (hadOutOfOrder ? "ignored out of order" : "") + ", wrote " + bytesWritten + " bytes");
     readCountAggregator.addValue(readCount);
     unmappedReadCountAggregator.addValue(unmappedReadCount);
@@ -137,18 +137,18 @@ public class WriteBAMFn extends DoFn<Read, String> {
     c.output(shardName);
     c.sideOutput(SEQUENCE_SHARD_SIZES_TAG, KV.of(sequenceIndex, bytesWritten));
   }
-  
+
   @Override
   public void processElement(DoFn<Read, String>.ProcessContext c)
       throws Exception {
-   
+
     if (headerInfo == null) {
       headerInfo = c.sideInput(headerView);
     }
     final Read read = c.element();
-    
+
     if (readCount == 0) {
-      
+
       shardContig = KeyReadsFn.shardKeyForRead(read, 1);
       sequenceIndex = headerInfo.header.getSequenceIndex(shardContig.referenceName);
       final boolean isFirstShard = headerInfo.shardHasFirstRead(shardContig);
@@ -157,10 +157,10 @@ public class WriteBAMFn extends DoFn<Read, String> {
           + shardContig.referenceName
           + ":" + String.format("%012d", shardContig.start);
       LOG.info("Writing shard file " + shardName);
-      final OutputStream outputStream = 
+      final OutputStream outputStream =
           Channels.newOutputStream(
               new GcsUtil.GcsUtilFactory().create(options)
-                .create(GcsPath.fromUri(shardName), 
+                .create(GcsPath.fromUri(shardName),
                     BAMIO.BAM_INDEX_FILE_MIME_TYPE));
       ts = new TruncatedOutputStream(
           outputStream, BlockCompressedStreamConstants.EMPTY_GZIP_BLOCK.length);
@@ -174,11 +174,11 @@ public class WriteBAMFn extends DoFn<Read, String> {
     }
     SAMRecord samRecord = ReadUtils.makeSAMRecord(read, headerInfo.header);
     if (prevRead != null && prevRead.getAlignmentStart() > samRecord.getAlignmentStart()) {
-      LOG.info("Out of order read " + prevRead.getAlignmentStart() + " " + 
-          samRecord.getAlignmentStart() + " during writing of shard " + shardName + 
-          " after processing " + readCount + " reads, min seen alignment is " + 
-          minAlignment + " and max is " + maxAlignment + ", this read is " + 
-          (samRecord.getReadUnmappedFlag() ? "unmapped" : "mapped") + " and its mate is " + 
+      LOG.info("Out of order read " + prevRead.getAlignmentStart() + " " +
+          samRecord.getAlignmentStart() + " during writing of shard " + shardName +
+          " after processing " + readCount + " reads, min seen alignment is " +
+          minAlignment + " and max is " + maxAlignment + ", this read is " +
+          (samRecord.getReadUnmappedFlag() ? "unmapped" : "mapped") + " and its mate is " +
           (samRecord.getMateUnmappedFlag() ? "unmapped" : "mapped"));
       outOfOrderCount.addValue(1);
       readCount++;

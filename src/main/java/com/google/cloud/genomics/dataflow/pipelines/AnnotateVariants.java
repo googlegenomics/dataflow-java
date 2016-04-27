@@ -13,16 +13,6 @@
  */
 package com.google.cloud.genomics.dataflow.pipelines;
 
-import htsjdk.samtools.util.IntervalTree;
-import htsjdk.samtools.util.IntervalTree.Node;
-
-import java.io.IOException;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
-import java.util.concurrent.TimeUnit;
-import java.util.logging.Logger;
-
 import com.google.api.client.util.Strings;
 import com.google.api.services.genomics.Genomics;
 import com.google.api.services.genomics.model.Annotation;
@@ -65,6 +55,16 @@ import com.google.common.collect.ListMultimap;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Range;
 
+import htsjdk.samtools.util.IntervalTree;
+import htsjdk.samtools.util.IntervalTree.Node;
+
+import java.io.IOException;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.TimeUnit;
+import java.util.logging.Logger;
+
 /**
  * Demonstrates a simple variant annotation program which takes
  * {@code VariantSet}s and {@code AnnotationSet}s as input and emits
@@ -86,7 +86,7 @@ import com.google.common.collect.Range;
  * for running instructions.
  */
 public final class AnnotateVariants extends DoFn<SearchVariantsRequest, KV<String, VariantAnnotation>> {
-  
+
   public static interface Options extends ShardOptions, GCSOutputOptions {
 
     @Description("The ID of the Google Genomics variant set this pipeline is accessing. "
@@ -297,7 +297,7 @@ public final class AnnotateVariants extends DoFn<SearchVariantsRequest, KV<Strin
         .withValidation().as(Options.class);
     // Option validation is not yet automatic, we make an explicit call here.
     Options.Methods.validateOptions(options);
-    
+
     OfflineAuth auth = GenomicsOptions.Methods.getGenomicsAuth(options);
     Genomics genomics = GenomicsFactory.builder().build().fromOfflineAuth(auth);
 

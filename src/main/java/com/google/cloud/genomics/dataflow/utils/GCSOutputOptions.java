@@ -23,7 +23,7 @@ import com.google.common.base.Preconditions;
  * A common options class for all pipelines that write their analysis results to GCS files.
  */
 public interface GCSOutputOptions extends GenomicsOptions {
-  
+
   public static class Methods {
     public static void validateOptions(GCSOutputOptions options) {
       try {

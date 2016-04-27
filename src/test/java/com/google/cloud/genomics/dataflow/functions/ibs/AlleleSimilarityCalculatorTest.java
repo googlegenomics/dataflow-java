@@ -20,15 +20,15 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertThat;
 import static org.junit.Assert.assertTrue;
 
-import java.util.List;
-
-import org.hamcrest.CoreMatchers;
-import org.junit.Test;
-
 import com.google.cloud.dataflow.sdk.transforms.DoFnTester;
 import com.google.cloud.dataflow.sdk.values.KV;
 import com.google.cloud.genomics.dataflow.utils.DataUtils;
 import com.google.genomics.v1.Variant;
+
+import org.hamcrest.CoreMatchers;
+import org.junit.Test;
+
+import java.util.List;
 
 public class AlleleSimilarityCalculatorTest {
 

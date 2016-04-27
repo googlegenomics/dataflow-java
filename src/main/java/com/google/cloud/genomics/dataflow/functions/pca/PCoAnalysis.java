@@ -16,10 +16,6 @@
 
 package com.google.cloud.genomics.dataflow.functions.pca;
 
-import java.io.Serializable;
-import java.util.Collection;
-import java.util.List;
-
 import Jama.EigenvalueDecomposition;
 import Jama.Matrix;
 
@@ -29,6 +25,10 @@ import com.google.cloud.dataflow.sdk.transforms.DoFn;
 import com.google.cloud.dataflow.sdk.values.KV;
 import com.google.common.collect.BiMap;
 import com.google.common.collect.ImmutableList;
+
+import java.io.Serializable;
+import java.util.Collection;
+import java.util.List;
 
 /**
  * This function runs a Principal Coordinate Analysis inside of a SeqDo.
@@ -70,7 +70,7 @@ public class PCoAnalysis extends DoFn<Iterable<KV<KV<String, String>, Long>>,
     @Override public String toString() {
       return String.format("%s\t\t%s\t%s", name, graphX, graphY);
     }
-    
+
     public static GraphResult fromString(String tsv) {
       Preconditions.checkNotNull(tsv);
       String[] tokens = tsv.split("[\\s\t]+");
@@ -119,7 +119,7 @@ public class PCoAnalysis extends DoFn<Iterable<KV<KV<String, String>, Long>>,
   private BiMap<String, Integer> dataIndices;
 
   public PCoAnalysis(BiMap<String, Integer> dataIndices) {
-    this.dataIndices = dataIndices;  
+    this.dataIndices = dataIndices;
   }
 
   // Convert the similarity matrix to an Eigen matrix.

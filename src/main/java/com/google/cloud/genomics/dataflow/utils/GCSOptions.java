@@ -15,10 +15,6 @@
  */
 package com.google.cloud.genomics.dataflow.utils;
 
-import java.util.List;
-import java.util.logging.Logger;
-
-import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.google.api.client.googleapis.util.Utils;
 import com.google.api.client.http.HttpTransport;
 import com.google.api.client.json.JsonFactory;
@@ -34,6 +30,11 @@ import com.google.cloud.genomics.utils.GenomicsFactory;
 import com.google.cloud.genomics.utils.OfflineAuth;
 import com.google.common.collect.ImmutableList;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+
+import java.util.List;
+import java.util.logging.Logger;
+
 /**
  * Options for pipelines that need to access GCS storage.
  * Users must call Methods.initialize to get the credentials set up.
@@ -46,7 +47,7 @@ public interface GCSOptions extends GenomicsOptions {
       return Utils.getDefaultTransport();
     }
   }
-  
+
   @Default.InstanceFactory(HttpTransportFactory.class)
   @JsonIgnore
   HttpTransport getTransport();
@@ -59,14 +60,14 @@ public interface GCSOptions extends GenomicsOptions {
       return Utils.getDefaultJsonFactory();
     }
   }
-  
+
   @Default.InstanceFactory(JsonFactoryFactory.class)
   @JsonIgnore
   JsonFactory getJsonFactory();
 
   void setJsonFactory(JsonFactory jsonFactory);
 
-  
+
   class ScopesFactory implements DefaultValueFactory<List<String>> {
     @Override
     public List<String> create(PipelineOptions options) {
@@ -77,13 +78,13 @@ public interface GCSOptions extends GenomicsOptions {
         .build();
     }
   }
-  
+
   @Default.InstanceFactory(ScopesFactory.class)
   @JsonIgnore
   List<String> getScopes();
 
   void setScopes(List<String> scopes);
-  
+
   class GenomicsFactoryFactory implements DefaultValueFactory<GenomicsFactory> {
     @Override
     public GenomicsFactory create(PipelineOptions options) {
@@ -100,41 +101,41 @@ public interface GCSOptions extends GenomicsOptions {
       }
     }
   }
-  
+
   @Default.InstanceFactory(GenomicsFactoryFactory.class)
   @JsonIgnore
   GenomicsFactory getGenomicsFactory();
-  
+
   void setGenomicsFactory(GenomicsFactory factory);
-  
+
   class Methods {
     private static final Logger LOG = Logger.getLogger(GCSOptions.class.getName());
     private Methods() {
     }
-    
+
     public static OfflineAuth createGCSAuth(GCSOptions options) {
       return GenomicsOptions.Methods.getGenomicsAuth(options);
     }
-    
+
     public static Storage.Objects createStorageClient(
         DoFn<?, ?>.Context context, OfflineAuth auth) {
       final GCSOptions gcsOptions =
           context.getPipelineOptions().as(GCSOptions.class);
       return createStorageClient(gcsOptions, auth);
     }
-    
+
     public static Storage.Objects createStorageClient(GCSOptions gcsOptions,
         OfflineAuth auth) {
       final Storage.Builder storageBuilder = new Storage.Builder(
           gcsOptions.getTransport(),
           gcsOptions.getJsonFactory(),
           null);
-      
+
       return gcsOptions.getGenomicsFactory()
           .fromOfflineAuth(storageBuilder, auth)
           .build()
           .objects();
       }
-    
+
   }
 }

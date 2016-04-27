@@ -18,19 +18,19 @@ package com.google.cloud.genomics.dataflow.pipelines;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.Assert.assertEquals;
 
-import java.io.BufferedReader;
-import java.io.IOException;
-import java.security.GeneralSecurityException;
-import java.util.List;
+import com.google.api.client.util.Lists;
+import com.google.cloud.dataflow.sdk.util.gcsfs.GcsPath;
+import com.google.cloud.genomics.dataflow.functions.pca.PCoAnalysis.GraphResult;
 
 import org.hamcrest.CoreMatchers;
 import org.junit.After;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
-import com.google.api.client.util.Lists;
-import com.google.cloud.dataflow.sdk.util.gcsfs.GcsPath;
-import com.google.cloud.genomics.dataflow.functions.pca.PCoAnalysis.GraphResult;
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.security.GeneralSecurityException;
+import java.util.List;
 
 /**
  * This integration test will call the Genomics API and write to Cloud Storage.

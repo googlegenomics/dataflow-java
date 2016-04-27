@@ -49,6 +49,7 @@ public abstract class DelegatingStandardCoder<X, Y> extends StandardCoder<X> {
 
   protected abstract X from(Y object) throws CoderException, IOException;
 
+  @Override
   public void verifyDeterministic() throws NonDeterministicException {
     delegate.verifyDeterministic();
   }

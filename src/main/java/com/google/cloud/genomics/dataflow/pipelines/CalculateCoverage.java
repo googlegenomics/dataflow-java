@@ -13,11 +13,6 @@
  */
 package com.google.cloud.genomics.dataflow.pipelines;
 
-import java.io.IOException;
-import java.security.GeneralSecurityException;
-import java.util.HashMap;
-import java.util.List;
-
 import com.google.api.client.util.Strings;
 import com.google.api.services.genomics.Genomics;
 import com.google.api.services.genomics.model.Annotation;
@@ -55,6 +50,11 @@ import com.google.cloud.genomics.utils.ShardUtils.SexChromosomeFilter;
 import com.google.common.collect.Lists;
 import com.google.genomics.v1.CigarUnit;
 import com.google.genomics.v1.Read;
+
+import java.io.IOException;
+import java.security.GeneralSecurityException;
+import java.util.HashMap;
+import java.util.List;
 
 /**
  * Class for calculating read depth coverage for a given data set.
@@ -197,7 +197,7 @@ public class CalculateCoverage {
 
     p.run();
   }
-  
+
   static class CheckMatchingReferenceSet extends DoFn<String, String> {
     private final String referenceSetIdForAllReadGroupSets;
     private final OfflineAuth auth;

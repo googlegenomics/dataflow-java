@@ -13,16 +13,6 @@
  */
 package com.google.cloud.genomics.dataflow.readers;
 
-import java.io.IOException;
-import java.security.GeneralSecurityException;
-import java.util.Iterator;
-import java.util.List;
-import java.util.concurrent.TimeUnit;
-
-import org.apache.commons.math3.stat.descriptive.DescriptiveStatistics;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import com.google.cloud.dataflow.sdk.transforms.Aggregator;
 import com.google.cloud.dataflow.sdk.transforms.DoFn;
 import com.google.cloud.dataflow.sdk.transforms.Max;
@@ -38,6 +28,16 @@ import com.google.genomics.v1.StreamVariantsRequest;
 import com.google.genomics.v1.StreamVariantsResponse;
 import com.google.genomics.v1.Variant;
 
+import org.apache.commons.math3.stat.descriptive.DescriptiveStatistics;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.io.IOException;
+import java.security.GeneralSecurityException;
+import java.util.Iterator;
+import java.util.List;
+import java.util.concurrent.TimeUnit;
+
 /**
  * PTransform for streaming variants via gRPC.
  */
@@ -51,7 +51,7 @@ PTransform<PCollection<StreamVariantsRequest>, PCollection<Variant>> {
 
   /**
    * Create a streamer that can enforce shard boundary semantics.
-   * 
+   *
    * @param auth The OfflineAuth to use for the request.
    * @param shardBoundary The shard boundary semantics to enforce.
    * @param fields Which fields to include in a partial response or null for all.
@@ -97,10 +97,10 @@ PTransform<PCollection<StreamVariantsRequest>, PCollection<Variant>> {
       stats.addValue(stopWatch.elapsed(TimeUnit.SECONDS));
       finishedShardCount.addValue(1);
       LOG.info("Shard Duration in Seconds - Min: " + stats.getMin() + " Max: " + stats.getMax() +
-          " Avg: " + stats.getMean() + " StdDev: " + stats.getStandardDeviation());      
+          " Avg: " + stats.getMean() + " StdDev: " + stats.getStandardDeviation());
     }
   }
-  
+
   /**
    * This step exists to emit the individual variants in a parallel step to the StreamVariants step
    * in order to increase throughput.

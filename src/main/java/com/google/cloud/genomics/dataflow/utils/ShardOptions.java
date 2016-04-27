@@ -20,7 +20,7 @@ import com.google.cloud.dataflow.sdk.options.Description;
  * A common options class for pipelines that shard by genomic region.
  */
 public interface ShardOptions extends GenomicsOptions {
-  
+
   @Description("By default, variants analyses will be run on BRCA1.  Pass this flag to run on all "
       + "references present in the dataset.  Note that certain jobs such as PCA and IBS "
       + "will automatically exclude X and Y chromosomes when this option is true.")

@@ -15,7 +15,6 @@
  */
 package com.google.cloud.genomics.dataflow.utils;
 
-import com.google.api.services.genomics.model.Call;
 import com.google.common.collect.ImmutableList;
 import com.google.genomics.v1.Variant;
 import com.google.genomics.v1.VariantCall;
@@ -37,21 +36,4 @@ public class CallFilters {
     }
     return samplesWithVariant.build();
   }
-
-  @Deprecated
-  public static ImmutableList<Call> getSamplesWithVariantOfMinGenotype(com.google.api.services.genomics.model.Variant variant,
-      int minGenotype) {
-    ImmutableList.Builder<Call> samplesWithVariant = ImmutableList.builder();
-    for (Call call : variant.getCalls()) {
-      for (int genotype : call.getGenotype()) {
-        if (minGenotype <= genotype) {
-          // Use a greater than zero test since no-calls are -1 and we
-          // don't want to count those.
-          samplesWithVariant.add(call);
-          break;
-        }
-      }
-    }
-    return samplesWithVariant.build();
-  }  
 }

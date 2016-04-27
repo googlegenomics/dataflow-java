@@ -15,11 +15,6 @@
  */
 package com.google.cloud.genomics.dataflow.pipelines;
 
-import org.hamcrest.CoreMatchers;
-import org.junit.Assert;
-import org.junit.Ignore;
-import org.junit.Test;
-
 import com.google.cloud.dataflow.sdk.Pipeline;
 import com.google.cloud.dataflow.sdk.options.PipelineOptionsFactory;
 import com.google.cloud.dataflow.sdk.testing.DataflowAssert;
@@ -54,15 +49,20 @@ import com.google.genomics.v1.Variant;
 import com.google.protobuf.ListValue;
 import com.google.protobuf.Value;
 
+import org.hamcrest.CoreMatchers;
+import org.junit.Assert;
+import org.junit.Ignore;
+import org.junit.Test;
+
 /**
  * Tests for the VerifyBamId pipeline.
  */
 public class VerifyBamIdTest {
-  
+
   @Test
   public void testSplitReads_singleMatchedBase() {
     DoFnTester<Read, KV<Position, ReadBaseQuality>> splitReads = DoFnTester.of(new SplitReads());
-    
+
     // single matched base -> one SingleReadQuality proto
     Read r = Read.newBuilder()
         .setProperPlacement(true)
@@ -82,7 +82,7 @@ public class VerifyBamIdTest {
             .build(),
             new ReadBaseQuality("A", 3))));
   }
-  
+
   @Test
   public void testSplitReads_twoMatchedBases() {
     DoFnTester<Read, KV<Position, ReadBaseQuality>> splitReads = DoFnTester.of(new SplitReads());
@@ -111,11 +111,11 @@ public class VerifyBamIdTest {
             .build(),
             new ReadBaseQuality("G", 4))));
   }
-  
+
   @Test
   public void testSplitReads_matchedBasesProperPlacementDifferentOffsets() {
     DoFnTester<Read, KV<Position, ReadBaseQuality>> splitReads = DoFnTester.of(new SplitReads());
-    
+
     // matched bases with different offsets onto the reference
     Read r = Read.newBuilder()
         .setProperPlacement(true)
@@ -155,11 +155,11 @@ public class VerifyBamIdTest {
             .build(),
             new ReadBaseQuality("T", 4))));
   }
-  
+
   @Test
   public void testSplitReads_twoMatchedBasesDifferentOffsets() {
     DoFnTester<Read, KV<Position, ReadBaseQuality>> splitReads = DoFnTester.of(new SplitReads());
-    
+
     // matched bases with different offsets onto the reference
     Read r = Read.newBuilder()
         .setAlignment(LinearAlignment.newBuilder()
@@ -198,7 +198,7 @@ public class VerifyBamIdTest {
             .build(),
             new ReadBaseQuality("T", 4))));
   }
-  
+
   @Test
   public void testSampleReads() {
     SampleReads sampleReads = new SampleReads(0.5, "");
@@ -217,7 +217,7 @@ public class VerifyBamIdTest {
             .build(),
         new ReadBaseQuality())));
   }
-  
+
   @Test
   public void testGetAlleleFreq() {
     DoFnTester<Variant, KV<Position, AlleleFreq>> getAlleleFreq = DoFnTester.of(
@@ -240,7 +240,7 @@ public class VerifyBamIdTest {
     Assert.assertThat(getAlleleFreq.processBatch(vBuild.build()),
         CoreMatchers.hasItems(KV.of(pos, af)));
   }
-  
+
   @Test
   public void testFilterFreq() {
     FilterFreq filterFreq = new FilterFreq(0.01);
@@ -256,7 +256,7 @@ public class VerifyBamIdTest {
     af.setRefFreq(0.9899);
     Assert.assertTrue(filterFreq.apply(KV.of(pos, af)));
   }
-  
+
   private final Position position1
     = Position.newBuilder()
       .setReferenceName("1")
@@ -299,7 +299,7 @@ public class VerifyBamIdTest {
     refBuilder.add(KV.of(position3, af));
     refCountList = refBuilder.build();
   }
-  
+
   @Ignore
   @Test
   public void testPileupAndJoinReads() {
@@ -307,12 +307,12 @@ public class VerifyBamIdTest {
         PipelineOptionsFactory.create().as(VerifyBamId.Options.class);
     Pipeline p = TestPipeline.create(popts);
     p.getCoderRegistry().setFallbackCoderProvider(GenericJsonCoder.PROVIDER);
-    
+
     final ReadBaseQuality srq = new ReadBaseQuality("A", 10);
     PCollection<KV<Position, ReadBaseQuality>> readCounts = p.apply(
         Create.of(KV.of(position1, srq)));
     DataflowAssert.that(readCounts).containsInAnyOrder(KV.of(position1, srq));
-    
+
     PCollection<KV<Position, AlleleFreq>> refFreq = p.apply(Create.of(refCountList));
     DataflowAssert.that(refFreq).containsInAnyOrder(refCountList);
 
@@ -322,7 +322,7 @@ public class VerifyBamIdTest {
         .of(readCountsTag, readCounts)
         .and(refFreqTag, refFreq)
         .apply(CoGroupByKey.<Position>create());
-    
+
     PCollection<KV<Position, ReadCounts>> result = joined.apply(
         ParDo.of(new PileupAndJoinReads(readCountsTag, refFreqTag)));
 
@@ -333,7 +333,7 @@ public class VerifyBamIdTest {
     DataflowAssert.that(result).containsInAnyOrder(KV.of(position1, rc));
     p.run();
   }
-  
+
   @Ignore
   @Test
   public void testPileupAndJoinReadsWithChrPrefix() {
@@ -341,15 +341,15 @@ public class VerifyBamIdTest {
         PipelineOptionsFactory.create().as(VerifyBamId.Options.class);
     Pipeline p = TestPipeline.create(popts);
     p.getCoderRegistry().setFallbackCoderProvider(GenericJsonCoder.PROVIDER);
-    
+
     ReadBaseQuality srq = new ReadBaseQuality("A", 10);
     PCollection<KV<Position, ReadBaseQuality>> readCounts = p.apply(
         Create.of(KV.of(position1chrPrefix, srq)));
     DataflowAssert.that(readCounts).containsInAnyOrder(KV.of(position1chrPrefix, srq));
-    
+
     PCollection<KV<Position, AlleleFreq>> refFreq = p.apply(Create.of(refCountList));
     DataflowAssert.that(refFreq).containsInAnyOrder(refCountList);
-   
+
     TupleTag<ReadBaseQuality> readCountsTag = new TupleTag<>();
     TupleTag<AlleleFreq> refFreqTag = new TupleTag<>();
     PCollection<KV<Position, CoGbkResult>> joined = KeyedPCollectionTuple
@@ -359,7 +359,7 @@ public class VerifyBamIdTest {
 
     PCollection<KV<Position, ReadCounts>> result = joined.apply(
         ParDo.of(new PileupAndJoinReads(readCountsTag, refFreqTag)));
-    
+
     ReadCounts rc = new ReadCounts();
     rc.setRefFreq(0.8);
     rc.addReadQualityCount(ReadQualityCount.Base.REF, 10, 1);
@@ -393,10 +393,10 @@ public class VerifyBamIdTest {
 
     PCollection<Read> reads = p.apply(Create.of(read));
     DataflowAssert.that(reads).containsInAnyOrder(read);
-    
+
     PCollection<KV<Position, ReadCounts>> results =
         VerifyBamId.combineReads(reads, 1.0, "", refCounts);
-    
+
     ReadCounts one = new ReadCounts();
     one.setRefFreq(0.8);
     one.addReadQualityCount(ReadQualityCount.Base.REF, 3, 1L);

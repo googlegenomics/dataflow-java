@@ -65,26 +65,26 @@ public class ShardedBAMWriting {
 
   static interface Options extends ShardOptions, ShardReadsTransform.Options,
     WriteBAMTransform.Options, GCSOutputOptions {
-    @Description("The Google Cloud Storage path to the BAM file to get reads data from" + 
+    @Description("The Google Cloud Storage path to the BAM file to get reads data from" +
         "This or ReadGroupSetId must be set")
     @Default.String("")
     String getBAMFilePath();
 
     void setBAMFilePath(String filePath);
-    
+
     @Description("An ID of the Google Genomics ReadGroupSets this " +
         "pipeline is working with. This or BAMFilePath must be set.")
     @Default.String("")
     String getReadGroupSetId();
 
     void setReadGroupSetId(String readGroupSetId);
-    
+
     public static class Methods {
       public static void validateOptions(Options options) {
         GCSOutputOptions.Methods.validateOptions(options);
         Preconditions.checkArgument(
             !Strings.isNullOrEmpty(options.getReadGroupSetId()) ||
-            !Strings.isNullOrEmpty(options.getBAMFilePath()), 
+            !Strings.isNullOrEmpty(options.getBAMFilePath()),
             "Either BAMFilePath or ReadGroupSetId must be specified");
       }
     }
@@ -110,14 +110,14 @@ public class ShardedBAMWriting {
     pipeline.getCoderRegistry().setFallbackCoderProvider(GenericJsonCoder.PROVIDER);
     pipeline.getCoderRegistry().registerCoder(Contig.class, CONTIG_CODER);
     // Process options.
-    contigs = pipelineOptions.isAllReferences() ? null : 
+    contigs = pipelineOptions.isAllReferences() ? null :
       Contig.parseContigsFromCommandLine(pipelineOptions.getReferences());
-    
-    
+
+
     // Get the reads and shard them.
     PCollection<Read> reads;
     HeaderInfo headerInfo;
-    
+
     final String outputFileName = pipelineOptions.getOutput();
     final GcsPath destPath = GcsPath.fromUri(outputFileName);
     final GcsPath destIdxPath = GcsPath.fromUri(outputFileName + ".bai");
@@ -137,7 +137,7 @@ public class ShardedBAMWriting {
     } catch (Exception ignored) {
       // Ignore errors
     }
-    
+
     if (!Strings.isNullOrEmpty(pipelineOptions.getReadGroupSetId())) {
       headerInfo = HeaderInfo.getHeaderFromApi(pipelineOptions.getReadGroupSetId(), auth, contigs);
       reads = getReadsFromAPI();
@@ -145,19 +145,19 @@ public class ShardedBAMWriting {
       headerInfo = HeaderInfo.getHeaderFromBAMFile(storage, pipelineOptions.getBAMFilePath(), contigs);
       reads = getReadsFromBAMFile();
     }
-    
+
     final PCollection<String> writtenFiles = WriteBAMTransform.write(
         reads, headerInfo, pipelineOptions.getOutput(), pipeline);
-    
+
     writtenFiles
         .apply(
             TextIO.Write
               .to(pipelineOptions.getOutput() + "-result")
         .named("Write Output Result")
         .withoutSharding());
-    pipeline.run();            
+    pipeline.run();
   }
-      
+
   private static PCollection<Read> getReadsFromBAMFile() throws IOException {
     /**
      * Policy used to shard Reads.
@@ -173,13 +173,13 @@ public class ShardedBAMWriting {
      * </pre>
      */
     final ShardingPolicy BAM_FILE_READ_SHARDING_POLICY = ShardingPolicy.BYTE_SIZE_POLICY;
-    
+
     LOG.info("Sharded reading of " + pipelineOptions.getBAMFilePath());
-    
+
     final ReaderOptions readerOptions = new ReaderOptions(
         ValidationStringency.DEFAULT_STRINGENCY,
         true);
-   
+
     return ReadBAMTransform.getReadsFromBAMFilesSharded(pipeline,
         auth,
         contigs,
@@ -187,29 +187,29 @@ public class ShardedBAMWriting {
         pipelineOptions.getBAMFilePath(),
         BAM_FILE_READ_SHARDING_POLICY);
   }
-  
+
   private static PCollection<Read> getReadsFromAPI() throws IOException {
     final String  rgsId = pipelineOptions.getReadGroupSetId();
     LOG.info("Sharded reading of ReadGroupSet: " + rgsId);
-    
+
     List<StreamReadsRequest> requests = Lists.newArrayList();
 
     if (pipelineOptions.isAllReferences()) {
-      requests.addAll(ShardUtils.getReadRequests(rgsId, SexChromosomeFilter.INCLUDE_XY, 
+      requests.addAll(ShardUtils.getReadRequests(rgsId, SexChromosomeFilter.INCLUDE_XY,
           pipelineOptions.getBasesPerShard(), auth));
     } else {
       requests.addAll(
-          ShardUtils.getReadRequests(Collections.singletonList(rgsId), 
+          ShardUtils.getReadRequests(Collections.singletonList(rgsId),
               pipelineOptions.getReferences(), pipelineOptions.getBasesPerShard()));
     }
- 
+
     LOG.info("Reading from the API with: " + requests.size() + " shards");
-    
+
     PCollection<Read> reads = pipeline.apply(Create.of(requests))
         .apply(new ReadStreamer(auth, ShardBoundary.Requirement.STRICT, null));
     return reads;
   }
-  
+
   static Coder<Contig> CONTIG_CODER = DelegateCoder.of(
       StringUtf8Coder.of(),
       new DelegateCoder.CodingFunction<Contig,String>() {

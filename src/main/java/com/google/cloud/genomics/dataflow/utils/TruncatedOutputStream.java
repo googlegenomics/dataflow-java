@@ -30,7 +30,7 @@ public class TruncatedOutputStream extends FilterOutputStream {
   private int bytesToTruncate;
   private long bytesWritten;
   OutputStream os;
-  
+
   public TruncatedOutputStream(OutputStream os, int bytesToTruncate) {
     super(os);
     this.os = os;
@@ -39,7 +39,7 @@ public class TruncatedOutputStream extends FilterOutputStream {
     this.bytesToTruncate = bytesToTruncate;
     this.bytesWritten = 0;
   }
-  
+
   @Override
   public void write(int b) throws IOException {
     if (count == buf.length) {
@@ -48,12 +48,12 @@ public class TruncatedOutputStream extends FilterOutputStream {
     buf[count++] = (byte)b;
     bytesWritten++;
   }
-  
+
   @Override
   public void write(byte[] data) throws IOException {
     write(data, 0, data.length);
   }
-  
+
   @Override
   public void write(byte[] data, int offset, int length) throws IOException {
     flushBuffer();
@@ -82,19 +82,19 @@ public class TruncatedOutputStream extends FilterOutputStream {
     }
     bytesWritten+=length;
   }
-  
+
   @Override
   public synchronized void flush() throws IOException {
     flushBuffer();
     os.flush();
   }
-  
+
   @Override
   public void close() throws IOException {
     flushBuffer();
     os.close();
   }
-  
+
   private void flushBuffer() throws IOException {
     final int bytesWeCanSafelyWrite = count - bytesToTruncate;
     if (count > bytesToTruncate) {
@@ -103,7 +103,7 @@ public class TruncatedOutputStream extends FilterOutputStream {
       count = bytesToTruncate;
     }
   }
-  
+
   public long getBytesWrittenExceptingTruncation() {
     return bytesWritten - bytesToTruncate;
   }

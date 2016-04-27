@@ -32,7 +32,7 @@ public class Solver {
 
   /**
    * Runs a grid search for the maximum value of a univariate function.
-   * 
+   *
    * @param fn the likelihood function to minimize
    * @param start lower bound of the interval to search
    * @param end upper bound of the interval to search
@@ -57,7 +57,7 @@ public class Solver {
       lastAlpha = alpha;
       alpha += step;
     }
-    // make sure we've checked the rightmost endpoint (won't happen if 
+    // make sure we've checked the rightmost endpoint (won't happen if
     // end - start is not an integer multiple of step, because of roundoff
     // errors, etc)
     double likelihood = fn.value(end);
@@ -71,7 +71,7 @@ public class Solver {
 
   /**
    * Maximizes a univariate function using a grid search followed by Brent's algorithm.
-   * 
+   *
    * @param fn the likelihood function to minimize
    * @param gridStart the lower bound for the grid search
    * @param gridEnd the upper bound for the grid search
@@ -80,10 +80,10 @@ public class Solver {
    * @param absErr absolute error tolerance for Brent's algorithm
    * @param maxIter maximum # of iterations to perform in Brent's algorithm
    * @param maxEval maximum # of Likelihood function evaluations in Brent's algorithm
-   * 
+   *
    * @return the value of the parameter that maximizes the function
    */
-  public static double maximize(UnivariateFunction fn, double gridStart, double gridEnd, 
+  public static double maximize(UnivariateFunction fn, double gridStart, double gridEnd,
       double gridStep, double relErr, double absErr, int maxIter, int maxEval) {
     Interval interval = gridSearch(fn, gridStart, gridEnd, gridStep);
     BrentOptimizer bo = new BrentOptimizer(relErr, absErr);

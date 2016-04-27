@@ -16,11 +16,11 @@ package com.google.cloud.genomics.dataflow.functions;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
+import com.google.genomics.v1.Variant;
+
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
-
-import com.google.genomics.v1.Variant;
 
 /**
  * Tests for the VariantUtils class.

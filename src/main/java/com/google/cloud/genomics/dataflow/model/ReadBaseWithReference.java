@@ -15,9 +15,9 @@
  */
 package com.google.cloud.genomics.dataflow.model;
 
-import java.util.Objects;
-
 import com.google.genomics.v1.Position;
+
+import java.util.Objects;
 
 /**
  * Data on a single base in a read connected with it reference data.
