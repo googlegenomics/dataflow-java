@@ -28,8 +28,6 @@ import com.google.api.services.genomics.Genomics;
 import com.google.api.services.genomics.model.Annotation;
 import com.google.api.services.genomics.model.AnnotationSet;
 import com.google.api.services.genomics.model.ListBasesResponse;
-import com.google.api.services.genomics.model.QueryRange;
-import com.google.api.services.genomics.model.RangePosition;
 import com.google.api.services.genomics.model.SearchAnnotationsRequest;
 import com.google.api.services.genomics.model.SearchVariantsRequest;
 import com.google.api.services.genomics.model.Variant;
@@ -86,7 +84,7 @@ import com.google.common.collect.Range;
  * for running instructions.
  */
 public final class AnnotateVariants extends DoFn<SearchVariantsRequest, KV<String, VariantAnnotation>> {
-  
+
   public static interface Options extends ShardOptions, GCSOutputOptions {
 
     @Description("The ID of the Google Genomics variant set this pipeline is accessing. "
@@ -219,17 +217,15 @@ public final class AnnotateVariants extends DoFn<SearchVariantsRequest, KV<Strin
         Paginator.Annotations.create(genomics, ShardBoundary.Requirement.OVERLAPS).search(
             new SearchAnnotationsRequest()
               .setAnnotationSetIds(variantAnnotationSetIds)
-              .setRange(new QueryRange()
-                .setReferenceName(canonicalizeRefName(request.getReferenceName()))
-                .setStart(request.getStart())
-                .setEnd(request.getEnd())));
+              .setReferenceName(canonicalizeRefName(request.getReferenceName()))
+              .setStart(request.getStart())
+              .setEnd(request.getEnd()));
     for (Annotation annotation : annotationIter) {
-      RangePosition pos = annotation.getPosition();
       long start = 0;
-      if (pos.getStart() != null) {
-        start = pos.getStart();
+      if (annotation.getStart() != null) {
+        start = annotation.getStart();
       }
-      annotationMap.put(Range.closedOpen(start, pos.getEnd()), annotation);
+      annotationMap.put(Range.closedOpen(start, annotation.getEnd()), annotation);
     }
     LOG.info(String.format("read %d variant annotations in %s (%.2f / s)", annotationMap.size(),
         stopwatch, (double)annotationMap.size() / stopwatch.elapsed(TimeUnit.SECONDS)));
@@ -243,13 +239,11 @@ public final class AnnotateVariants extends DoFn<SearchVariantsRequest, KV<Strin
         Paginator.Annotations.create(genomics, ShardBoundary.Requirement.OVERLAPS).search(
             new SearchAnnotationsRequest()
               .setAnnotationSetIds(transcriptSetIds)
-              .setRange(new QueryRange()
-                .setReferenceName(canonicalizeRefName(request.getReferenceName()))
-                .setStart(request.getStart())
-                .setEnd(request.getEnd())));
+              .setReferenceName(canonicalizeRefName(request.getReferenceName()))
+              .setStart(request.getStart())
+              .setEnd(request.getEnd()));
     for (Annotation annotation : transcriptIter) {
-      RangePosition pos = annotation.getPosition();
-      transcripts.put(pos.getStart().intValue(), pos.getEnd().intValue(), annotation);
+      transcripts.put(annotation.getStart().intValue(), annotation.getEnd().intValue(), annotation);
     }
     LOG.info(String.format("read %d transcripts in %s (%.2f / s)", transcripts.size(),
         stopwatch, (double)transcripts.size() / stopwatch.elapsed(TimeUnit.SECONDS)));
@@ -258,23 +252,22 @@ public final class AnnotateVariants extends DoFn<SearchVariantsRequest, KV<Strin
 
   private String getCachedTranscriptBases(Genomics genomics, Annotation transcript)
       throws IOException {
-    RangePosition pos = transcript.getPosition();
-    Range<Long> rng = Range.closedOpen(pos.getStart(), pos.getEnd());
+    Range<Long> rng = Range.closedOpen(transcript.getStart(), transcript.getEnd());
     if (!refBaseCache.containsKey(rng)) {
-      refBaseCache.put(rng, retrieveReferenceBases(genomics, pos));
+      refBaseCache.put(rng, retrieveReferenceBases(genomics, transcript));
     }
     return refBaseCache.get(rng);
   }
 
-  private String retrieveReferenceBases(Genomics genomics, RangePosition pos) throws IOException {
+  private String retrieveReferenceBases(Genomics genomics, Annotation annotation) throws IOException {
     StringBuilder b = new StringBuilder();
     String pageToken = "";
     while (true) {
       // TODO: Support full request parameterization for Paginator.References.Bases.
       ListBasesResponse response = genomics.references().bases()
-          .list(pos.getReferenceId())
-          .setStart(pos.getStart())
-          .setEnd(pos.getEnd())
+          .list(annotation.getReferenceId())
+          .setStart(annotation.getStart())
+          .setEnd(annotation.getEnd())
           .setPageToken(pageToken)
           .execute();
       b.append(response.getSequence());
@@ -297,7 +290,7 @@ public final class AnnotateVariants extends DoFn<SearchVariantsRequest, KV<Strin
         .withValidation().as(Options.class);
     // Option validation is not yet automatic, we make an explicit call here.
     Options.Methods.validateOptions(options);
-    
+
     OfflineAuth auth = GenomicsOptions.Methods.getGenomicsAuth(options);
     Genomics genomics = GenomicsFactory.builder().build().fromOfflineAuth(auth);
 
@@ -337,7 +330,7 @@ public final class AnnotateVariants extends DoFn<SearchVariantsRequest, KV<Strin
       Genomics genomics, List<String> annosetIds) throws IOException {
     String refsetId = null;
     for (String annosetId : annosetIds) {
-      String gotId = genomics.annotationSets().get(annosetId).execute().getReferenceSetId();
+      String gotId = genomics.annotationsets().get(annosetId).execute().getReferenceSetId();
       if (refsetId == null) {
         refsetId = gotId;
       } else if (!refsetId.equals(gotId)) {
@@ -351,7 +344,7 @@ public final class AnnotateVariants extends DoFn<SearchVariantsRequest, KV<Strin
       Genomics genomics, String flagValue, String wantType) throws IOException {
     List<String> annosetIds = ImmutableList.copyOf(flagValue.split(","));
     for (String annosetId : annosetIds) {
-      AnnotationSet annoset = genomics.annotationSets().get(annosetId).execute();
+      AnnotationSet annoset = genomics.annotationsets().get(annosetId).execute();
       if (!wantType.equals(annoset.getType())) {
         throw new IllegalArgumentException("annotation set " + annosetId + " has type " +
             annoset.getType() + ", wanted type " + wantType);

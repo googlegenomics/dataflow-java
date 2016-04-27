@@ -15,9 +15,17 @@
  */
 package com.google.cloud.genomics.dataflow.pipelines;
 
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+
+import org.junit.BeforeClass;
+import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.junit.runners.JUnit4;
+
 import com.google.api.services.genomics.model.Annotation;
 import com.google.api.services.genomics.model.Position;
-import com.google.api.services.genomics.model.RangePosition;
 import com.google.cloud.dataflow.sdk.Pipeline;
 import com.google.cloud.dataflow.sdk.options.PipelineOptionsFactory;
 import com.google.cloud.dataflow.sdk.testing.DataflowAssert;
@@ -36,15 +44,6 @@ import com.google.genomics.v1.CigarUnit;
 import com.google.genomics.v1.CigarUnit.Operation;
 import com.google.genomics.v1.LinearAlignment;
 import com.google.genomics.v1.Read;
-
-import org.junit.BeforeClass;
-import org.junit.Test;
-import org.junit.runner.RunWith;
-import org.junit.runners.JUnit4;
-
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
 
 /**
  * Class for testing the Calculate Coverage class
@@ -244,29 +243,27 @@ public class CalculateCoverageTest {
     List<Annotation> expectedOutput = Lists.newArrayList();
     Annotation a1 = new Annotation()
         .setAnnotationSetId("123")
-        .setPosition(new RangePosition()
-            .setStart(0L)
-            .setEnd(2L)
-            .setReferenceName("1"))
+        .setStart(0L)
+        .setEnd(2L)
+        .setReferenceName("1")
         .setType("GENERIC")
-        .setInfo(new HashMap<String, List<String>>());
-    a1.getInfo().put("L", Lists.newArrayList("1.0", "1.0", "3.5"));
-    a1.getInfo().put("M", Lists.newArrayList("1.5", "1.5", "2.0"));
-    a1.getInfo().put("H", Lists.newArrayList("0.5", "0.5", "0.5"));
-    a1.getInfo().put("A", Lists.newArrayList("2.5", "3.0", "3.5"));
+        .setInfo(new HashMap<String, List<Object>>());
+    a1.getInfo().put("L", Lists.newArrayList((Object) 1.0, 1.0, 3.5));
+    a1.getInfo().put("M", Lists.newArrayList((Object) 1.5, 1.5, 2.0));
+    a1.getInfo().put("H", Lists.newArrayList((Object) 0.5, 0.5, 0.5));
+    a1.getInfo().put("A", Lists.newArrayList((Object) 2.5, 3.0, 3.5));
     expectedOutput.add(a1);
     Annotation a2 = new Annotation()
         .setAnnotationSetId("123")
-        .setPosition(new RangePosition()
-            .setStart(2L)
-            .setEnd(4L)
-            .setReferenceName("1"))
+        .setStart(2L)
+        .setEnd(4L)
+        .setReferenceName("1")
         .setType("GENERIC")
-        .setInfo(new HashMap<String, List<String>>());
-    a2.getInfo().put("L", Lists.newArrayList("1.0", "1.0", "3.0"));
-    a2.getInfo().put("M", Lists.newArrayList("0.5", "1.5", "1.5"));
-    a2.getInfo().put("H", Lists.newArrayList("0.5", "1.0", "1.0"));
-    a2.getInfo().put("A", Lists.newArrayList("2.0", "3.0", "3.0"));
+        .setInfo(new HashMap<String, List<Object>>());
+    a2.getInfo().put("L", Lists.newArrayList((Object) 1.0, 1.0, 3.0));
+    a2.getInfo().put("M", Lists.newArrayList((Object) 0.5, 1.5, 1.5));
+    a2.getInfo().put("H", Lists.newArrayList((Object) 0.5, 1.0, 1.0));
+    a2.getInfo().put("A", Lists.newArrayList((Object) 2.0, 3.0, 3.0));
     expectedOutput.add(a2);
     CalculateCoverage.Options popts = PipelineOptionsFactory.create().as(
         CalculateCoverage.Options.class);

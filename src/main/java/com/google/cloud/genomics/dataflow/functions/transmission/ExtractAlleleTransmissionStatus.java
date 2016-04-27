@@ -15,15 +15,15 @@
  */
 package com.google.cloud.genomics.dataflow.functions.transmission;
 
-import com.google.api.services.genomics.model.Call;
+import java.util.List;
+
 import com.google.api.services.genomics.model.Variant;
+import com.google.api.services.genomics.model.VariantCall;
 import com.google.cloud.dataflow.sdk.transforms.DoFn;
 import com.google.cloud.dataflow.sdk.values.KV;
 import com.google.cloud.genomics.dataflow.model.Allele;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.Lists;
-
-import java.util.List;
 
 /**
  * Emits String, (Allele, Boolean) pairs for each Allele a parent has.
@@ -93,8 +93,8 @@ public class ExtractAlleleTransmissionStatus
   }
 
   @VisibleForTesting
-  Call getSample(Variant variant, String sampleName) {
-    for (Call call : variant.getCalls()) {
+  VariantCall getSample(Variant variant, String sampleName) {
+    for (VariantCall call : variant.getCalls()) {
       if (call.getCallSetName() == sampleName)
         return call;
     }
