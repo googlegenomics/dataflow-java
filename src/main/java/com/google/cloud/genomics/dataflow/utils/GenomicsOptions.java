@@ -40,6 +40,7 @@ public interface GenomicsOptions extends GcsOptions {
         Scanner kbd = new Scanner(System.in);
         String decision;
         decision = kbd.nextLine();
+        kbd.close();
         switch(decision) {
           case "yes": case "Yes": case "YES": case "y": case "Y":
             break;
