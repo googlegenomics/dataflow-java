@@ -39,28 +39,28 @@ import java.util.logging.Logger;
  */
 public class Reader {
   private static final Logger LOG = Logger.getLogger(Reader.class.getName());
-  
+
   Storage.Objects storageClient;
   BAMShard shard;
   DoFn<BAMShard, Read>.ProcessContext c;
   Stopwatch timer;
   ReaderOptions options;
-  
+
   SAMRecordIterator iterator;
   enum Filter {
     UNMAPPED_ONLY,
     MAPPED_AND_UNMAPPED,
     MAPPED_ONLY
   }
-  
+
   Filter filter;
-  
+
   public int recordsBeforeStart = 0;
   public int recordsAfterEnd = 0;
   public int mismatchedSequence = 0;
   public int recordsProcessed = 0;
   public int readsGenerated = 0;
-  
+
   public Reader(Objects storageClient, ReaderOptions options, BAMShard shard, DoFn<BAMShard, Read>.ProcessContext c) {
     super();
     this.storageClient = storageClient;
@@ -69,15 +69,15 @@ public class Reader {
     this.options = options;
     filter = setupFilter(options, shard.contig.referenceName);
   }
-  
+
   public static Filter setupFilter(ReaderOptions options, String referenceName) {
-    /* 
+    /*
      * The common way of asking for unmapped reads is by specifying asterisk
      * as the sequence name.
      * From SAM format, section 1.4. paragraph 3:
-     * "RNAME: Reference sequence NAME of the alignment. 
-     * If @SQ header lines are present, RNAME (if not ‘*’) must be present in 
-     * one of the SQ-SN tag. 
+     * "RNAME: Reference sequence NAME of the alignment.
+     * If @SQ header lines are present, RNAME (if not ‘*’) must be present in
+     * one of the SQ-SN tag.
      * An unmapped segment without coordinate has a ‘*’ at this field."
      * https://samtools.github.io/hts-specs/SAMv1.pdf
      */
@@ -88,21 +88,21 @@ public class Reader {
     }
     return Filter.MAPPED_ONLY;
   }
-  
+
   public void process() throws IOException {
     timer = Stopwatch.createStarted();
     openFile();
-    
+
     while (iterator.hasNext()) {
       processRecord(iterator.next());
     }
-    
+
     dumpStats();
   }
 
   void openFile() throws IOException {
     LOG.info("Processing shard " + shard);
-    final SamReader reader = BAMIO.openBAM(storageClient, shard.file, 
+    final SamReader reader = BAMIO.openBAM(storageClient, shard.file,
         options.getStringency());
     iterator = null;
     if (reader.hasIndex() && reader.indexing() != null) {
@@ -116,7 +116,7 @@ public class Reader {
         LOG.info("Processing all bases for " + shard.contig);
         iterator = reader.query(shard.contig.referenceName, (int) shard.contig.start,
             (int) shard.contig.end, false);
-      } 
+      }
     }
     if (iterator == null) {
       LOG.info("Processing all reads");
@@ -127,38 +127,38 @@ public class Reader {
   /**
    * Checks if the record matches our filter.
    */
-  static boolean passesFilter(SAMRecord record, Filter filter, 
+  static boolean passesFilter(SAMRecord record, Filter filter,
       String referenceName) {
     // If we are looking for only mapped or only unmapped reads then we will use
     // the UnmappedFlag to decide if this read should be rejected.
     if (filter == Filter.UNMAPPED_ONLY && !record.getReadUnmappedFlag()) {
       return false;
     }
-    
+
     if (filter == Filter.MAPPED_ONLY && record.getReadUnmappedFlag()) {
       return false;
     }
-    
+
     // If we are looking for mapped reads, then we check the reference name
     // of the read matches the one we are looking for.
-    final boolean referenceNameMismatch = referenceName != null && 
+    final boolean referenceNameMismatch = referenceName != null &&
         !referenceName.isEmpty() &&
         !referenceName.equals(record.getReferenceName());
-    
+
     // Note that unmapped mate pair of mapped read will have a reference
     // name set to the reference of its mapped mate.
     if ((filter == Filter.MAPPED_ONLY || filter == Filter.MAPPED_AND_UNMAPPED)
         && referenceNameMismatch) {
       return false;
     }
-    
+
     return true;
   }
-  
+
   boolean passesFilter(SAMRecord record) {
     return passesFilter(record, filter, shard.contig.referenceName);
   }
-  
+
   void processRecord(SAMRecord record) {
     recordsProcessed++;
     if (!passesFilter(record)) {
@@ -176,19 +176,19 @@ public class Reader {
     c.output(ReadUtils.makeReadGrpc(record));
     readsGenerated++;
   }
-  
+
   void dumpStats() {
     timer.stop();
     long elapsed = timer.elapsed(TimeUnit.MILLISECONDS);
     if (elapsed == 0) elapsed = 1;
     LOG.info("Processed " + recordsProcessed + " outputted " + readsGenerated +
-        " in " + timer + 
+        " in " + timer +
         ". Speed: " + (recordsProcessed*1000)/elapsed + " reads/sec"
-        + ", filtered out by reference and mapping " + mismatchedSequence 
+        + ", filtered out by reference and mapping " + mismatchedSequence
         + ", skippedBefore " + recordsBeforeStart
         + ", skipped after " + recordsAfterEnd);
   }
-  
+
   /**
    * To compare how sharded reading works vs. plain HTSJDK sequential iteration,
    * this method implements such iteration.
@@ -196,15 +196,15 @@ public class Reader {
    * skipped by a sharded approach.
    */
   public static Iterable<Read> readSequentiallyForTesting(Objects storageClient,
-      String storagePath, Contig contig, 
+      String storagePath, Contig contig,
       ReaderOptions options) throws IOException {
     Stopwatch timer = Stopwatch.createStarted();
     SamReader samReader = BAMIO.openBAM(storageClient, storagePath, options.getStringency());
-    SAMRecordIterator iterator =  samReader.queryOverlapping(contig.referenceName, 
+    SAMRecordIterator iterator =  samReader.queryOverlapping(contig.referenceName,
         (int) contig.start + 1,
         (int) contig.end);
-    List<Read> reads = new ArrayList<Read>(); 
-    
+    List<Read> reads = new ArrayList<Read>();
+
     int recordsBeforeStart = 0;
     int recordsAfterEnd = 0;
     int mismatchedSequence = 0;
@@ -213,7 +213,7 @@ public class Reader {
     while (iterator.hasNext()) {
       SAMRecord record = iterator.next();
       final boolean passesFilter = passesFilter(record, filter, contig.referenceName);
-      
+
       if (!passesFilter) {
         mismatchedSequence++;
         continue;
@@ -230,10 +230,10 @@ public class Reader {
       recordsProcessed++;
     }
     timer.stop();
-    LOG.info("NON SHARDED: Processed " + recordsProcessed + 
-        " in " + timer + 
+    LOG.info("NON SHARDED: Processed " + recordsProcessed +
+        " in " + timer +
         ". Speed: " + (recordsProcessed*1000)/timer.elapsed(TimeUnit.MILLISECONDS) + " reads/sec"
-        + ", skipped other sequences " + mismatchedSequence 
+        + ", skipped other sequences " + mismatchedSequence
         + ", skippedBefore " + recordsBeforeStart
         + ", skipped after " + recordsAfterEnd);
     return reads;

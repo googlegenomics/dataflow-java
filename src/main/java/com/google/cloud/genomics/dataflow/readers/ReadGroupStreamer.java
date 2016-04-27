@@ -13,9 +13,6 @@
  */
 package com.google.cloud.genomics.dataflow.readers;
 
-import java.util.Collections;
-import java.util.List;
-
 import com.google.cloud.dataflow.sdk.transforms.DoFn;
 import com.google.cloud.dataflow.sdk.transforms.GroupByKey;
 import com.google.cloud.dataflow.sdk.transforms.PTransform;
@@ -30,9 +27,12 @@ import com.google.cloud.genomics.utils.ShardUtils.SexChromosomeFilter;
 import com.google.genomics.v1.Read;
 import com.google.genomics.v1.StreamReadsRequest;
 
+import java.util.Collections;
+import java.util.List;
+
 /**
  * PTransform from a potentially large number of ReadGroupSets to streaming reads via gRPC.
- * 
+ *
  * The sharding occurs as a stage of the pipeline, unlike the ReadStreamer PTransform
  * where the shards are passed in.  This is useful when the number of shards may
  * potentially be larger than Dataflow's pipeline creation request size limit.
@@ -45,7 +45,7 @@ public class ReadGroupStreamer extends PTransform<PCollection<String>, PCollecti
 
   /**
    * Create a streamer that can appropriately shard a potentially large number of ReadGroupSets.
-   * 
+   *
    * @param auth The OfflineAuth to use for the request.
    * @param shardBoundary The shard boundary semantics to enforce.
    * @param fields Which fields to include in a partial response or null for all.
@@ -59,7 +59,7 @@ public class ReadGroupStreamer extends PTransform<PCollection<String>, PCollecti
     this.fields = fields;
     this.sexChromosomeFilter = sexChromosomeFilter;
   }
-  
+
   @Override
   public PCollection<Read> apply(PCollection<String> readGroupSetIds) {
     return readGroupSetIds.apply(ParDo.of(new CreateReadRequests()))
@@ -90,7 +90,7 @@ public class ReadGroupStreamer extends PTransform<PCollection<String>, PCollecti
       }
     }
   }
-  
+
   private class ConvergeStreamReadsRequestList extends DoFn<KV<Integer, Iterable<StreamReadsRequest>>, StreamReadsRequest> {
     @Override
     public void processElement(ProcessContext c) {

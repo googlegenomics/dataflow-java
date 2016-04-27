@@ -16,8 +16,6 @@
 
 package com.google.cloud.genomics.dataflow.readers;
 
-import java.util.logging.Logger;
-
 import com.google.api.services.genomics.Genomics;
 import com.google.api.services.genomics.model.Read;
 import com.google.api.services.genomics.model.SearchReadsRequest;
@@ -25,6 +23,8 @@ import com.google.cloud.genomics.dataflow.utils.GenomicsOptions;
 import com.google.cloud.genomics.utils.OfflineAuth;
 import com.google.cloud.genomics.utils.Paginator;
 import com.google.cloud.genomics.utils.ShardBoundary;
+
+import java.util.logging.Logger;
 
 /**
  * ReadReader is a DoFn that takes SearchReadsRequests, submits them
@@ -37,9 +37,9 @@ public class ReadReader extends GenomicsApiReader<SearchReadsRequest, Read> {
   private final ShardBoundary.Requirement shardBoundary;
 
   /**
-   * Create a ReadReader using a auth and fields parameter. All fields not specified under 
+   * Create a ReadReader using a auth and fields parameter. All fields not specified under
    * readFields will not be returned in the API response.
-   * 
+   *
    * @param auth Auth class containing credentials.
    * @param readFields Fields to return in responses.
    */
@@ -59,7 +59,7 @@ public class ReadReader extends GenomicsApiReader<SearchReadsRequest, Read> {
   @Override
   protected void processApiCall(Genomics genomics, ProcessContext c, SearchReadsRequest request) {
     LOG.info("Starting Reads read loop");
-    
+
     GenomicsOptions options = c.getPipelineOptions().as(GenomicsOptions.class);
     if (options.getPageSize() > 0) {
       request.setPageSize(options.getPageSize());

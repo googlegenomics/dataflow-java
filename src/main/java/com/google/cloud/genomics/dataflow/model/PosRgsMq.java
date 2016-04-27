@@ -22,6 +22,7 @@ import com.google.api.services.genomics.model.Position;
 import com.google.cloud.dataflow.sdk.coders.AvroCoder;
 import com.google.cloud.dataflow.sdk.coders.DefaultCoder;
 import com.google.cloud.genomics.dataflow.coders.GenericJsonCoder;
+
 import java.util.Objects;
 
 /**

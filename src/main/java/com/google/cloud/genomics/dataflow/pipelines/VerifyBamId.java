@@ -13,16 +13,6 @@
  */
 package com.google.cloud.genomics.dataflow.pipelines;
 
-import java.io.IOException;
-import java.io.UnsupportedEncodingException;
-import java.nio.ByteBuffer;
-import java.security.GeneralSecurityException;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Map;
-
 import com.google.api.client.util.Strings;
 import com.google.cloud.dataflow.sdk.Pipeline;
 import com.google.cloud.dataflow.sdk.io.TextIO;
@@ -72,12 +62,22 @@ import com.google.genomics.v1.StreamVariantsRequest;
 import com.google.genomics.v1.Variant;
 import com.google.protobuf.ListValue;
 
+import java.io.IOException;
+import java.io.UnsupportedEncodingException;
+import java.nio.ByteBuffer;
+import java.security.GeneralSecurityException;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Map;
+
 /**
  * Test a set of reads for contamination.
  *
  * Takes a set of specified ReadGroupSets of reads to test and statistics on reference allele
  * frequencies for SNPs with a single alternative from a specified set of VariantSets.
- * 
+ *
  * See http://googlegenomics.readthedocs.org/en/latest/use_cases/perform_quality_control_checks/verify_bam_id.html
  * for running instructions.
  *
@@ -168,9 +168,9 @@ public class VerifyBamId {
         .withValidation().as(Options.class);
     // Option validation is not yet automatic, we make an explicit call here.
     Options.Methods.validateOptions(pipelineOptions);
-    
+
     auth = GenomicsOptions.Methods.getGenomicsAuth(pipelineOptions);
-    
+
     p = Pipeline.create(pipelineOptions);
     p.getCoderRegistry().setFallbackCoderProvider(GenericJsonCoder.PROVIDER);
 
@@ -196,7 +196,7 @@ public class VerifyBamId {
 
     // TODO: confirm that variant set also corresponds to the same reference
     // https://github.com/googlegenomics/api-client-java/issues/66
-    
+
     // Reads in Reads.
     PCollection<Read> reads = p.begin()
         .apply(Create.of(rgsIds))
@@ -220,12 +220,12 @@ public class VerifyBamId {
 
     PCollection<Variant> variants = p.apply(Create.of(variantRequests))
     .apply(new VariantStreamer(auth, ShardBoundary.Requirement.STRICT, VARIANT_FIELDS));
-    
+
     PCollection<KV<Position, AlleleFreq>> refFreq = getFreq(variants, pipelineOptions.getMinFrequency());
 
     PCollection<KV<Position, ReadCounts>> readCountsTable =
         combineReads(reads, pipelineOptions.getSamplingFraction(), HASH_PREFIX, refFreq);
-    
+
     // Converts our results to a single Map of Position keys to ReadCounts values.
     PCollectionView<Map<Position, ReadCounts>> view = readCountsTable
         .apply(View.<Position, ReadCounts>asMap());
@@ -240,7 +240,7 @@ public class VerifyBamId {
     p.run();
 
   }
-  
+
   /**
    * Compute a PCollection of reference allele frequencies for SNPs of interest.
    * The SNPs all have only a single alternate allele, and neither the
@@ -260,7 +260,7 @@ public class VerifyBamId {
         .apply(ParDo.of(new GetAlleleFreq()))
         .apply(Filter.byPredicate(new FilterFreq(minFreq)));
   }
-  
+
   /**
    * Filter, pile up, and sample reads, then join against reference statistics.
    *
@@ -283,7 +283,7 @@ public class VerifyBamId {
         .apply(Filter.byPredicate(ReadFunctions.IS_PROPER_PLACEMENT).named("IsProperPlacement"))
         .apply(ParDo.of(new SplitReads()))
         .apply(Filter.byPredicate(new SampleReads(samplingFraction, samplingPrefix)));
-    
+
     TupleTag<ReadBaseQuality> readCountsTag = new TupleTag<>();
     TupleTag<AlleleFreq> refFreqTag = new TupleTag<>();
     // Pile up read counts, then join against reference stats.
@@ -383,7 +383,7 @@ public class VerifyBamId {
       }
     }
   }
-  
+
   /**
    * Filters out AlleleFreqs for which the reference or alternate allele
    * frequencies are below a minimum specified at construction.
@@ -391,11 +391,11 @@ public class VerifyBamId {
   static class FilterFreq implements SerializableFunction<KV<Position, AlleleFreq>, Boolean> {
 
     private final double minFreq;
-    
+
     public FilterFreq(double minFreq) {
       this.minFreq = minFreq;
     }
-    
+
     @Override
     public Boolean apply(KV<Position, AlleleFreq> input) {
       double freq = input.getValue().getRefFreq();

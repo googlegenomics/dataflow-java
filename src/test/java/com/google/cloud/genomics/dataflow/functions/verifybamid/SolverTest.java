@@ -21,8 +21,6 @@ import com.google.cloud.genomics.dataflow.model.ReadQualityCount.Base;
 import com.google.common.collect.ImmutableMap;
 import com.google.genomics.v1.Position;
 
-import junit.framework.TestCase;
-
 import org.apache.commons.math3.analysis.UnivariateFunction;
 import org.apache.commons.math3.geometry.euclidean.oned.Interval;
 import org.apache.commons.math3.util.Precision;
@@ -31,6 +29,8 @@ import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 
 import java.util.Map;
+
+import junit.framework.TestCase;
 
 /**
  * Unit tests for Solver.
@@ -50,9 +50,9 @@ public class SolverTest extends TestCase {
     @Override
     public double value(double x) {
       return 1.0 - Math.pow(x - this.max, 2.0);
-    }    
+    }
   }
-  
+
   @Test
   public void testGridSearch() {
     Interval interval = Solver.gridSearch(new Parabola(0.25), 0.0, 1.0, 0.1);
@@ -73,7 +73,7 @@ public class SolverTest extends TestCase {
     assertEquals(Precision.compareTo(Solver.maximize(new Parabola(0.47), 0.0, 1.0,
         0.1, 0.00001, 0.00001, 100, 100), 0.47, 0.00001), 0);
   }
-  
+
   @Test
   public void testSolverOnKnownLikelihoodCases() {
     int phred = 200;
@@ -142,7 +142,7 @@ public class SolverTest extends TestCase {
     assertEquals(Precision.compareTo(Solver.maximize(
         new LikelihoodFn(readCounts), 0.0, 0.5, 0.05,
         0.0001, 0.0001, 100, 100), 0.2, 0.0001), 0);
-  
+
     /*
      * Assume a heterozygous desired base pair with a homozygous contaminant.
      * Observe 450 NONREF reads and 550 REF
@@ -169,5 +169,5 @@ public class SolverTest extends TestCase {
         new LikelihoodFn(readCounts), 0.0, 0.5, 0.05,
         0.0001, 0.0001, 100, 100), 0.1, 0.0001), 0);
   }
-  
+
 }

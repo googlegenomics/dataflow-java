@@ -21,7 +21,6 @@ import com.google.cloud.genomics.utils.OfflineAuth;
 import com.google.cloud.genomics.utils.grpc.GenomicsChannel;
 import com.google.cloud.genomics.utils.grpc.ReadUtils;
 import com.google.common.collect.Lists;
-import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 import com.google.genomics.v1.GetReadGroupSetRequest;
 import com.google.genomics.v1.GetReferenceRequest;
@@ -41,7 +40,6 @@ import com.google.genomics.v1.StreamingReadServiceGrpc;
 import com.google.genomics.v1.StreamingReadServiceGrpc.StreamingReadServiceBlockingStub;
 
 import htsjdk.samtools.SAMFileHeader;
-import htsjdk.samtools.SAMReadGroupRecord;
 import htsjdk.samtools.SAMRecord;
 import htsjdk.samtools.SAMRecordIterator;
 import htsjdk.samtools.SAMSequenceRecord;
@@ -56,7 +54,6 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.Iterator;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 import java.util.logging.Logger;
 
@@ -65,7 +62,7 @@ import java.util.logging.Logger;
  * Also contains the reference and start position of the first read - this can be used
  * during sharded processing to distinguish a shard that contains a first read and therefore
  * has to do some special processing (e.g. write a header into a file).
- * 
+ *
  * Has methods to construct the class by reading it form the BAM file or assembling it
  * from the data behind GA4GH APIs for a given ReadGroupSet.
  */
@@ -73,17 +70,17 @@ public class HeaderInfo {
   private static final Logger LOG = Logger.getLogger(HeaderInfo.class.getName());
   public SAMFileHeader header;
   public Contig firstRead;
-  
+
   public HeaderInfo(SAMFileHeader header, Contig firstShard) {
     this.header = header;
     this.firstRead = firstShard;
   }
-  
+
   public boolean shardHasFirstRead(Contig shard) {
-    return this.firstRead.referenceName.compareToIgnoreCase(shard.referenceName)==0 && 
+    return this.firstRead.referenceName.compareToIgnoreCase(shard.referenceName)==0 &&
         this.firstRead.start >= shard.start && this.firstRead.start <= shard.end;
   }
-  
+
   static class ReferenceInfo {
     public ReferenceInfo(Reference reference, ReferenceSet referenceSet) {
       this.reference = reference;
@@ -92,13 +89,13 @@ public class HeaderInfo {
     public Reference reference;
     public ReferenceSet referenceSet;
   }
-  
-  public static HeaderInfo getHeaderFromApi(String rgsId, OfflineAuth auth, Iterable<Contig> explicitlyRequestedContigs) 
+
+  public static HeaderInfo getHeaderFromApi(String rgsId, OfflineAuth auth, Iterable<Contig> explicitlyRequestedContigs)
       throws IOException, GeneralSecurityException {
     LOG.info("Getting metadata for header generation from ReadGroupSet: " + rgsId);
-    
+
     final Channel channel = GenomicsChannel.fromOfflineAuth(auth);
-    
+
     // Get readgroupset metadata and reference metadata
     ReadServiceV1BlockingStub readStub = ReadServiceV1Grpc.newBlockingStub(channel);
     GetReadGroupSetRequest getReadGroupSetRequest = GetReadGroupSetRequest
@@ -109,9 +106,9 @@ public class HeaderInfo {
     ReadGroupSet readGroupSet = readStub.getReadGroupSet(getReadGroupSetRequest);
     String datasetId = readGroupSet.getDatasetId();
     LOG.info("Found readset " + rgsId + ", dataset " + datasetId);
-   
+
     final List<ReferenceInfo> references = getReferences(channel, readGroupSet);
-    List<Reference> orderedReferencesForHeader = Lists.newArrayList(); 
+    List<Reference> orderedReferencesForHeader = Lists.newArrayList();
     for (ReferenceInfo ri : references) {
       orderedReferencesForHeader.add(ri.reference);
     }
@@ -122,8 +119,8 @@ public class HeaderInfo {
             return o1.getName().compareTo(o2.getName());
           }
         });
-    
-    final SAMFileHeader fileHeader = ReadUtils.makeSAMFileHeader(readGroupSet, 
+
+    final SAMFileHeader fileHeader = ReadUtils.makeSAMFileHeader(readGroupSet,
         orderedReferencesForHeader);
     for (ReferenceInfo ri : references) {
       SAMSequenceRecord sr = fileHeader.getSequence(ri.reference.getName());
@@ -132,7 +129,7 @@ public class HeaderInfo {
       sr.setAttribute(SAMSequenceRecord.URI_TAG, ri.reference.getSourceUri());
       sr.setAttribute(SAMSequenceRecord.MD5_TAG, ri.reference.getMd5Checksum());
     }
-    
+
     Contig firstContig = getFirstExplicitContigOrNull(fileHeader, explicitlyRequestedContigs);
     if (firstContig == null) {
       firstContig = new Contig(fileHeader.getSequence(0).getSequenceName(), 0, 0);
@@ -140,7 +137,7 @@ public class HeaderInfo {
     }
     LOG.info("First contig is " + firstContig);
     // Get first read
-    StreamingReadServiceBlockingStub streamingReadStub = 
+    StreamingReadServiceBlockingStub streamingReadStub =
         StreamingReadServiceGrpc.newBlockingStub(channel);
     StreamReadsRequest.Builder streamReadsRequestBuilder = StreamReadsRequest.newBuilder()
         .setReadGroupSetId(rgsId)
@@ -150,7 +147,7 @@ public class HeaderInfo {
     }
     if (firstContig.end != 0) {
       streamReadsRequestBuilder.setEnd(Long.valueOf(firstContig.end + 1));
-    } 
+    }
     final StreamReadsRequest streamReadRequest = streamReadsRequestBuilder.build();
     final Iterator<StreamReadsResponse> respIt = streamingReadStub.streamReads(streamReadRequest);
     if (!respIt.hasNext()) {
@@ -166,11 +163,11 @@ public class HeaderInfo {
     final Contig firstShard = new Contig(firstContig.referenceName, firstReadStart, firstReadStart);
     return new HeaderInfo(fileHeader, firstShard);
   }
-  
+
   private static List<ReferenceInfo> getReferences(Channel channel, ReadGroupSet readGroupSet) {
     Set<String> referenceSetIds = Sets.newHashSet();
     if (readGroupSet.getReferenceSetId() != null && !readGroupSet.getReferenceSetId().isEmpty()) {
-      LOG.fine("Found reference set from read group set " + 
+      LOG.fine("Found reference set from read group set " +
           readGroupSet.getReferenceSetId());
       referenceSetIds.add(readGroupSet.getReferenceSetId());
     }
@@ -178,22 +175,22 @@ public class HeaderInfo {
       LOG.fine("Found read groups");
       for (ReadGroup readGroup : readGroupSet.getReadGroupsList()) {
         if (readGroup.getReferenceSetId() != null && !readGroup.getReferenceSetId().isEmpty()) {
-          LOG.fine("Found reference set from read group: " + 
+          LOG.fine("Found reference set from read group: " +
               readGroup.getReferenceSetId());
           referenceSetIds.add(readGroup.getReferenceSetId());
         }
       }
     }
-    
-    ReferenceServiceV1BlockingStub referenceSetStub = 
+
+    ReferenceServiceV1BlockingStub referenceSetStub =
         ReferenceServiceV1Grpc.newBlockingStub(channel);
-        
+
     List<ReferenceInfo> references = Lists.newArrayList();
     for (String referenceSetId : referenceSetIds) {
       LOG.fine("Getting reference set " + referenceSetId);
       GetReferenceSetRequest getReferenceSetRequest = GetReferenceSetRequest
           .newBuilder().setReferenceSetId(referenceSetId).build();
-      ReferenceSet referenceSet = 
+      ReferenceSet referenceSet =
           referenceSetStub.getReferenceSet(getReferenceSetRequest);
       if (referenceSet == null || referenceSet.getReferenceIdsCount() == 0) {
         continue;
@@ -211,12 +208,12 @@ public class HeaderInfo {
     }
     return references;
   }
-  
- 
-  
+
+
+
   public static HeaderInfo getHeaderFromBAMFile(Storage.Objects storage, String BAMPath, Iterable<Contig> explicitlyRequestedContigs) throws IOException {
     HeaderInfo result = null;
-    
+
     // Open and read start of BAM
     LOG.info("Reading header from " + BAMPath);
     final SamReader samReader = BAMIO
@@ -227,16 +224,16 @@ public class HeaderInfo {
       final SAMSequenceRecord seqRecord = header.getSequence(0);
       firstContig = new Contig(seqRecord.getSequenceName(), -1, -1);
     }
-    
+
     LOG.info("Reading first chunk of reads from " + BAMPath);
     final SAMRecordIterator recordIterator = samReader.query(
         firstContig.referenceName, (int)firstContig.start + 1, (int)firstContig.end + 1, false);
-   
+
     Contig firstShard = null;
     while (recordIterator.hasNext() && result == null) {
       SAMRecord record = recordIterator.next();
       final int alignmentStart = record.getAlignmentStart();
-      if (firstShard == null && alignmentStart > firstContig.start && 
+      if (firstShard == null && alignmentStart > firstContig.start &&
           (alignmentStart < firstContig.end || firstContig.end == -1)) {
         firstShard = new Contig(firstContig.referenceName, alignmentStart, alignmentStart);
         LOG.info("Determined first shard to be " + firstShard);
@@ -245,14 +242,14 @@ public class HeaderInfo {
     }
     recordIterator.close();
     samReader.close();
-    
+
     if (result == null) {
       throw new IOException("Did not find reads for the first contig " + firstContig.toString());
     }
     LOG.info("Finished header reading from " + BAMPath);
     return result;
   }
-  
+
   /**
    * @return first contig derived from explicitly specified contigs in the options or null if none are specified.
    * The order is determined by reference lexicographic ordering and then by coordinates.

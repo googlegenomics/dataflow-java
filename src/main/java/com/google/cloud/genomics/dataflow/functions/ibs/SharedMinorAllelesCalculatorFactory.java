@@ -15,7 +15,6 @@
  */
 package com.google.cloud.genomics.dataflow.functions.ibs;
 
-
 public class SharedMinorAllelesCalculatorFactory implements CallSimilarityCalculatorFactory {
 
   @Override

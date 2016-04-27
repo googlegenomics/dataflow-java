@@ -46,7 +46,7 @@ public class ReadCounts extends GenericJson {
   public void setReadQualityCounts(List<ReadQualityCount> readQualityCounts) {
     this.readQualityCounts = readQualityCounts;
   }
-  
+
   public void addReadQualityCount(Base base, int quality, long count) {
     ReadQualityCount rqc = new ReadQualityCount();
     rqc.setBase(base);
@@ -54,7 +54,7 @@ public class ReadCounts extends GenericJson {
     rqc.setQuality(quality);
     this.readQualityCounts.add(rqc);
   }
-  
+
   public void addReadQualityCount(ReadQualityCount rqc) {
     this.readQualityCounts.add(rqc);
   }

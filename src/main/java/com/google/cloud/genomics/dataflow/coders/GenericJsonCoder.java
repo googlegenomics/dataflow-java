@@ -15,8 +15,6 @@
  */
 package com.google.cloud.genomics.dataflow.coders;
 
-import com.fasterxml.jackson.annotation.JsonCreator;
-import com.fasterxml.jackson.annotation.JsonProperty;
 import com.google.api.client.googleapis.util.Utils;
 import com.google.api.client.json.GenericJson;
 import com.google.api.client.json.JsonFactory;
@@ -29,6 +27,9 @@ import com.google.cloud.dataflow.sdk.coders.StringUtf8Coder;
 import com.google.cloud.dataflow.sdk.util.CloudObject;
 import com.google.cloud.dataflow.sdk.values.TypeDescriptor;
 import com.google.protobuf.Message;
+
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonProperty;
 
 import java.io.IOException;
 import java.io.Serializable;
@@ -74,7 +75,7 @@ public class GenericJsonCoder<T extends GenericJson> extends DelegatingAtomicCod
   @Override protected String to(T object) throws IOException {
     return JSON_FACTORY.toString(object);
   }
-  
+
   /**
    * Coder provider for all objects in the Google Genomics Java client library.
    */

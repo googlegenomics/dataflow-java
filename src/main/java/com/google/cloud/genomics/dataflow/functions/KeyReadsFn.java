@@ -34,7 +34,7 @@ import java.util.logging.Logger;
  */
 public class KeyReadsFn extends DoFn<Read, KV<Contig,Read>> {
   private static final Logger LOG = Logger.getLogger(KeyReadsFn.class.getName());
-  
+
   public static interface Options extends PipelineOptions {
     @Description("Loci per writing shard")
     @Default.Long(10000)
@@ -49,14 +49,14 @@ public class KeyReadsFn extends DoFn<Read, KV<Contig,Read>> {
   private long count;
   private long minPos = Long.MAX_VALUE;
   private long maxPos = Long.MIN_VALUE;
-  
-  
-  
+
+
+
   public KeyReadsFn() {
     readCountAggregator = createAggregator("Keyed reads", new SumIntegerFn());
     unmappedReadCountAggregator = createAggregator("Keyed unmapped reads", new SumIntegerFn());
   }
-  
+
   @Override
   public void startBundle(Context c) {
     lociPerShard = c.getPipelineOptions()
@@ -64,10 +64,10 @@ public class KeyReadsFn extends DoFn<Read, KV<Contig,Read>> {
       .getLociPerWritingShard();
     count = 0;
   }
-  
+
   @Override
   public void finishBundle(Context c) {
-    LOG.info("KeyReadsDone: Processed " + count + " reads" + "min=" + minPos + 
+    LOG.info("KeyReadsDone: Processed " + count + " reads" + "min=" + minPos +
         " max=" + maxPos);
   }
 
@@ -81,7 +81,7 @@ public class KeyReadsFn extends DoFn<Read, KV<Contig,Read>> {
     count++;
     c.output(
         KV.of(
-            shardKeyForRead(read, lociPerShard), 
+            shardKeyForRead(read, lociPerShard),
             read));
     readCountAggregator.addValue(1);
     if (isUnmapped(read)) {

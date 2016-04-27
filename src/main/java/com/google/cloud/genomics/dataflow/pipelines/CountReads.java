@@ -61,7 +61,7 @@ import java.util.logging.Logger;
 public class CountReads {
 
   public static interface Options extends GCSOptions, ShardOptions, GCSOutputOptions {
-    
+
     @Description("The ID of the Google Genomics ReadGroupSet this pipeline is working with. "
         + "Default (empty) indicates all ReadGroupSets.")
     @Default.String("")
@@ -80,7 +80,7 @@ public class CountReads {
     boolean isShardBAMReading();
 
     void setShardBAMReading(boolean newValue);
-    
+
     @Description("Whether to include unmapped mate pairs of mapped reads to match expectations of Picard tools.")
     @Default.Boolean(false)
     boolean isIncludeUnmapped();
@@ -99,7 +99,7 @@ public class CountReads {
   private static Pipeline p;
   private static Options pipelineOptions;
   private static OfflineAuth auth;
-  
+
   public static void main(String[] args) throws GeneralSecurityException, IOException {
     // Register the options so that they show up via --help
     PipelineOptionsFactory.register(Options.class);

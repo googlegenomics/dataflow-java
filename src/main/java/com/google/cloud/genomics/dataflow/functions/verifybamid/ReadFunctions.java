@@ -15,10 +15,6 @@
  */
 package com.google.cloud.genomics.dataflow.functions.verifybamid;
 
-import java.util.List;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
-
 import com.google.cloud.dataflow.sdk.transforms.SerializableFunction;
 import com.google.cloud.genomics.dataflow.model.ReadBaseQuality;
 import com.google.cloud.genomics.dataflow.model.ReadBaseWithReference;
@@ -26,6 +22,10 @@ import com.google.common.collect.ImmutableList;
 import com.google.genomics.v1.CigarUnit;
 import com.google.genomics.v1.Position;
 import com.google.genomics.v1.Read;
+
+import java.util.List;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
  * Utility methods for working with genetic read data.

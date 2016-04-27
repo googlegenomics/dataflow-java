@@ -32,7 +32,7 @@ import htsjdk.samtools.SamReader;
  * - a Google Cloud project name in TEST_PROJECT,
  * - a Cloud Storage folder path in TEST_OUTPUT_GCS_FOLDER to store temporary test outputs,
  * - a Cloud Storage folder path in TEST_STAGING_GCS_FOLDER to store temporary files,
- * 
+ *
  * Cloud Storage folder paths should be of the form "gs://bucket/folder/"
  *
  * When doing e.g. mvn install, you can skip integration tests using:
@@ -40,7 +40,7 @@ import htsjdk.samtools.SamReader;
  *
  * To run one test:
  *      mvn -Dit.test=ShardedBAMWritingITCase#testShardedWriting verify
- *      
+ *
  * See also http://maven.apache.org/surefire/maven-failsafe-plugin/examples/single-test.html
  */
 @RunWith(JUnit4.class)
@@ -50,15 +50,15 @@ public class ShardedBAMWritingITCase {
   static final String OUTPUT_FNAME = "sharded-output.bam";
   static final int EXPECTED_ALL_READS = 10414236;
   static final int EXPECTED_UNMAPPED_READS = 108950;
-  
-  
+
+
   static IntegrationTestHelper helper;
-  
+
   @BeforeClass
   public static void setUpBeforeClass() {
     helper = new IntegrationTestHelper();
   }
-  
+
   @Test
   public void testShardedWriting() throws Exception {
     final String OUTPUT = helper.getTestOutputGcsFolder() + OUTPUT_FNAME;
@@ -78,16 +78,16 @@ public class ShardedBAMWritingITCase {
 
       ShardedBAMWriting.main(ARGS);
 
-      reader = helper.openBAM(OUTPUT); 
+      reader = helper.openBAM(OUTPUT);
       Assert.assertTrue(reader.hasIndex());
       final int sequenceIndex = reader.getFileHeader().getSequenceIndex("11");
       BAMIndexMetaData metaData = reader.indexing().getIndex().getMetaData(sequenceIndex);
-      Assert.assertEquals(EXPECTED_ALL_READS - EXPECTED_UNMAPPED_READS, 
-          metaData.getAlignedRecordCount()); 
+      Assert.assertEquals(EXPECTED_ALL_READS - EXPECTED_UNMAPPED_READS,
+          metaData.getAlignedRecordCount());
       // Not handling unmapped reads yet
-      // Assert.assertEquals(EXPECTED_UNMAPPED_READS, 
-      // metaData.getUnalignedRecordCount()); 
-      
+      // Assert.assertEquals(EXPECTED_UNMAPPED_READS,
+      // metaData.getUnalignedRecordCount());
+
     } finally {
       if (reader != null) {
         reader.close();

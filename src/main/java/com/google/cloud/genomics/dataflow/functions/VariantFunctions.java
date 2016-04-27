@@ -13,11 +13,11 @@
  */
 package com.google.cloud.genomics.dataflow.functions;
 
-import java.util.regex.Pattern;
-
 import com.google.cloud.dataflow.sdk.transforms.SerializableFunction;
 import com.google.cloud.genomics.utils.grpc.VariantUtils;
 import com.google.genomics.v1.Variant;
+
+import java.util.regex.Pattern;
 
 /**
  * Utility methods for working with genetic variant data.

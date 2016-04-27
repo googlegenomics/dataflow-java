@@ -83,7 +83,7 @@ public class ReadBAMTransform extends PTransform<PCollection<BAMShard>, PCollect
   // back to ReadBAMTransform
 
   public static PCollection<Read> getReadsFromBAMFilesSharded(
-      Pipeline p, 
+      Pipeline p,
       OfflineAuth auth,
       Iterable<Contig> contigs,
       ReaderOptions options,
@@ -91,14 +91,14 @@ public class ReadBAMTransform extends PTransform<PCollection<BAMShard>, PCollect
       ShardingPolicy shardingPolicy) throws IOException {
       ReadBAMTransform readBAMSTransform = new ReadBAMTransform(options);
       readBAMSTransform.setAuth(auth);
-      
+
       final Storage.Objects storage = Transport
           .newStorageClient(p.getOptions().as(GCSOptions.class)).build().objects();
-      
-  
+
+
       final List<BAMShard> shardsList = Sharder.shardBAMFile(storage, BAMFile, contigs,
          shardingPolicy);
-          
+
       PCollection<BAMShard> shards = p.apply(Create
           .of(shardsList))
           .setCoder(SerializableCoder.of(BAMShard.class));
@@ -107,7 +107,7 @@ public class ReadBAMTransform extends PTransform<PCollection<BAMShard>, PCollect
   }
 
   @Override
-  public PCollection<Read> apply(PCollection<BAMShard> shards) {  
+  public PCollection<Read> apply(PCollection<BAMShard> shards) {
     final PCollection<Read> reads = shards.apply(ParDo
         .of(new ReadFn(auth, options)));
 

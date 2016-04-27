@@ -23,7 +23,7 @@ import com.google.genomics.v1.VariantCall;
  * Identity By State (IBS) for the basis of this implementation.
  */
 public class SharedAllelesRatioCalculator implements CallSimilarityCalculator {
-  
+
   // TODO: Double check that the following is the right way of computing the IBS
   // scores when the number of alleles is different than 2 and when the genotypes are unphased.
   @Override

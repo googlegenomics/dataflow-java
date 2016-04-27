@@ -41,7 +41,7 @@ public class BAMIO {
     public SeekableStream index;
   }
   private static final Logger LOG = Logger.getLogger(BAMIO.class.getName());
-  
+
   public static ReaderAndIndex openBAMAndExposeIndex(Storage.Objects storageClient, String gcsStoragePath, ValidationStringency stringency) throws IOException {
     ReaderAndIndex result = new ReaderAndIndex();
     result.index = openIndexForPath(storageClient, gcsStoragePath);
@@ -49,23 +49,23 @@ public class BAMIO {
         openBAMFile(storageClient, gcsStoragePath,result.index), stringency, false, 0);
     return result;
   }
-  
-  public static SamReader openBAM(Storage.Objects storageClient, String gcsStoragePath, 
+
+  public static SamReader openBAM(Storage.Objects storageClient, String gcsStoragePath,
       ValidationStringency stringency, boolean includeFileSource) throws IOException {
     return openBAMReader(openBAMFile(storageClient, gcsStoragePath,
         openIndexForPath(storageClient, gcsStoragePath)), stringency, includeFileSource, 0);
   }
-  
-  public static SamReader openBAM(Storage.Objects storageClient, String gcsStoragePath, 
+
+  public static SamReader openBAM(Storage.Objects storageClient, String gcsStoragePath,
       ValidationStringency stringency, boolean includeFileSource, long offset) throws IOException {
     return openBAMReader(openBAMFile(storageClient, gcsStoragePath,
         null), stringency, includeFileSource, offset);
   }
-  
+
   public static SamReader openBAM(Storage.Objects storageClient, String gcsStoragePath, ValidationStringency stringency) throws IOException {
     return openBAM(storageClient, gcsStoragePath, stringency, false);
   }
-      
+
   private static SeekableStream openIndexForPath(Storage.Objects storageClient,String gcsStoragePath) {
     final String indexPath = gcsStoragePath + ".bai";
     try {
@@ -76,12 +76,12 @@ public class BAMIO {
     }
     return null;
   }
-  
+
   private static SamInputResource openBAMFile(Storage.Objects storageClient, String gcsStoragePath, SeekableStream index) throws IOException {
     SeekableGCSStream s = new SeekableGCSStream(storageClient, gcsStoragePath);
     SamInputResource samInputResource =
         SamInputResource.of(s);
-    
+
     if (index != null) {
       samInputResource.index(index);
     }
@@ -89,19 +89,19 @@ public class BAMIO {
     LOG.info("getReadsFromBAMFile - got input resources");
     return samInputResource;
   }
-  
+
   public static class SeekingReaderAdapter extends SamReader.PrimitiveSamReaderToSamReaderAdapter {
      SeekingBAMFileReader underlyingReader;
      public SeekingReaderAdapter(SeekingBAMFileReader reader, SamInputResource resource){
          super(reader, resource);
          underlyingReader = reader;
      }
-     
+
      public SeekingBAMFileReader underlyingSeekingReader() {
        return underlyingReader;
      }
   }
-  
+
   private static SamReader openBAMReader(SamInputResource resource, ValidationStringency stringency, boolean includeFileSource, long offset) throws IOException {
     SamReaderFactory samReaderFactory = SamReaderFactory
         .makeDefault()

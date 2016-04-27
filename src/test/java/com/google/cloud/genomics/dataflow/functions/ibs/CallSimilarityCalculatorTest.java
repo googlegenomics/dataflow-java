@@ -17,17 +17,10 @@ package com.google.cloud.genomics.dataflow.functions.ibs;
 
 import static com.google.common.collect.Lists.newArrayList;
 import static com.google.common.collect.Maps.newHashMap;
+
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
-
-import java.util.List;
-import java.util.Map;
-
-import org.junit.Before;
-import org.junit.Test;
-import org.junit.runner.RunWith;
-import org.junit.runners.JUnit4;
 
 import com.google.cloud.dataflow.sdk.transforms.DoFnTester;
 import com.google.cloud.dataflow.sdk.values.KV;
@@ -35,15 +28,23 @@ import com.google.cloud.genomics.dataflow.utils.DataUtils;
 import com.google.genomics.v1.Variant;
 import com.google.genomics.v1.VariantCall;
 
+import org.junit.Before;
+import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.junit.runners.JUnit4;
+
+import java.util.List;
+import java.util.Map;
+
 @RunWith(JUnit4.class)
 public class CallSimilarityCalculatorTest {
 
   private static final double DELTA = 1e-6;
-  
+
   private List<VariantCall> calls = newArrayList();
 
   private List<Variant> variants = newArrayList();
-  
+
   private static final String H1 = "H1";
 
   private static final String H2 = "H2";
@@ -89,11 +90,11 @@ public class CallSimilarityCalculatorTest {
     assertTrue(AlleleSimilarityCalculator.isReferenceMajor(variants.get(2)));
     assertTrue(AlleleSimilarityCalculator.isReferenceMajor(variants.get(3)));
   }
-  
+
   @Test
   public void testSharedMinorAllelesCalculatorWhenReferenceIsMinor() {
     CallSimilarityCalculator calculator = new SharedMinorAllelesCalculator(false);
-    
+
     assertEquals(1, calculator.similarity(calls.get(0), calls.get(1)), DELTA);
     assertEquals(0, calculator.similarity(calls.get(0), calls.get(4)), DELTA);
     assertEquals(0, calculator.similarity(calls.get(3), calls.get(2)), DELTA);

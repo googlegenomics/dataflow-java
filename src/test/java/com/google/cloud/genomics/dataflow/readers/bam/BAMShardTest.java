@@ -15,18 +15,15 @@
  */
 package com.google.cloud.genomics.dataflow.readers.bam;
 
+import static org.junit.Assert.assertEquals;
+
+import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
-import org.junit.Test;
-
-import htsjdk.samtools.BAMFileIndexImpl;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
-
-import java.util.Collections;
 
 import htsjdk.samtools.Chunk;
+
+import java.util.Collections;
 
 @RunWith(JUnit4.class)
 public class BAMShardTest {

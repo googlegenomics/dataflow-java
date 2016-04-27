@@ -13,17 +13,6 @@
  */
 package com.google.cloud.genomics.dataflow.functions;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-
-import org.hamcrest.collection.IsIterableContainingInAnyOrder;
-import org.junit.Assert;
-import org.junit.Test;
-import org.junit.experimental.categories.Category;
-import org.junit.runner.RunWith;
-import org.junit.runners.JUnit4;
-
 import com.google.cloud.dataflow.sdk.Pipeline;
 import com.google.cloud.dataflow.sdk.coders.StringUtf8Coder;
 import com.google.cloud.dataflow.sdk.testing.DataflowAssert;
@@ -34,6 +23,17 @@ import com.google.cloud.dataflow.sdk.transforms.DoFnTester;
 import com.google.cloud.dataflow.sdk.values.PCollection;
 import com.google.cloud.genomics.utils.Contig;
 import com.google.genomics.v1.StreamVariantsRequest;
+
+import org.hamcrest.collection.IsIterableContainingInAnyOrder;
+import org.junit.Assert;
+import org.junit.Test;
+import org.junit.experimental.categories.Category;
+import org.junit.runner.RunWith;
+import org.junit.runners.JUnit4;
+
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
 
 @RunWith(JUnit4.class)
 public class SitesToShardsTest {

@@ -14,22 +14,11 @@
 package com.google.cloud.genomics.dataflow.functions;
 
 import static com.google.common.collect.Lists.newArrayList;
+
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertThat;
 import static org.junit.Assert.assertTrue;
-
-import java.util.Arrays;
-import java.util.Comparator;
-import java.util.List;
-
-import org.hamcrest.CoreMatchers;
-import org.hamcrest.collection.IsIterableWithSize;
-import org.junit.Assert;
-import org.junit.Before;
-import org.junit.Test;
-import org.junit.runner.RunWith;
-import org.junit.runners.JUnit4;
 
 import com.google.cloud.dataflow.sdk.Pipeline;
 import com.google.cloud.dataflow.sdk.testing.DataflowAssert;
@@ -42,6 +31,18 @@ import com.google.cloud.dataflow.sdk.values.PCollection;
 import com.google.common.collect.Lists;
 import com.google.genomics.v1.Variant;
 import com.google.genomics.v1.VariantCall;
+
+import org.hamcrest.CoreMatchers;
+import org.hamcrest.collection.IsIterableWithSize;
+import org.junit.Assert;
+import org.junit.Before;
+import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.junit.runners.JUnit4;
+
+import java.util.Arrays;
+import java.util.Comparator;
+import java.util.List;
 
 @RunWith(JUnit4.class)
 public class JoinNonVariantSegmentsWithVariantsTest {

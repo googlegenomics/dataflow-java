@@ -19,7 +19,7 @@ package com.google.cloud.genomics.dataflow.model;
  * This class is used to count the number of reads aligned to a SNP that show the reference base,
  * the non-reference base, some other base, or an unknown base.  Within each category, we count the
  * number with each quality score.
- * 
+ *
  * For example, we might have 2 reads that show the reference base with quality 10, 5 reads that
  * show the non-reference base with quality 60, and 1 read that shows a different nucleotide with
  * quality 0.

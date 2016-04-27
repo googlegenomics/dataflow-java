@@ -24,21 +24,21 @@ import java.io.Serializable;
  */
 public class ReaderOptions implements Serializable{
   ValidationStringency stringency = ValidationStringency.DEFAULT_STRINGENCY;
-  
+
   /**
    * If true, we will read and return unmapped reads in the order expected by
    * HTSDK/GATK/Picard tools, specifically unmapped mate pairs of mapped reads
    * will be returned according to their position specified in the BAM record
-   * (as opposed to being after all the mapped reads). This position is 
-   * typically specified such that these unmapped mates immediately follow 
-   * their mapped counterparts. 
+   * (as opposed to being after all the mapped reads). This position is
+   * typically specified such that these unmapped mates immediately follow
+   * their mapped counterparts.
    */
   boolean includeUnmappedReads = false;
-  
+
   public ReaderOptions() {
-    
+
   }
-  
+
   public ReaderOptions(ValidationStringency stringency, boolean includeUnmappedReads) {
     this.stringency = stringency;
     this.includeUnmappedReads = includeUnmappedReads;
@@ -47,15 +47,15 @@ public class ReaderOptions implements Serializable{
   public ValidationStringency getStringency() {
     return stringency;
   }
-  
+
   public void setStringency(ValidationStringency stringency) {
     this.stringency = stringency;
   }
-  
+
   public boolean getIncludeUnmappedReads() {
     return includeUnmappedReads;
   }
-  
+
   public void setIncludeUnmappedReads(boolean includeUnmappedReads) {
     this.includeUnmappedReads = includeUnmappedReads;
   }

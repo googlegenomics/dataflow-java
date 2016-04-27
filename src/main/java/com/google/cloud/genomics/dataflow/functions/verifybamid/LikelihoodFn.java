@@ -165,7 +165,7 @@ public class LikelihoodFn implements UnivariateFunction {
     }
     return logLikelihood;
   }
-  
+
   /**
    * Convert a Phred score to a probability.
    */

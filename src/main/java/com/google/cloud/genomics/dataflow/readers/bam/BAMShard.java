@@ -27,9 +27,9 @@ import java.util.List;
 
 /**
  * A shard of BAM data we will create during sharding and then use to drive the reading.
- * We use this class during shard generation, by iteratively building 
+ * We use this class during shard generation, by iteratively building
  * a shard, extending it bin by bin (@see #addBin)
- * At the end of the process, the shard is finalized (@see #finalize) 
+ * At the end of the process, the shard is finalized (@see #finalize)
  * and SAMFileSpan that has all the chunks we want to read is produced.
  */
 public class BAMShard implements Serializable {
@@ -48,11 +48,11 @@ public class BAMShard implements Serializable {
     this.chunks = Lists.newLinkedList();
     this.span = null;
   }
-  
+
   /**
    * Creates a shard with a known file span.
    * Such shard is not expected to be extended and calling addBin or finalize on it will fail.
-   * This constructor is used for "degenerate" shards like unmapped reads or 
+   * This constructor is used for "degenerate" shards like unmapped reads or
    * all reads in cases where we don't have an index.
    */
   public BAMShard(String file, SAMFileSpanImpl span, Contig contig) {
@@ -71,20 +71,20 @@ public class BAMShard implements Serializable {
     chunks.addAll(chunksToAdd);
     updateSpan();
   }
-  
+
   /**
    * Generates a final list of chunks, now that we know the exact bounding loci
    * for this shard. We get all chunks overlapping this loci, and then ask the index
-   * for the chunks overlapping them. 
+   * for the chunks overlapping them.
    */
   public BAMShard finalize(BAMFileIndexImpl index, long lastLocus) {
     contig = new Contig(contig.referenceName, contig.start, lastLocus);
-    this.chunks = index.getChunksOverlapping(contig.referenceName, 
+    this.chunks = index.getChunksOverlapping(contig.referenceName,
         (int)contig.start, (int)contig.end);
     updateSpan();
     return this;
   }
-  
+
   /**
    * Updates the underlying file span by optimizing and coalescing the current chunk list.
    */
@@ -96,7 +96,7 @@ public class BAMShard implements Serializable {
   public long sizeInLoci() {
     return contig.end > 0 ? contig.end - contig.start : 0;
   }
-  
+
   public long approximateSizeInBytes() {
     if (cachedSizeInBytes < 0) {
       cachedSizeInBytes = span.approximateSizeInBytes();

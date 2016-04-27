@@ -13,13 +13,6 @@
  */
 package com.google.cloud.genomics.dataflow.functions;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Comparator;
-import java.util.Iterator;
-import java.util.LinkedList;
-import java.util.List;
-
 import com.google.cloud.dataflow.sdk.options.Default;
 import com.google.cloud.dataflow.sdk.options.Description;
 import com.google.cloud.dataflow.sdk.options.PipelineOptions;
@@ -42,6 +35,13 @@ import com.google.genomics.v1.StreamVariantsRequest;
 import com.google.genomics.v1.StreamVariantsResponse;
 import com.google.genomics.v1.Variant;
 import com.google.genomics.v1.Variant.Builder;
+
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.Iterator;
+import java.util.LinkedList;
+import java.util.List;
 
 /**
  * The transforms in this class convert data with non-variant segments (such as data that was in

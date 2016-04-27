@@ -16,10 +16,10 @@
 package com.google.cloud.genomics.dataflow.functions;
 
 import com.google.cloud.dataflow.sdk.transforms.GroupByKey;
-import com.google.cloud.dataflow.sdk.transforms.ParDo;
 import com.google.cloud.dataflow.sdk.transforms.PTransform;
-import com.google.cloud.dataflow.sdk.values.PCollection;
+import com.google.cloud.dataflow.sdk.transforms.ParDo;
 import com.google.cloud.dataflow.sdk.values.KV;
+import com.google.cloud.dataflow.sdk.values.PCollection;
 import com.google.cloud.genomics.utils.Contig;
 import com.google.genomics.v1.Read;
 
@@ -42,4 +42,3 @@ public class ShardReadsTransform extends PTransform<PCollection<Read>, PCollecti
     return (new ShardReadsTransform()).apply(reads);
   }
 }
-  

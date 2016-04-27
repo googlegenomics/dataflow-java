@@ -13,12 +13,6 @@
  */
 package com.google.cloud.genomics.dataflow.readers;
 
-import java.io.IOException;
-import java.security.GeneralSecurityException;
-import java.util.Iterator;
-import java.util.List;
-import java.util.concurrent.TimeUnit;
-
 import com.google.cloud.dataflow.sdk.transforms.Aggregator;
 import com.google.cloud.dataflow.sdk.transforms.DoFn;
 import com.google.cloud.dataflow.sdk.transforms.Max;
@@ -34,6 +28,12 @@ import com.google.genomics.v1.Read;
 import com.google.genomics.v1.StreamReadsRequest;
 import com.google.genomics.v1.StreamReadsResponse;
 
+import java.io.IOException;
+import java.security.GeneralSecurityException;
+import java.util.Iterator;
+import java.util.List;
+import java.util.concurrent.TimeUnit;
+
 /**
  * PTransform for streaming reads via gRPC.
  */
@@ -46,7 +46,7 @@ PTransform<PCollection<StreamReadsRequest>, PCollection<Read>> {
 
   /**
    * Create a streamer that can enforce shard boundary semantics.
-   * 
+   *
    * @param auth The OfflineAuth to use for the request.
    * @param shardBoundary The shard boundary semantics to enforce.
    * @param fields Which fields to include in a partial response or null for all.
