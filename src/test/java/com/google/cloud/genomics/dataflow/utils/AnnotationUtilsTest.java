@@ -19,11 +19,9 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
 
 import com.google.api.services.genomics.model.Annotation;
-import com.google.api.services.genomics.model.Int32Value;
-import com.google.api.services.genomics.model.RangePosition;
+import com.google.api.services.genomics.model.CodingSequence;
+import com.google.api.services.genomics.model.Exon;
 import com.google.api.services.genomics.model.Transcript;
-import com.google.api.services.genomics.model.TranscriptCodingSequence;
-import com.google.api.services.genomics.model.TranscriptExon;
 import com.google.cloud.genomics.dataflow.utils.AnnotationUtils.VariantEffect;
 import com.google.common.base.Strings;
 import com.google.common.collect.ImmutableList;
@@ -39,11 +37,13 @@ public class AnnotationUtilsTest {
   @Test
   public void testDetermineVariantTranscriptEffect_simpleShort() {
     Annotation transcript = new Annotation()
-      .setPosition(new RangePosition().setReferenceName("1").setStart(2L).setEnd(9L))
+      .setReferenceName("1")
+      .setStart(2L)
+      .setEnd(9L)
       .setTranscript(new Transcript()
-        .setCodingSequence(new TranscriptCodingSequence().setStart(2L).setEnd(9L))
+        .setCodingSequence(new CodingSequence().setStart(2L).setEnd(9L))
         .setExons(ImmutableList.of(
-            new TranscriptExon().setStart(2L).setEnd(9L).setFrame(new Int32Value().setValue(0)))));
+            new Exon().setStart(2L).setEnd(9L).setFrame(0))));
 
     assertEquals("GATTACA -> GCTTACA, codon is GAT -> GCT, AA is D -> A",
         VariantEffect.NONSYNONYMOUS_SNP,
@@ -64,13 +64,15 @@ public class AnnotationUtilsTest {
   @Test
   public void testDetermineVariantTranscriptEffect_reverseStrand() {
     Annotation transcript = new Annotation()
-      .setPosition(
-          new RangePosition().setReferenceName("1").setStart(2L).setEnd(20L).setReverseStrand(true))
+      .setReferenceName("1")
+      .setStart(2L)
+      .setEnd(20L)
+      .setReverseStrand(true)
       .setTranscript(new Transcript()
-        .setCodingSequence(new TranscriptCodingSequence().setStart(3L).setEnd(18L))
+        .setCodingSequence(new CodingSequence().setStart(3L).setEnd(18L))
         .setExons(ImmutableList.of(
-            new TranscriptExon().setStart(2L).setEnd(7L).setFrame(new Int32Value().setValue(2)),
-            new TranscriptExon().setStart(10L).setEnd(20L).setFrame(new Int32Value().setValue(1)))
+            new Exon().setStart(2L).setEnd(7L).setFrame(2),
+            new Exon().setStart(10L).setEnd(20L).setFrame(1))
         ));
 
     String bases = SequenceUtil.reverseComplement(
@@ -97,9 +99,11 @@ public class AnnotationUtilsTest {
   @Test
   public void testDetermineVariantTranscriptEffect_noncoding() {
     Annotation transcript = new Annotation()
-      .setPosition(new RangePosition().setReferenceName("1").setStart(2L).setEnd(9L))
+      .setReferenceName("1")
+      .setStart(2L)
+      .setEnd(9L)
       .setTranscript(new Transcript()
-        .setExons(ImmutableList.of(new TranscriptExon().setStart(2L).setEnd(9L))));
+        .setExons(ImmutableList.of(new Exon().setStart(2L).setEnd(9L))));
 
     assertNull(AnnotationUtils.determineVariantTranscriptEffect(3L, "C", transcript, "GATTACA"));
     assertNull(AnnotationUtils.determineVariantTranscriptEffect(11L, "C", transcript, "GATTACA"));
@@ -108,10 +112,12 @@ public class AnnotationUtilsTest {
   @Test
   public void testDetermineVariantTranscriptEffect_frameless() {
     Annotation transcript = new Annotation()
-      .setPosition(new RangePosition().setReferenceName("1").setStart(2L).setEnd(9L))
+      .setReferenceName("1")
+      .setStart(2L)
+      .setEnd(9L)
       .setTranscript(new Transcript()
-        .setCodingSequence(new TranscriptCodingSequence().setStart(2L).setEnd(9L))
-        .setExons(ImmutableList.of(new TranscriptExon().setStart(2L).setEnd(9L))));
+        .setCodingSequence(new CodingSequence().setStart(2L).setEnd(9L))
+        .setExons(ImmutableList.of(new Exon().setStart(2L).setEnd(9L))));
 
     assertNull(AnnotationUtils.determineVariantTranscriptEffect(3L, "C", transcript, "GATTACA"));
     assertNull(AnnotationUtils.determineVariantTranscriptEffect(11L, "C", transcript, "GATTACA"));
@@ -121,14 +127,16 @@ public class AnnotationUtilsTest {
   public void testDetermineVariantTranscriptEffect_multiExon() {
     String bases = Strings.repeat("ACTTGGGTCA", 60);
     Annotation transcript = new Annotation()
-      .setPosition(new RangePosition().setReferenceName("1").setStart(100L).setEnd(700L))
+      .setReferenceName("1")
+      .setStart(100L)
+      .setEnd(700L)
       .setTranscript(new Transcript()
-        .setCodingSequence(new TranscriptCodingSequence().setStart(250L).setEnd(580L))
+        .setCodingSequence(new CodingSequence().setStart(250L).setEnd(580L))
         .setExons(ImmutableList.of(
-            new TranscriptExon().setStart(100L).setEnd(180L),
-            new TranscriptExon().setStart(200L).setEnd(300L).setFrame(new Int32Value().setValue(2)),
-            new TranscriptExon().setStart(400L).setEnd(500L).setFrame(new Int32Value().setValue(1)),
-            new TranscriptExon().setStart(550L).setEnd(600L).setFrame(new Int32Value().setValue(0)))
+            new Exon().setStart(100L).setEnd(180L),
+            new Exon().setStart(200L).setEnd(300L).setFrame(2),
+            new Exon().setStart(400L).setEnd(500L).setFrame(1),
+            new Exon().setStart(550L).setEnd(600L).setFrame(0))
         ));
 
     assertNull("mutates noncoding exon",

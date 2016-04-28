@@ -15,11 +15,11 @@ package com.google.cloud.genomics.dataflow.pipelines;
 
 import com.google.api.client.util.Strings;
 import com.google.api.services.genomics.Genomics;
+import com.google.api.services.genomics.Genomics.Annotationsets;
 import com.google.api.services.genomics.model.Annotation;
 import com.google.api.services.genomics.model.AnnotationSet;
 import com.google.api.services.genomics.model.BatchCreateAnnotationsRequest;
 import com.google.api.services.genomics.model.Position;
-import com.google.api.services.genomics.model.RangePosition;
 import com.google.cloud.dataflow.sdk.Pipeline;
 import com.google.cloud.dataflow.sdk.options.Default;
 import com.google.cloud.dataflow.sdk.options.Description;
@@ -421,17 +421,16 @@ public class CalculateCoverage {
       Position bucket = c.element().getKey();
       Annotation a = new Annotation()
           .setAnnotationSetId(asId)
-          .setPosition(new RangePosition()
-              .setStart(bucket.getPosition())
-              .setEnd(bucket.getPosition() + pOptions.getBucketWidth())
-              .setReferenceName(bucket.getReferenceName()))
+          .setStart(bucket.getPosition())
+          .setEnd(bucket.getPosition() + pOptions.getBucketWidth())
+          .setReferenceName(bucket.getReferenceName())
           .setType("GENERIC")
-          .setInfo(new HashMap<String, List<String>>());
+          .setInfo(new HashMap<String, List<Object>>());
       for (KV<PosRgsMq.MappingQuality, List<Double>> mappingQualityKV : c.element().getValue()) {
-        List<String> output = Lists.newArrayList();
+        List<Object> output = Lists.newArrayList();
         for (int i = 0; i < mappingQualityKV.getValue().size(); i++) {
           double value = Math.round(mappingQualityKV.getValue().get(i) * 1000000.0) / 1000000.0;
-          output.add(Double.toString(value));
+          output.add(value);
         }
         a.getInfo().put(mappingQualityKV.getKey().toString(), output);
       }
@@ -485,7 +484,7 @@ public class CalculateCoverage {
     as.setReferenceSetId(referenceSetId);
     as.setType("GENERIC");
     Genomics genomics = GenomicsFactory.builder().build().fromOfflineAuth(auth);
-    Genomics.AnnotationSets.Create asRequest = genomics.annotationSets().create(as);
+    Annotationsets.Create asRequest = genomics.annotationsets().create(as);
     AnnotationSet asWithId = asRequest.execute();
     return asWithId;
   }
