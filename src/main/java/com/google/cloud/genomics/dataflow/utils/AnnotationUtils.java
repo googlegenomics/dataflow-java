@@ -15,7 +15,7 @@ package com.google.cloud.genomics.dataflow.utils;
 
 import com.google.api.client.util.Preconditions;
 import com.google.api.services.genomics.model.Annotation;
-import com.google.api.services.genomics.model.TranscriptExon;
+import com.google.api.services.genomics.model.Exon;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Range;
 
@@ -77,7 +77,7 @@ public class AnnotationUtils {
    */
   public static VariantEffect determineVariantTranscriptEffect(
       long variantStart, String allele, Annotation transcript, String transcriptBases) {
-    long txLen = transcript.getPosition().getEnd() - transcript.getPosition().getStart();
+    long txLen = transcript.getEnd() - transcript.getStart();
     Preconditions.checkArgument(transcriptBases.length() == txLen,
         "transcriptBases must have equal length to the transcript; got " +
             transcriptBases.length() + " and " + txLen + ", respectively");
@@ -96,22 +96,22 @@ public class AnnotationUtils {
     Range<Long> codingRange = Range.closedOpen(
         transcript.getTranscript().getCodingSequence().getStart(),
         transcript.getTranscript().getCodingSequence().getEnd());
-    if (Boolean.TRUE.equals(transcript.getPosition().getReverseStrand())) {
+    if (Boolean.TRUE.equals(transcript.getReverseStrand())) {
       allele = SequenceUtil.reverseComplement(allele);
     }
-    for (TranscriptExon exon : transcript.getTranscript().getExons()) {
+    for (Exon exon : transcript.getTranscript().getExons()) {
       // For now, only compute effects on variants within the coding region of an exon.
       Range<Long> exonRange = Range.closedOpen(exon.getStart(), exon.getEnd());
       if (exonRange.isConnected(codingRange) &&
           exonRange.intersection(codingRange).isConnected(variantRange) &&
           !exonRange.intersection(codingRange).intersection(variantRange).isEmpty()) {
         // Get the bases which correspond to this exon.
-        int txOffset = transcript.getPosition().getStart().intValue();
+        int txOffset = transcript.getStart().intValue();
         String exonBases = transcriptBases.substring(
             exon.getStart().intValue() - txOffset, exon.getEnd().intValue() - txOffset);
         int variantExonOffset = (int) (variantStart - exon.getStart());
 
-        if (Boolean.TRUE.equals(transcript.getPosition().getReverseStrand())) {
+        if (Boolean.TRUE.equals(transcript.getReverseStrand())) {
           // Normalize the offset and bases to 5' -> 3'.
           exonBases = SequenceUtil.reverseComplement(exonBases);
           variantExonOffset = (int) (exon.getEnd() - variantEnd);
@@ -122,7 +122,7 @@ public class AnnotationUtils {
           LOG.fine("exon lacks frame data, cannot determine effect");
           return null;
         }
-        int offsetWithinCodon = (variantExonOffset + exon.getFrame().getValue()) % 3;
+        int offsetWithinCodon = (variantExonOffset + exon.getFrame()) % 3;
         int codonExonOffset = variantExonOffset - offsetWithinCodon;
         if (codonExonOffset < 0 || exonBases.length() <= codonExonOffset+3) {
           LOG.fine("variant codon spans multiple exons, this case is not yet handled");
