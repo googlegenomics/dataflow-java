@@ -149,6 +149,7 @@ public final class AnnotateVariants extends DoFn<SearchVariantsRequest, KV<Strin
     Iterable<Variant> varIter = FluentIterable
         .from(Paginator.Variants.create(genomics, ShardBoundary.Requirement.STRICT).search(
             request
+              .clone() // Dataflow does not allow input data to be mutated, make a copy.
               // TODO: Variants-only retrieval is not well support currently. For now
               // we parameterize by CallSet for performance.
               .setCallSetIds(callSetIds)
