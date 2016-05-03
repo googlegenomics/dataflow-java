@@ -73,8 +73,7 @@ public class VariantSimilarity {
     }
   }
 
-  // TODO https://github.com/googlegenomics/utils-java/issues/48
-  private static final String VARIANT_FIELDS = "nextPageToken,variants(start,calls(genotype,callSetName))";
+  private static final String VARIANT_FIELDS = "variants(start,calls(genotype,callSetName))";
 
   public static void main(String[] args) throws IOException, GeneralSecurityException {
     // Register the options so that they show up via --help

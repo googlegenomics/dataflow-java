@@ -95,6 +95,7 @@ public class CountReads {
 
   }
 
+  private static final String READ_FIELDS = "alignments(id)";
   private static final Logger LOG = Logger.getLogger(CountReads.class.getName());
   private static Pipeline p;
   private static Options pipelineOptions;
@@ -176,7 +177,7 @@ public class CountReads {
   private static PCollection<Read> getReadsFromAPI() {
     final PCollection<Read> reads = p.begin()
         .apply(Create.of(Collections.singletonList(pipelineOptions.getReadGroupSetId())))
-        .apply(new ReadGroupStreamer(auth, ShardBoundary.Requirement.STRICT, null, SexChromosomeFilter.INCLUDE_XY));
+        .apply(new ReadGroupStreamer(auth, ShardBoundary.Requirement.STRICT, READ_FIELDS, SexChromosomeFilter.INCLUDE_XY));
     return reads;
   }
 

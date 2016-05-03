@@ -89,7 +89,6 @@ public class IdentityByState {
 
   }
 
-  // TODO: https://github.com/googlegenomics/utils-java/issues/48
   private static final String VARIANT_FIELDS = "variants(start,calls(genotype,callSetName))";
 
   public static void main(String[] args) throws Exception {

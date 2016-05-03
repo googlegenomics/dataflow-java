@@ -67,7 +67,7 @@ public class ReadGroupStreamer extends PTransform<PCollection<String>, PCollecti
         // By breaking fusion, the work will be distributed to all available workers.
         .apply(GroupByKey.<Integer, StreamReadsRequest>create())
         .apply(ParDo.of(new ConvergeStreamReadsRequestList()))
-        .apply(new ReadStreamer(auth, ShardBoundary.Requirement.STRICT, null));
+        .apply(new ReadStreamer(auth, ShardBoundary.Requirement.STRICT, fields));
   }
 
   private class CreateReadRequests extends DoFn<String, KV<Integer, StreamReadsRequest>> {
