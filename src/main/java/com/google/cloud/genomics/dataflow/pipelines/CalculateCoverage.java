@@ -431,7 +431,7 @@ public class CalculateCoverage {
         List<Object> output = Lists.newArrayList();
         for (int i = 0; i < mappingQualityKV.getValue().size(); i++) {
           double value = Math.round(mappingQualityKV.getValue().get(i) * 1000000.0) / 1000000.0;
-          output.add(value);
+          output.add(Double.toString(value));
         }
         a.getInfo().put(mappingQualityKV.getKey().toString(), output);
       }
