@@ -19,8 +19,6 @@ import com.google.api.services.genomics.model.Annotation;
 import com.google.api.services.genomics.model.AnnotationSet;
 import com.google.api.services.genomics.model.ListBasesResponse;
 import com.google.api.services.genomics.model.SearchAnnotationsRequest;
-import com.google.api.services.genomics.model.SearchVariantsRequest;
-import com.google.api.services.genomics.model.Variant;
 import com.google.api.services.genomics.model.VariantAnnotation;
 import com.google.cloud.dataflow.sdk.Pipeline;
 import com.google.cloud.dataflow.sdk.io.TextIO;
@@ -43,7 +41,8 @@ import com.google.cloud.genomics.utils.OfflineAuth;
 import com.google.cloud.genomics.utils.Paginator;
 import com.google.cloud.genomics.utils.ShardBoundary;
 import com.google.cloud.genomics.utils.ShardUtils;
-import com.google.cloud.genomics.utils.VariantUtils;
+import com.google.cloud.genomics.utils.grpc.VariantStreamIterator;
+import com.google.cloud.genomics.utils.grpc.VariantUtils;
 import com.google.common.base.Joiner;
 import com.google.common.base.Stopwatch;
 import com.google.common.collect.ArrayListMultimap;
@@ -52,6 +51,9 @@ import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ListMultimap;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Range;
+import com.google.genomics.v1.StreamVariantsRequest;
+import com.google.genomics.v1.StreamVariantsResponse;
+import com.google.genomics.v1.Variant;
 
 import htsjdk.samtools.util.IntervalTree;
 import htsjdk.samtools.util.IntervalTree.Node;
@@ -83,7 +85,7 @@ import java.util.logging.Logger;
  * See http://googlegenomics.readthedocs.org/en/latest/use_cases/annotate_variants/google_genomics_annotation.html
  * for running instructions.
  */
-public final class AnnotateVariants extends DoFn<SearchVariantsRequest, KV<String, VariantAnnotation>> {
+public final class AnnotateVariants extends DoFn<StreamVariantsRequest, KV<String, VariantAnnotation>> {
 
   public static interface Options extends ShardOptions, GCSOutputOptions {
 
@@ -123,7 +125,7 @@ public final class AnnotateVariants extends DoFn<SearchVariantsRequest, KV<Strin
   private static final Logger LOG = Logger.getLogger(AnnotateVariants.class.getName());
   private static final int VARIANTS_PAGE_SIZE = 5000;
   private static final String VARIANT_FIELDS
-      = "nextPageToken,variants(id,referenceName,start,end,alternateBases,referenceBases)";
+      = "variants(id,referenceName,start,end,alternateBases,referenceBases)";
 
   private final OfflineAuth auth;
   private final List<String> callSetIds, transcriptSetIds, variantAnnotationSetIds;
@@ -141,22 +143,17 @@ public final class AnnotateVariants extends DoFn<SearchVariantsRequest, KV<Strin
 
   @Override
   public void processElement(
-      DoFn<SearchVariantsRequest, KV<String, VariantAnnotation>>.ProcessContext c) throws Exception {
+      DoFn<StreamVariantsRequest, KV<String, VariantAnnotation>>.ProcessContext c) throws Exception {
     Genomics genomics = GenomicsFactory.builder().build().fromOfflineAuth(auth);
 
-    SearchVariantsRequest request = c.element();
+    StreamVariantsRequest request = StreamVariantsRequest.newBuilder(c.element())
+        .addAllCallSetIds(callSetIds)
+        .build();
     LOG.info("processing contig " + request);
-    Iterable<Variant> varIter = FluentIterable
-        .from(Paginator.Variants.create(genomics, ShardBoundary.Requirement.STRICT).search(
-            request
-              .clone() // Dataflow does not allow input data to be mutated, make a copy.
-              // TODO: Variants-only retrieval is not well support currently. For now
-              // we parameterize by CallSet for performance.
-              .setCallSetIds(callSetIds)
-              .setPageSize(VARIANTS_PAGE_SIZE),
-            VARIANT_FIELDS))
-        .filter(VariantUtils.IS_SNP);
-    if (!varIter.iterator().hasNext()) {
+
+    Iterator<StreamVariantsResponse> iter = VariantStreamIterator.enforceShardBoundary(auth,
+        request, ShardBoundary.Requirement.STRICT, VARIANT_FIELDS);
+    if (!iter.hasNext()) {
       LOG.info("region has no variants, skipping");
       return;
     }
@@ -167,51 +164,56 @@ public final class AnnotateVariants extends DoFn<SearchVariantsRequest, KV<Strin
 
     Stopwatch stopwatch = Stopwatch.createStarted();
     int varCount = 0;
-    for (Variant variant : varIter) {
-      List<String> alleles = ImmutableList.<String>builder()
-          .addAll(variant.getAlternateBases())
-          .add(variant.getReferenceBases())
-          .build();
-      Range<Long> pos = Range.openClosed(variant.getStart(), variant.getEnd());
-      for (String allele : alleles) {
-        String outKey = Joiner.on(":").join(
-            variant.getReferenceName(), variant.getStart(), allele, variant.getId());
-        for (Annotation match : variantAnnotations.get(pos)) {
-          if (allele.equals(match.getVariant().getAlternateBases())) {
-            // Exact match to a known variant annotation; straightforward join.
-            c.output(KV.of(outKey, match.getVariant()));
+    while (iter.hasNext()) {
+      Iterable<Variant> varIter = FluentIterable
+          .from(iter.next().getVariantsList())
+          .filter(VariantUtils.IS_SNP);
+      for (Variant variant : varIter) {
+        List<String> alleles = ImmutableList.<String>builder()
+            .addAll(variant.getAlternateBasesList())
+            .add(variant.getReferenceBases())
+            .build();
+        Range<Long> pos = Range.openClosed(variant.getStart(), variant.getEnd());
+        for (String allele : alleles) {
+          String outKey = Joiner.on(":").join(
+              variant.getReferenceName(), variant.getStart(), allele, variant.getId());
+          for (Annotation match : variantAnnotations.get(pos)) {
+            if (allele.equals(match.getVariant().getAlternateBases())) {
+              // Exact match to a known variant annotation; straightforward join.
+              c.output(KV.of(outKey, match.getVariant()));
+            }
           }
-        }
 
-        Iterator<Node<Annotation>> transcriptIter = transcripts.overlappers(
-            pos.lowerEndpoint().intValue(), pos.upperEndpoint().intValue() - 1); // Inclusive.
-        while (transcriptIter.hasNext()) {
-          // Calculate an effect of this allele on the coding region of the given transcript.
-          Annotation transcript = transcriptIter.next().getValue();
-          VariantEffect effect = AnnotationUtils.determineVariantTranscriptEffect(
-              variant.getStart(), allele, transcript,
-              getCachedTranscriptBases(genomics, transcript));
-          if (effect != null && !VariantEffect.SYNONYMOUS_SNP.equals(effect)) {
-            c.output(KV.of(outKey, new VariantAnnotation()
-                .setAlternateBases(allele)
-                .setType("SNP")
-                .setEffect(effect.toString())
-                .setGeneId(transcript.getTranscript().getGeneId())
-                .setTranscriptIds(ImmutableList.of(transcript.getId()))));
+          Iterator<Node<Annotation>> transcriptIter = transcripts.overlappers(
+              pos.lowerEndpoint().intValue(), pos.upperEndpoint().intValue() - 1); // Inclusive.
+          while (transcriptIter.hasNext()) {
+            // Calculate an effect of this allele on the coding region of the given transcript.
+            Annotation transcript = transcriptIter.next().getValue();
+            VariantEffect effect = AnnotationUtils.determineVariantTranscriptEffect(
+                variant.getStart(), allele, transcript,
+                getCachedTranscriptBases(genomics, transcript));
+            if (effect != null && !VariantEffect.SYNONYMOUS_SNP.equals(effect)) {
+              c.output(KV.of(outKey, new VariantAnnotation()
+              .setAlternateBases(allele)
+              .setType("SNP")
+              .setEffect(effect.toString())
+              .setGeneId(transcript.getTranscript().getGeneId())
+              .setTranscriptIds(ImmutableList.of(transcript.getId()))));
+            }
           }
         }
-      }
-      varCount++;
-      if (varCount%1e3 == 0) {
-        LOG.info(String.format("read %d variants (%.2f / s)",
-            varCount, (double)varCount / stopwatch.elapsed(TimeUnit.SECONDS)));
+        varCount++;
+        if (varCount%1e3 == 0) {
+          LOG.info(String.format("read %d variants (%.2f / s)",
+              varCount, (double)varCount / stopwatch.elapsed(TimeUnit.SECONDS)));
+        }
       }
     }
     LOG.info("finished reading " + varCount + " variants in " + stopwatch);
   }
 
   private ListMultimap<Range<Long>, Annotation> retrieveVariantAnnotations(
-      Genomics genomics, SearchVariantsRequest request) {
+      Genomics genomics, StreamVariantsRequest request) {
     Stopwatch stopwatch = Stopwatch.createStarted();
     ListMultimap<Range<Long>, Annotation> annotationMap = ArrayListMultimap.create();
     Iterable<Annotation> annotationIter =
@@ -233,7 +235,7 @@ public final class AnnotateVariants extends DoFn<SearchVariantsRequest, KV<Strin
     return annotationMap;
   }
 
-  private IntervalTree<Annotation> retrieveTranscripts(Genomics genomics, SearchVariantsRequest request) {
+  private IntervalTree<Annotation> retrieveTranscripts(Genomics genomics, StreamVariantsRequest request) {
     Stopwatch stopwatch = Stopwatch.createStarted();
     IntervalTree<Annotation> transcripts = new IntervalTree<>();
     Iterable<Annotation> transcriptIter =
@@ -305,10 +307,10 @@ public final class AnnotateVariants extends DoFn<SearchVariantsRequest, KV<Strin
         validateAnnotationSetsFlag(genomics, options.getVariantAnnotationSetIds(), "VARIANT");
     validateRefsetForAnnotationSets(genomics, transcriptSetIds);
 
-    List<SearchVariantsRequest> requests = options.isAllReferences() ?
-        ShardUtils.getPaginatedVariantRequests(options.getVariantSetId(), ShardUtils.SexChromosomeFilter.EXCLUDE_XY,
+    List<StreamVariantsRequest> requests = options.isAllReferences() ?
+        ShardUtils.getVariantRequests(options.getVariantSetId(), ShardUtils.SexChromosomeFilter.EXCLUDE_XY,
             options.getBasesPerShard(), auth) :
-              ShardUtils.getPaginatedVariantRequests(options.getVariantSetId(), options.getReferences(), options.getBasesPerShard());
+              ShardUtils.getVariantRequests(options.getVariantSetId(), options.getReferences(), options.getBasesPerShard());
 
     Pipeline p = Pipeline.create(options);
     p.getCoderRegistry().setFallbackCoderProvider(GenericJsonCoder.PROVIDER);
