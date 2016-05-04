@@ -89,7 +89,8 @@ public class IdentityByState {
 
   }
 
-  private static final String VARIANT_FIELDS = "variants(start,calls(genotype,callSetName))";
+  private static final String VARIANT_FIELDS =
+      "variants(alternateBases,calls(callSetName,genotype),end,referenceBases,start)";
 
   public static void main(String[] args) throws Exception {
     // Register the options so that they show up via --help

@@ -95,7 +95,7 @@ public class CountReads {
 
   }
 
-  private static final String READ_FIELDS = "alignments(id)";
+  private static final String READ_FIELDS = "alignments(alignment,id)";
   private static final Logger LOG = Logger.getLogger(CountReads.class.getName());
   private static Pipeline p;
   private static Options pipelineOptions;
