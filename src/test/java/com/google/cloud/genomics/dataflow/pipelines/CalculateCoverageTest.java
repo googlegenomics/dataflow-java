@@ -248,10 +248,10 @@ public class CalculateCoverageTest {
         .setReferenceName("1")
         .setType("GENERIC")
         .setInfo(new HashMap<String, List<Object>>());
-    a1.getInfo().put("L", Lists.newArrayList((Object) 1.0, 1.0, 3.5));
-    a1.getInfo().put("M", Lists.newArrayList((Object) 1.5, 1.5, 2.0));
-    a1.getInfo().put("H", Lists.newArrayList((Object) 0.5, 0.5, 0.5));
-    a1.getInfo().put("A", Lists.newArrayList((Object) 2.5, 3.0, 3.5));
+    a1.getInfo().put("L", Lists.newArrayList((Object) "1.0", "1.0", "3.5"));
+    a1.getInfo().put("M", Lists.newArrayList((Object) "1.5", "1.5", "2.0"));
+    a1.getInfo().put("H", Lists.newArrayList((Object) "0.5", "0.5", "0.5"));
+    a1.getInfo().put("A", Lists.newArrayList((Object) "2.5", "3.0", "3.5"));
     expectedOutput.add(a1);
     Annotation a2 = new Annotation()
         .setAnnotationSetId("123")
@@ -260,10 +260,10 @@ public class CalculateCoverageTest {
         .setReferenceName("1")
         .setType("GENERIC")
         .setInfo(new HashMap<String, List<Object>>());
-    a2.getInfo().put("L", Lists.newArrayList((Object) 1.0, 1.0, 3.0));
-    a2.getInfo().put("M", Lists.newArrayList((Object) 0.5, 1.5, 1.5));
-    a2.getInfo().put("H", Lists.newArrayList((Object) 0.5, 1.0, 1.0));
-    a2.getInfo().put("A", Lists.newArrayList((Object) 2.0, 3.0, 3.0));
+    a2.getInfo().put("L", Lists.newArrayList((Object) "1.0", "1.0", "3.0"));
+    a2.getInfo().put("M", Lists.newArrayList((Object) "0.5", "1.5", "1.5"));
+    a2.getInfo().put("H", Lists.newArrayList((Object) "0.5", "1.0", "1.0"));
+    a2.getInfo().put("A", Lists.newArrayList((Object) "2.0", "3.0", "3.0"));
     expectedOutput.add(a2);
     CalculateCoverage.Options popts = PipelineOptionsFactory.create().as(
         CalculateCoverage.Options.class);

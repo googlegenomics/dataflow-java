@@ -141,6 +141,7 @@ public class CalculateCoverage {
     void setAnnotationSetName(String name);
   }
 
+  private static final String READ_FIELDS = "alignments(alignment,readGroupSetId)";
   private static Options options;
   private static Pipeline p;
   private static OfflineAuth auth;
@@ -186,7 +187,7 @@ public class CalculateCoverage {
     PCollection<Read> reads = p.begin()
         .apply(Create.of(rgsIds))
         .apply(ParDo.of(new CheckMatchingReferenceSet(referenceSetId, auth)))
-        .apply(new ReadGroupStreamer(auth, ShardBoundary.Requirement.STRICT, null, SexChromosomeFilter.INCLUDE_XY));
+        .apply(new ReadGroupStreamer(auth, ShardBoundary.Requirement.STRICT, READ_FIELDS, SexChromosomeFilter.INCLUDE_XY));
 
     PCollection<KV<PosRgsMq, Double>> coverageMeans = reads.apply(new CalculateCoverageMean());
     PCollection<KV<Position, KV<PosRgsMq.MappingQuality, List<Double>>>> quantiles
@@ -430,7 +431,7 @@ public class CalculateCoverage {
         List<Object> output = Lists.newArrayList();
         for (int i = 0; i < mappingQualityKV.getValue().size(); i++) {
           double value = Math.round(mappingQualityKV.getValue().get(i) * 1000000.0) / 1000000.0;
-          output.add(value);
+          output.add(Double.toString(value));
         }
         a.getInfo().put(mappingQualityKV.getKey().toString(), output);
       }

@@ -153,9 +153,6 @@ public class VerifyBamId {
    * String prefix used for sampling hash function
    */
   private static final String HASH_PREFIX = "";
-
-  // TODO: this value is not quite correct. Test again after
-  // https://github.com/googlegenomics/utils-java/issues/48
   private static final String VARIANT_FIELDS = "variants(start,calls(genotype,callSetName))";
 
   /**

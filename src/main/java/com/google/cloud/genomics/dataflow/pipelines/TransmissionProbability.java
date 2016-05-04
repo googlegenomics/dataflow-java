@@ -71,9 +71,7 @@ public class TransmissionProbability {
 
   }
 
-  // TODO https://github.com/googlegenomics/utils-java/issues/48
-  private static final String VARIANT_FIELDS
-      = "nextPageToken,variants(id,start,names,calls(info,callSetName))";
+  private static final String VARIANT_FIELDS = "variants(id,start,names,calls(info,callSetName))";
 
   public static void main(String[] args) throws IOException, GeneralSecurityException {
     // Register the options so that they show up via --help
