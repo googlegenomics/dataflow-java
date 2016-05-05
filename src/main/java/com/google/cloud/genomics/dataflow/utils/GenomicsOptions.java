@@ -32,21 +32,9 @@ public interface GenomicsOptions extends GcsOptions {
       if (DirectPipelineRunner.class != options.getRunner()
           && null != options.getSecretsFile()
           && options.getWarnUserCredential()) {
-        System.out.println("\nThis pipeline will run on GCE VMs and your user credential will"
+        requestConfirmation("This pipeline will run on GCE VMs and your user credential will"
             + " be used by all Dataflow worker instances.  Your credentials may be visible to"
             + " others with access to the VMs.");
-
-        System.out.println("Do you want to continue (Y/n)?");
-        Scanner kbd = new Scanner(System.in);
-        String decision;
-        decision = kbd.nextLine();
-        kbd.close();
-        switch(decision) {
-          case "yes": case "Yes": case "YES": case "y": case "Y":
-            break;
-          default:
-            System.exit(0);
-        }
       }
 
       if (null != options.getSecretsFile()) {
@@ -57,6 +45,27 @@ public interface GenomicsOptions extends GcsOptions {
       // Default Credential available from whereever it is
       // accessed (e.g., locally or on GCE).
       return new OfflineAuth();
+    }
+
+    /**
+     * Print the passed message and ask the user whether to proceed.  If
+     * the user's response is not affirmative, exit.
+     *
+     * @param message The message requiring confirmation.
+     */
+    public static void requestConfirmation(final String message) {
+      System.out.println("\n" + message);
+      System.out.println("Do you want to continue (Y/n)?");
+      Scanner kbd = new Scanner(System.in);
+      String decision;
+      decision = kbd.nextLine();
+      kbd.close();
+      switch(decision) {
+        case "yes": case "Yes": case "YES": case "y": case "Y":
+          break;
+        default:
+          System.exit(0);
+      }
     }
   }
 
