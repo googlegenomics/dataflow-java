@@ -49,10 +49,11 @@ import java.security.GeneralSecurityException;
 import java.util.List;
 
 /**
- * Given a list of callset ids, identify all variants private to those individuals.
+ * Given a list of callset ids, identify variants that are associated only with the specified
+ * individuals (i.e. variants private to those individuals).
  *
  * This pipeline might be used in combination with the DeleteVariants pipeline to, for example,
- * remove all variants for a particular family from the variant set.
+ * remove all variants private to a particular family from the variant set.
  */
 public class IdentifyPrivateVariants {
 
@@ -87,6 +88,8 @@ public class IdentifyPrivateVariants {
   }
 
   private static final Logger LOG = LoggerFactory.getLogger(IdentifyPrivateVariants.class);
+  // Tip: Use the API explorer to test which fields to include in partial responses.
+  // https://developers.google.com/apis-explorer/#p/genomics/v1/genomics.variants.stream?fields=variants(alternateBases%252Ccalls(callSetName%252Cgenotype)%252CreferenceBases)&_h=3&resource=%257B%250A++%2522variantSetId%2522%253A+%25223049512673186936334%2522%252C%250A++%2522referenceName%2522%253A+%2522chr17%2522%252C%250A++%2522start%2522%253A+%252241196311%2522%252C%250A++%2522end%2522%253A+%252241196312%2522%252C%250A++%2522callSetIds%2522%253A+%250A++%255B%25223049512673186936334-0%2522%250A++%255D%250A%257D&
   private static final String VARIANT_FIELDS = "variants(id,reference_name,start,end,reference_bases,alternate_bases,calls(callSetId))";
 
   /**

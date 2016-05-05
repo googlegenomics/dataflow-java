@@ -41,7 +41,7 @@ import java.security.GeneralSecurityException;
 /**
  * Given a file of variant ids, delete them from a variant set in parallel.
  *
- * These variant ids may from from the result of a BigQuery query materialized to Cloud Storage
+ * These variant ids may be from the result of a BigQuery query materialized to Cloud Storage
  * as CSV or as the result of a Dataflow pipeline such as IdentifyPrivateVariants.
  */
 public class DeleteVariants {
