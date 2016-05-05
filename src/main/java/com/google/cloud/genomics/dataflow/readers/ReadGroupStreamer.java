@@ -46,8 +46,9 @@ public class ReadGroupStreamer extends PTransform<PCollection<String>, PCollecti
   /**
    * Create a streamer that can appropriately shard a potentially large number of ReadGroupSets.
    *
-   * Tip: Use the API explorer to test which fields to include in partial responses.
-   * https://developers.google.com/apis-explorer/#p/genomics/v1/genomics.reads.stream?fields=alignments(alignedSequence%252Cid)&_h=2&resource=%257B%250A++%2522readGroupSetId%2522%253A+%2522CMvnhpKTFhD3he72j4KZuyc%2522%252C%250A++%2522referenceName%2522%253A+%2522chr17%2522%252C%250A++%2522start%2522%253A+%252241196311%2522%252C%250A++%2522end%2522%253A+%252241196312%2522%250A%257D&
+   * Tip: Use the API explorer to test which fields to include in partial responses:
+   * <a href="https://developers.google.com/apis-explorer/#p/genomics/v1/genomics.reads.stream?fields=alignments(alignedSequence%252Cid)&_h=2&resource=%257B%250A++%2522readGroupSetId%2522%253A+%2522CMvnhpKTFhD3he72j4KZuyc%2522%252C%250A++%2522referenceName%2522%253A+%2522chr17%2522%252C%250A++%2522start%2522%253A+%252241196311%2522%252C%250A++%2522end%2522%253A+%252241196312%2522%250A%257D&">
+   * reads example</a>.
    *
    * @param auth The OfflineAuth to use for the request.
    * @param shardBoundary The shard boundary semantics to enforce.
