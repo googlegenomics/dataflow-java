@@ -19,7 +19,6 @@ import com.google.cloud.dataflow.sdk.options.Default;
 import com.google.cloud.dataflow.sdk.options.Description;
 import com.google.cloud.dataflow.sdk.options.PipelineOptionsFactory;
 import com.google.cloud.dataflow.sdk.options.Validation.Required;
-import com.google.cloud.dataflow.sdk.repackaged.com.google.common.collect.ImmutableSet;
 import com.google.cloud.dataflow.sdk.transforms.Create;
 import com.google.cloud.dataflow.sdk.transforms.DoFn;
 import com.google.cloud.dataflow.sdk.transforms.ParDo;
@@ -34,6 +33,7 @@ import com.google.cloud.genomics.utils.ShardUtils;
 import com.google.common.base.CharMatcher;
 import com.google.common.base.Joiner;
 import com.google.common.base.Splitter;
+import com.google.common.collect.ImmutableSet;
 import com.google.common.io.Files;
 import com.google.genomics.v1.StreamVariantsRequest;
 import com.google.genomics.v1.Variant;
@@ -149,7 +149,7 @@ public class IdentifyPrivateVariants {
         ImmutableSet
             .<String>builder()
             .addAll(
-                Splitter.on(CharMatcher.BREAKING_WHITESPACE).omitEmptyStrings().trimResults()
+                Splitter.on(CharMatcher.breakingWhitespace()).omitEmptyStrings().trimResults()
                     .split(fileContents)).build();
     LOG.info("The pipeline will identify and write to Cloud Storage variants "
         + "private to " + callSetIds.size() + " genomes with callSetIds: " + callSetIds);

@@ -13,7 +13,6 @@
  */
 package com.google.cloud.genomics.dataflow.pipelines;
 
-import com.google.api.client.repackaged.com.google.common.base.Strings;
 import com.google.api.services.storage.Storage;
 import com.google.cloud.dataflow.sdk.Pipeline;
 import com.google.cloud.dataflow.sdk.coders.Coder;
@@ -45,6 +44,7 @@ import com.google.cloud.genomics.utils.ShardBoundary;
 import com.google.cloud.genomics.utils.ShardUtils;
 import com.google.cloud.genomics.utils.ShardUtils.SexChromosomeFilter;
 import com.google.common.base.Preconditions;
+import com.google.common.base.Strings;
 import com.google.common.collect.Lists;
 import com.google.genomics.v1.Read;
 import com.google.genomics.v1.StreamReadsRequest;
