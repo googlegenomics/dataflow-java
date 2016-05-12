@@ -175,7 +175,7 @@ public final class AnnotateVariants extends DoFn<StreamVariantsRequest, KV<Strin
             .addAll(variant.getAlternateBasesList())
             .add(variant.getReferenceBases())
             .build();
-        Range<Long> pos = Range.openClosed(variant.getStart(), variant.getEnd());
+        Range<Long> pos = Range.closedOpen(variant.getStart(), variant.getEnd());
         for (String allele : alleles) {
           String outKey = Joiner.on(":").join(
               variant.getReferenceName(), variant.getStart(), allele, variant.getId());
