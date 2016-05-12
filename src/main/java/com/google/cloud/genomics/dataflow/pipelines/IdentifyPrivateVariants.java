@@ -149,7 +149,7 @@ public class IdentifyPrivateVariants {
         ImmutableSet
             .<String>builder()
             .addAll(
-                Splitter.on(CharMatcher.BREAKING_WHITESPACE).omitEmptyStrings().trimResults()
+                Splitter.on(CharMatcher.breakingWhitespace()).omitEmptyStrings().trimResults()
                     .split(fileContents)).build();
     LOG.info("The pipeline will identify and write to Cloud Storage variants "
         + "private to " + callSetIds.size() + " genomes with callSetIds: " + callSetIds);
