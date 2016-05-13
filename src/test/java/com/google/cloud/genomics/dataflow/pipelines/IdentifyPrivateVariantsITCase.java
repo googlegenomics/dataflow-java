@@ -24,6 +24,8 @@ import org.hamcrest.CoreMatchers;
 import org.junit.After;
 import org.junit.BeforeClass;
 import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.junit.runners.JUnit4;
 
 import java.io.BufferedReader;
 import java.util.List;
@@ -47,6 +49,7 @@ import java.util.List;
  *
  * See also http://maven.apache.org/surefire/maven-failsafe-plugin/examples/single-test.html
  */
+@RunWith(JUnit4.class)
 public class IdentifyPrivateVariantsITCase {
 
   // This file contains mother, father, and children of CEPH pedigree 1463. The variants of
