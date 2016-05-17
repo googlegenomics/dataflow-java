@@ -21,9 +21,9 @@ import com.google.api.client.json.JsonFactory;
 import com.google.cloud.dataflow.sdk.coders.CannotProvideCoderException;
 import com.google.cloud.dataflow.sdk.coders.Coder;
 import com.google.cloud.dataflow.sdk.coders.CoderProvider;
-import com.google.cloud.dataflow.sdk.coders.Proto2Coder;
 import com.google.cloud.dataflow.sdk.coders.SerializableCoder;
 import com.google.cloud.dataflow.sdk.coders.StringUtf8Coder;
+import com.google.cloud.dataflow.sdk.coders.protobuf.ProtoCoder;
 import com.google.cloud.dataflow.sdk.util.CloudObject;
 import com.google.cloud.dataflow.sdk.values.TypeDescriptor;
 import com.google.protobuf.Message;
@@ -87,9 +87,9 @@ public class GenericJsonCoder<T extends GenericJson> extends DelegatingAtomicCod
       Class<T> rawType = (Class<T>) typeDescriptor.getRawType();
       if (!GenericJson.class.isAssignableFrom(rawType)) {
         if (Message.class.isAssignableFrom(rawType)) {
-          return (Coder<T>) Proto2Coder.of((Class<? extends Message>) rawType);
+          return (Coder<T>) ProtoCoder.of((Class<? extends Message>) rawType);
         } else if (Serializable.class.isAssignableFrom(rawType)) {
-          // Fall back this here because if this is used as the follback coder, it overwrites the
+          // Fall back this here because if this is used as the fallback coder, it overwrites the
           // default fallback CoderProvider of SerializableCoder.PROVIDER.
           return (Coder<T>) SerializableCoder.of((Class<? extends Serializable>) rawType);
         } else {

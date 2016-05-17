@@ -65,21 +65,23 @@
   </distributionManagement>
 
   <dependencies>
-    <!-- Dataflow SDK -->
+    <dependency>
+      <groupId>io.grpc</groupId>
+      <artifactId>grpc-all</artifactId>
+      <version>${io.grpc.version}</version>
+    </dependency>
     <dependency>
       <groupId>com.google.cloud.dataflow</groupId>
       <artifactId>google-cloud-dataflow-java-sdk-all</artifactId>
-      <version>1.4.0</version>
+      <version>${google.dataflow.version}</version>
     </dependency>
-
-    <!-- Google client dependencies -->
     <dependency>
       <groupId>com.google.api-client</groupId>
       <artifactId>google-api-client</artifactId>
       <version>${google.api.version}</version>
-      <exclusions>
+     <exclusions>
         <!-- Exclude an old version of guava which is being pulled
-             in by a transitive dependency google-api-client 1.19.0 -->
+             in by a transitive dependency google-api-client. -->
         <exclusion>
           <groupId>com.google.guava</groupId>
           <artifactId>guava-jdk5</artifactId>
@@ -114,15 +116,7 @@
     <dependency>
       <groupId>com.google.apis</groupId>
       <artifactId>google-api-services-genomics</artifactId>
-      <version>v1-rev73-1.21.0</version>
-      <exclusions>
-        <!-- Exclude an old version of guava which is being pulled
-             in by a transitive dependency google-api-client 1.19.0 -->
-        <exclusion>
-          <groupId>com.google.guava</groupId>
-          <artifactId>guava-jdk5</artifactId>
-        </exclusion>
-      </exclusions>
+      <version>${google.api.genomics.version}</version>
     </dependency>
     <dependency>
       <groupId>com.google.cloud.genomics</groupId>
@@ -130,18 +124,17 @@
       <version>v1-0.2</version>
       <exclusions>
         <!-- Exclude an old version of guava which is being pulled
-             in by a transitive dependency google-api-client 1.19.0 -->
+             in by a transitive dependency google-api-client. -->
         <exclusion>
           <groupId>com.google.guava</groupId>
           <artifactId>guava-jdk5</artifactId>
         </exclusion>
       </exclusions>
     </dependency>
-
     <dependency>
       <groupId>com.google.guava</groupId>
       <artifactId>guava</artifactId>
-      <version>19.0</version>
+      <version>${google.guava.version}</version>
     </dependency>
     <dependency>
       <groupId>gov.nist.math.jama</groupId>
@@ -207,7 +200,7 @@
     <dependency>
       <groupId>com.google.protobuf</groupId>
       <artifactId>protobuf-java</artifactId>
-      <version>3.0.0-beta-2</version>
+      <version>${protobuf.java.version}</version>
     </dependency>
   </dependencies>
 
@@ -352,14 +345,36 @@
         </executions>
       </plugin>
 
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-source-plugin</artifactId>
+        <version>2.4</version>
+        <executions>
+          <execution>
+            <id>test-jar</id>
+              <goals>
+                <goal>test-jar</goal>
+              </goals>
+           </execution>
+        </executions>
+      </plugin>
+
     </plugins>
   </build>
 
   <properties>
+    <!-- Work around dataflow, grpc, and protobuf version issues
+         http://stackoverflow.com/questions/36257708/java-lang-noclassdeffounderror-while-deserializing-protobuf-messages -->
+    <google.dataflow.version>1.5.1</google.dataflow.version>
+    <io.grpc.version>0.14.0</io.grpc.version>
+    <protobuf.java.version>3.0.0-beta-1</protobuf.java.version>
+
     <java.version>1.7</java.version>
     <jetty.version>6.1.26</jetty.version>
     <junit.version>4.11</junit.version>
-    <google.api.version>1.19.0</google.api.version>
+    <google.api.version>1.22.0</google.api.version>
+    <google.api.genomics.version>v1-rev79-1.22.0</google.api.genomics.version>
+    <google.guava.version>19.0</google.guava.version>
     <jackson.version>2.4.2</jackson.version>
     <maven.enforcer.jdk-version>[1.7,)</maven.enforcer.jdk-version>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
