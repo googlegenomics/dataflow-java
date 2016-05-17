@@ -24,7 +24,6 @@ import com.google.cloud.dataflow.sdk.transforms.Filter;
 import com.google.cloud.dataflow.sdk.transforms.ParDo;
 import com.google.cloud.dataflow.sdk.values.KV;
 import com.google.cloud.dataflow.sdk.values.PCollection;
-import com.google.cloud.genomics.dataflow.coders.GenericJsonCoder;
 import com.google.cloud.genomics.dataflow.functions.JoinNonVariantSegmentsWithVariants;
 import com.google.cloud.genomics.dataflow.functions.SitesToShards;
 import com.google.cloud.genomics.dataflow.functions.VariantFunctions;
@@ -104,7 +103,6 @@ public class IdentityByState {
     OfflineAuth auth = GenomicsOptions.Methods.getGenomicsAuth(options);
 
     Pipeline p = Pipeline.create(options);
-    p.getCoderRegistry().setFallbackCoderProvider(GenericJsonCoder.PROVIDER);
     PCollection<Variant> processedVariants = null;
 
     if(null != options.getSitesFilepath()) {

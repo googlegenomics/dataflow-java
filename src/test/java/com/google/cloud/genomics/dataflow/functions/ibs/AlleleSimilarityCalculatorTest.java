@@ -27,9 +27,12 @@ import com.google.genomics.v1.Variant;
 
 import org.hamcrest.CoreMatchers;
 import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.junit.runners.JUnit4;
 
 import java.util.List;
 
+@RunWith(JUnit4.class)
 public class AlleleSimilarityCalculatorTest {
 
   static final Variant snp1 = Variant.newBuilder()

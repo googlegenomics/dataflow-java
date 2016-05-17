@@ -7,16 +7,19 @@ import static org.junit.Assert.assertEquals;
 import com.google.cloud.dataflow.sdk.coders.CannotProvideCoderException;
 import com.google.cloud.dataflow.sdk.coders.Coder;
 import com.google.cloud.dataflow.sdk.coders.CoderRegistry;
-import com.google.cloud.dataflow.sdk.coders.Proto2Coder;
 import com.google.cloud.dataflow.sdk.coders.SerializableCoder;
+import com.google.cloud.dataflow.sdk.coders.protobuf.ProtoCoder;
 
 import org.junit.BeforeClass;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.ExpectedException;
+import org.junit.runner.RunWith;
+import org.junit.runners.JUnit4;
 
 import java.io.Serializable;
 
+@RunWith(JUnit4.class)
 public class GenericJsonCoderProviderTest {
   private static CoderRegistry registry;
 
@@ -43,7 +46,7 @@ public class GenericJsonCoderProviderTest {
   @Test
   public void testGenericJsonFallbackCoderProviderFallsbackToProto2Coder() throws Exception {
     Coder<?> coder = registry.getDefaultCoder(com.google.genomics.v1.Read.class);
-    assertEquals(coder, Proto2Coder.of(com.google.genomics.v1.Read.class));
+    assertEquals(coder, ProtoCoder.of(com.google.genomics.v1.Read.class));
   }
 
   @Test

@@ -26,7 +26,6 @@ import com.google.cloud.dataflow.sdk.transforms.Create;
 import com.google.cloud.dataflow.sdk.util.Transport;
 import com.google.cloud.dataflow.sdk.util.gcsfs.GcsPath;
 import com.google.cloud.dataflow.sdk.values.PCollection;
-import com.google.cloud.genomics.dataflow.coders.GenericJsonCoder;
 import com.google.cloud.genomics.dataflow.functions.ShardReadsTransform;
 import com.google.cloud.genomics.dataflow.readers.ReadStreamer;
 import com.google.cloud.genomics.dataflow.readers.bam.HeaderInfo;
@@ -106,8 +105,6 @@ public class ShardedBAMWriting {
 
     auth = GenomicsOptions.Methods.getGenomicsAuth(pipelineOptions);
     pipeline = Pipeline.create(pipelineOptions);
-    // Register coders.
-    pipeline.getCoderRegistry().setFallbackCoderProvider(GenericJsonCoder.PROVIDER);
     pipeline.getCoderRegistry().registerCoder(Contig.class, CONTIG_CODER);
     // Process options.
     contigs = pipelineOptions.isAllReferences() ? null :

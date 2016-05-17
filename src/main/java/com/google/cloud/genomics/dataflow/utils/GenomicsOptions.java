@@ -75,11 +75,4 @@ public interface GenomicsOptions extends GcsOptions {
   boolean getWarnUserCredential();
 
   void setWarnUserCredential(boolean warnUserCredential);
-
-  @Description("Specifies number of results to return in a single page of results. "
-      + "If unspecified, the default page size for the Genomics API is used.")
-  @Default.Integer(0)
-  int getPageSize();
-
-  void setPageSize(int pageSize);
 }
