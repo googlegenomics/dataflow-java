@@ -54,7 +54,7 @@ public class IdentifyPrivateVariantsITCase {
 
   // This file contains mother, father, and children of CEPH pedigree 1463. The variants of
   // the grandparents are retained.
-  static final String CALLSET_IDS_FILEPATH = "src/test/resources/com/google/cloud/genomics/dataflow/pipelines/family.txt";
+  static final String CALLSET_NAMES_FILEPATH = "src/test/resources/com/google/cloud/genomics/dataflow/pipelines/family.txt";
 
   static final String[] EXPECTED_RESULT =
       {
@@ -140,7 +140,7 @@ public class IdentifyPrivateVariantsITCase {
     String[] ARGS = {
         "--references=chr17:41198200:41198300", // smaller portion of BRCA1
         "--variantSetId=" + helper.PLATINUM_GENOMES_DATASET,
-        "--callSetIdsFilepath=" + CALLSET_IDS_FILEPATH,
+        "--callSetNamesFilepath=" + CALLSET_NAMES_FILEPATH,
         "--output=" + outputPrefix,
         };
 
