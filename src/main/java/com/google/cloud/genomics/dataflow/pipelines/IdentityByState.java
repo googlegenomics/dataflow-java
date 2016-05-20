@@ -33,6 +33,7 @@ import com.google.cloud.genomics.dataflow.functions.ibs.FormatIBSData;
 import com.google.cloud.genomics.dataflow.functions.ibs.IBSCalculator;
 import com.google.cloud.genomics.dataflow.functions.ibs.SharedMinorAllelesCalculatorFactory;
 import com.google.cloud.genomics.dataflow.readers.VariantStreamer;
+import com.google.cloud.genomics.dataflow.utils.CallSetNamesOptions;
 import com.google.cloud.genomics.dataflow.utils.GCSOutputOptions;
 import com.google.cloud.genomics.dataflow.utils.GenomicsOptions;
 import com.google.cloud.genomics.dataflow.utils.ShardOptions;
@@ -54,6 +55,8 @@ import java.util.List;
 public class IdentityByState {
 
   public static interface Options extends
+    // Options for call set names.
+    CallSetNamesOptions,
     // Options for calculating over regions, chromosomes, or whole genomes.
     ShardOptions,
     // Options for calculating over a list of sites.
@@ -66,11 +69,13 @@ public class IdentityByState {
     GCSOutputOptions
     {
 
+    @Override
     @Description("The ID of the Google Genomics variant set this pipeline is accessing. "
         + "Defaults to 1000 Genomes.")
     @Default.String("10473108253681171589")
     String getVariantSetId();
 
+    @Override
     void setVariantSetId(String variantSetId);
 
     @Description("The class that determines the strategy for calculating the similarity of alleles.")
@@ -100,6 +105,9 @@ public class IdentityByState {
         PipelineOptionsFactory.fromArgs(args).withValidation().as(Options.class);
     // Option validation is not yet automatic, we make an explicit call here.
     Options.Methods.validateOptions(options);
+
+    // Set up the prototype request and auth.
+    StreamVariantsRequest prototype = CallSetNamesOptions.Methods.getRequestPrototype(options);
     OfflineAuth auth = GenomicsOptions.Methods.getGenomicsAuth(options);
 
     Pipeline p = Pipeline.create(options);
@@ -109,7 +117,7 @@ public class IdentityByState {
       // Compute IBS on a list of sites (e.g., SNPs).
       PCollection<StreamVariantsRequest> requests = p.apply(TextIO.Read.named("ReadSites")
           .from(options.getSitesFilepath()))
-          .apply(new SitesToShards.SitesToStreamVariantsShardsTransform(options.getVariantSetId()));
+          .apply(new SitesToShards.SitesToStreamVariantsShardsTransform(prototype));
 
       if(options.getHasNonVariantSegments()) {
         processedVariants = requests.apply(
@@ -121,9 +129,9 @@ public class IdentityByState {
     } else {
       // Computing IBS over genomic region(s) or the whole genome.
       List<StreamVariantsRequest> requests = options.isAllReferences() ?
-          ShardUtils.getVariantRequests(options.getVariantSetId(), ShardUtils.SexChromosomeFilter.EXCLUDE_XY,
+          ShardUtils.getVariantRequests(prototype, ShardUtils.SexChromosomeFilter.EXCLUDE_XY,
               options.getBasesPerShard(), auth) :
-                ShardUtils.getVariantRequests(options.getVariantSetId(), options.getReferences(), options.getBasesPerShard());
+                ShardUtils.getVariantRequests(prototype, options.getBasesPerShard(), options.getReferences());
           PCollection<Variant> variants = p.begin()
               .apply(Create.of(requests))
               .apply(new VariantStreamer(auth, ShardBoundary.Requirement.STRICT, VARIANT_FIELDS));

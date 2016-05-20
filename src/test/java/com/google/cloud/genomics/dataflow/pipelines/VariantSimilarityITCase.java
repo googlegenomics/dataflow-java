@@ -49,7 +49,7 @@ import java.util.List;
  *      mvn install -DskipITs
  *
  * To run one test:
- *      mvn -Dit.test=VariantSimilarityITCase#testStreamingLocal verify
+ *      mvn -Dit.test=VariantSimilarityITCase#testLocal verify
  *
  * See also http://maven.apache.org/surefire/maven-failsafe-plugin/examples/single-test.html
  */
@@ -96,6 +96,12 @@ public class VariantSimilarityITCase {
     new GraphResult("NA12893", 5.18, -1.18)
   };
 
+  static final GraphResult[] EXPECTED_CALLSETS_RESULT = {
+    new GraphResult("NA12877", 4.58, 2.63),
+    new GraphResult("NA12880", -9.1, 0.01),
+    new GraphResult("NA12890", 4.5, -2.66)
+  };
+
   static String outputPrefix;
   static IntegrationTestHelper helper;
 
@@ -113,7 +119,7 @@ public class VariantSimilarityITCase {
   }
 
   @Test
-  public void testStreamingLocal() throws IOException, GeneralSecurityException {
+  public void testLocal() throws IOException, GeneralSecurityException {
     String[] ARGS = {
         "--references=" + helper.PLATINUM_GENOMES_BRCA1_REFERENCES,
         "--variantSetId=" + helper.PLATINUM_GENOMES_DATASET,
@@ -123,7 +129,7 @@ public class VariantSimilarityITCase {
   }
 
   @Test
-  public void testSitesFilepathStreamingLocal() throws IOException, GeneralSecurityException {
+  public void testSitesFilepathLocal() throws IOException, GeneralSecurityException {
     String[] ARGS = {
         "--sitesFilepath=" + IdentityByStateITCase.SITES_FILEPATH,
         "--variantSetId=" + helper.PLATINUM_GENOMES_DATASET,
@@ -133,7 +139,18 @@ public class VariantSimilarityITCase {
   }
 
   @Test
-  public void testStreamingCloud() throws IOException, GeneralSecurityException {
+  public void testCallSetsLocal() throws IOException, GeneralSecurityException {
+    String[] ARGS = {
+        "--references=" + helper.PLATINUM_GENOMES_BRCA1_REFERENCES,
+        "--variantSetId=" + helper.PLATINUM_GENOMES_DATASET,
+        "--callSetNames=" + helper.A_FEW_PLATINUM_GENOMES_CALLSET_NAMES,
+        "--output=" + outputPrefix,
+        };
+    testBase(ARGS, EXPECTED_CALLSETS_RESULT);
+  }
+
+  @Test
+  public void testCloud() throws IOException, GeneralSecurityException {
     String[] ARGS = {
         "--references=" + helper.PLATINUM_GENOMES_BRCA1_REFERENCES,
         "--variantSetId=" + helper.PLATINUM_GENOMES_DATASET,
@@ -159,7 +176,7 @@ public class VariantSimilarityITCase {
     }
 
     // Check the pipeline results.
-    assertEquals(helper.PLATINUM_GENOMES_NUMBER_OF_SAMPLES, results.size());
+    assertEquals(expectedResult.length, results.size());
 
     assertThat(results,
         CoreMatchers.allOf(CoreMatchers.hasItems(expectedResult)));
