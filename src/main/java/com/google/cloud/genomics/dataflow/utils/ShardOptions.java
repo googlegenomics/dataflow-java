@@ -24,11 +24,11 @@ public interface ShardOptions extends GenomicsOptions {
   @Description("By default, variants analyses will be run on BRCA1.  Pass this flag to run on all "
       + "references present in the dataset.  Note that certain jobs such as PCA and IBS "
       + "will automatically exclude X and Y chromosomes when this option is true.")
+  @Default.Boolean(false)
   boolean isAllReferences();
   void setAllReferences(boolean allReferences);
 
-  @Description("Comma separated tuples of reference:start:end,... "
-  + "Defaults to '17:41196311:41277499' for BRCA1.")
+  @Description("Comma separated tuples of reference:start:end,... ")
   @Default.String("17:41196311:41277499")
   String getReferences();
   void setReferences(String references);
