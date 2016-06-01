@@ -28,6 +28,7 @@ import com.google.cloud.dataflow.sdk.transforms.DoFnTester;
 import com.google.cloud.dataflow.sdk.transforms.SerializableFunction;
 import com.google.cloud.dataflow.sdk.values.KV;
 import com.google.cloud.dataflow.sdk.values.PCollection;
+import com.google.cloud.genomics.utils.grpc.VariantUtils;
 import com.google.common.collect.Lists;
 import com.google.genomics.v1.Variant;
 import com.google.genomics.v1.VariantCall;
@@ -105,7 +106,7 @@ public class JoinNonVariantSegmentsWithVariantsTest {
 
   @Test
   public void testVariantVariantComparator() {
-    Comparator<Variant> comparator = JoinNonVariantSegmentsWithVariants.CombineVariantsFn.NON_VARIANT_SEGMENT_COMPARATOR;
+    Comparator<Variant> comparator = VariantUtils.NON_VARIANT_SEGMENT_COMPARATOR;
 
     assertEquals(-1, comparator.compare(blockRecord1, snp1));
     assertEquals(1, comparator.compare(blockRecord2, snp1));
@@ -141,10 +142,10 @@ public class JoinNonVariantSegmentsWithVariantsTest {
 
   @Test
   public void testIsOverlapping() {
-    assertTrue(JoinNonVariantSegmentsWithVariants.CombineVariantsFn.isOverlapping(blockRecord1, snp1));
-    assertTrue(JoinNonVariantSegmentsWithVariants.CombineVariantsFn.isOverlapping(blockRecord1, snp2));
-    assertFalse(JoinNonVariantSegmentsWithVariants.CombineVariantsFn.isOverlapping(blockRecord2, snp1));
-    assertTrue(JoinNonVariantSegmentsWithVariants.CombineVariantsFn.isOverlapping(blockRecord2, snp2));
+    assertTrue(VariantUtils.isOverlapping(blockRecord1, snp1));
+    assertTrue(VariantUtils.isOverlapping(blockRecord1, snp2));
+    assertFalse(VariantUtils.isOverlapping(blockRecord2, snp1));
+    assertTrue(VariantUtils.isOverlapping(blockRecord2, snp2));
   }
 
   @Test
