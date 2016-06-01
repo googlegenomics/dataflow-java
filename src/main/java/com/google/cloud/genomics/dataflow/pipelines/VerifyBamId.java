@@ -45,6 +45,7 @@ import com.google.cloud.genomics.dataflow.model.ReadQualityCount;
 import com.google.cloud.genomics.dataflow.pipelines.CalculateCoverage.CheckMatchingReferenceSet;
 import com.google.cloud.genomics.dataflow.readers.ReadGroupStreamer;
 import com.google.cloud.genomics.dataflow.readers.VariantStreamer;
+import com.google.cloud.genomics.dataflow.utils.CallSetNamesOptions;
 import com.google.cloud.genomics.dataflow.utils.GCSOutputOptions;
 import com.google.cloud.genomics.dataflow.utils.GenomicsOptions;
 import com.google.cloud.genomics.dataflow.utils.ShardOptions;
@@ -94,7 +95,13 @@ public class VerifyBamId {
   /**
    * Options required to run this pipeline.
    */
-  public static interface Options extends ShardOptions, GCSOutputOptions {
+  public static interface Options extends
+    // Options for call set names.
+    CallSetNamesOptions,
+    // Options for calculating over regions, chromosomes, or whole genomes.
+    ShardOptions,
+    // Options for the output destination.
+    GCSOutputOptions {
 
     @Description("A comma delimited list of the IDs of the Google Genomics ReadGroupSets this "
         + "pipeline is working with. Default (empty) indicates all ReadGroupSets in InputDatasetId."
@@ -116,14 +123,13 @@ public class VerifyBamId {
     void setInputDatasetId(String inputDatasetId);
 
     public String DEFAULT_VARIANTSET = "10473108253681171589";
+    @Override
     @Description("The ID of the Google Genomics VariantSet this pipeline is working with."
         + "  It assumes the variant set has INFO field 'AF' from which it retrieves the"
         + " allele frequency for the variant, such as 1,000 Genomes phase 1 or phase 3 variants."
         + "  Defaults to the 1,000 Genomes phase 1 VariantSet with id " + DEFAULT_VARIANTSET + ".")
     @Default.String(DEFAULT_VARIANTSET)
     String getVariantSetId();
-
-    void setVariantSetId(String variantSetId);
 
     @Description("The minimum allele frequency to use in analysis.  Defaults to 0.01.")
     @Default.Double(0.01)
@@ -155,7 +161,7 @@ public class VerifyBamId {
   private static final String HASH_PREFIX = "";
   // Tip: Use the API explorer to test which fields to include in partial responses.
   // https://developers.google.com/apis-explorer/#p/genomics/v1/genomics.variants.stream?fields=variants(alternateBases%252Ccalls(callSetName%252Cgenotype)%252CreferenceBases)&_h=3&resource=%257B%250A++%2522variantSetId%2522%253A+%25223049512673186936334%2522%252C%250A++%2522referenceName%2522%253A+%2522chr17%2522%252C%250A++%2522start%2522%253A+%252241196311%2522%252C%250A++%2522end%2522%253A+%252241196312%2522%252C%250A++%2522callSetIds%2522%253A+%250A++%255B%25223049512673186936334-0%2522%250A++%255D%250A%257D&
-  private static final String VARIANT_FIELDS = "variants(start,calls(genotype,callSetName))";
+  private static final String VARIANT_FIELDS = "variants(alternateBases,filter,info,quality,referenceBases,referenceName,start)";
 
   /**
    * Run the VerifyBamId algorithm and output the resulting contamination estimate.
@@ -168,6 +174,8 @@ public class VerifyBamId {
     // Option validation is not yet automatic, we make an explicit call here.
     Options.Methods.validateOptions(pipelineOptions);
 
+    // Set up the prototype request and auth.
+    StreamVariantsRequest prototype = CallSetNamesOptions.Methods.getRequestPrototype(pipelineOptions);
     auth = GenomicsOptions.Methods.getGenomicsAuth(pipelineOptions);
 
     p = Pipeline.create(pipelineOptions);
@@ -213,9 +221,9 @@ public class VerifyBamId {
 
     // Reads in Variants.  TODO potentially provide an option to load the Variants from a file.
     List<StreamVariantsRequest> variantRequests = pipelineOptions.isAllReferences() ?
-        ShardUtils.getVariantRequests(pipelineOptions.getVariantSetId(), ShardUtils.SexChromosomeFilter.INCLUDE_XY,
+        ShardUtils.getVariantRequests(prototype, ShardUtils.SexChromosomeFilter.INCLUDE_XY,
             pipelineOptions.getBasesPerShard(), auth) :
-          ShardUtils.getVariantRequests(pipelineOptions.getVariantSetId(), pipelineOptions.getReferences(), pipelineOptions.getBasesPerShard());
+          ShardUtils.getVariantRequests(prototype, pipelineOptions.getBasesPerShard(), pipelineOptions.getReferences());
 
     PCollection<Variant> variants = p.apply(Create.of(variantRequests))
     .apply(new VariantStreamer(auth, ShardBoundary.Requirement.STRICT, VARIANT_FIELDS));

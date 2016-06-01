@@ -82,15 +82,18 @@ public class SitesToShardsTest {
         "1, 2000000, 3000000",
         ""}); // blank line
 
+    StreamVariantsRequest prototype = StreamVariantsRequest.newBuilder()
+        .setProjectId("theProjectId")
+        .setVariantSetId("theVariantSetId")
+        .build();
+
     List<StreamVariantsRequest> expectedOutput = new ArrayList();
-    expectedOutput.add(StreamVariantsRequest.newBuilder()
-        .setVariantSetId("variantSetId")
+    expectedOutput.add(StreamVariantsRequest.newBuilder(prototype)
         .setReferenceName("chrX")
         .setStart(2000000)
         .setEnd(3000000)
         .build());
-    expectedOutput.add(StreamVariantsRequest.newBuilder()
-        .setVariantSetId("variantSetId")
+    expectedOutput.add(StreamVariantsRequest.newBuilder(prototype)
         .setReferenceName("1")
         .setStart(2000000)
         .setEnd(3000000)
@@ -101,7 +104,7 @@ public class SitesToShardsTest {
     PCollection<String> input = p.apply(Create.of(SITES).withCoder(StringUtf8Coder.of()));
 
     PCollection<StreamVariantsRequest> output = input.apply("test transform",
-        new SitesToShards.SitesToStreamVariantsShardsTransform("variantSetId"));
+        new SitesToShards.SitesToStreamVariantsShardsTransform(prototype));
 
     DataflowAssert.that(output).containsInAnyOrder(expectedOutput);
     p.run();

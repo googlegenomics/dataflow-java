@@ -16,14 +16,18 @@
 package com.google.cloud.genomics.dataflow.pipelines;
 
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.containsString;
 
 import com.google.api.client.util.Lists;
 import com.google.cloud.dataflow.sdk.util.gcsfs.GcsPath;
 
 import org.hamcrest.CoreMatchers;
+import org.hamcrest.core.IsInstanceOf;
 import org.junit.After;
 import org.junit.BeforeClass;
+import org.junit.Rule;
 import org.junit.Test;
+import org.junit.rules.ExpectedException;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 
@@ -51,6 +55,9 @@ import java.util.List;
  */
 @RunWith(JUnit4.class)
 public class AnnotateVariantsITCase {
+  @Rule
+  public ExpectedException thrown = ExpectedException.none();
+
   static final String[] EXPECTED_RESULT =
       {
           "chr17:40714803:A:CI7s77ro84KpKhIFY2hyMTcYs4S1EyDwuoPB1PDR19AB: [{alternateBases=A, effect=NONSYNONYMOUS_SNP, "
@@ -84,7 +91,27 @@ public class AnnotateVariantsITCase {
         "--variantSetId=" + helper.PLATINUM_GENOMES_DATASET,
         "--transcriptSetIds=CIjfoPXj9LqPlAEQ5vnql4KewYuSAQ",
         "--variantAnnotationSetIds=CILSqfjtlY6tHxC0nNH-4cu-xlQ",
-        "--callSetIds=3049512673186936334-0",
+        "--callSetNames=NA12877",
+        "--output=" + outputPrefix,
+        };
+
+    System.out.println(ARGS);
+
+    testBase(ARGS, EXPECTED_RESULT);
+  }
+
+  @Test
+  public void testBadCallSetName() throws Exception {
+    thrown.expect(IsInstanceOf.<IllegalArgumentException>instanceOf(NullPointerException.class));
+    thrown.expectMessage(containsString("Call set name 'NotInVariantSet' does not correspond to a call "
+        + "set id in variant set id 3049512673186936334"));
+
+    String[] ARGS = {
+        "--references=chr17:40700000:40800000",
+        "--variantSetId=" + helper.PLATINUM_GENOMES_DATASET,
+        "--transcriptSetIds=CIjfoPXj9LqPlAEQ5vnql4KewYuSAQ",
+        "--variantAnnotationSetIds=CILSqfjtlY6tHxC0nNH-4cu-xlQ",
+        "--callSetNames=NotInVariantSet",
         "--output=" + outputPrefix,
         };
 

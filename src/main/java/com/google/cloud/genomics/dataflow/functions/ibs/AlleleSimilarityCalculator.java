@@ -17,7 +17,7 @@ import com.google.cloud.dataflow.sdk.transforms.DoFn;
 import com.google.cloud.dataflow.sdk.values.KV;
 import com.google.cloud.genomics.dataflow.utils.CallFilters;
 import com.google.cloud.genomics.dataflow.utils.PairGenerator;
-import com.google.cloud.genomics.utils.grpc.VariantUtils;
+import com.google.cloud.genomics.utils.grpc.VariantCallUtils;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Maps;
 import com.google.genomics.v1.Variant;
@@ -56,7 +56,7 @@ public class AlleleSimilarityCalculator extends
     CallSimilarityCalculator callSimilarityCalculator =
         callSimilarityCalculatorFactory.get(isReferenceMajor(variant));
     for (KV<VariantCall, VariantCall> pair : PairGenerator.WITHOUT_REPLACEMENT.allPairs(
-        getSamplesWithVariant(variant), VariantUtils.CALL_COMPARATOR)) {
+        getSamplesWithVariant(variant), VariantCallUtils.CALL_COMPARATOR)) {
       accumulateCallSimilarity(callSimilarityCalculator, pair.getKey(), pair.getValue());
     }
   }

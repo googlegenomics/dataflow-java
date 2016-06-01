@@ -22,6 +22,7 @@ import com.google.cloud.dataflow.sdk.transforms.ParDo;
 import com.google.cloud.dataflow.sdk.transforms.SimpleFunction;
 import com.google.cloud.dataflow.sdk.values.PCollection;
 import com.google.cloud.genomics.utils.Contig;
+import com.google.genomics.v1.StreamReadsRequest;
 import com.google.genomics.v1.StreamVariantsRequest;
 
 import java.util.logging.Logger;
@@ -45,7 +46,6 @@ import java.util.regex.Pattern;
  * </ol>
  *
  * The fields may be comma, tab, or whitespace delimited.
- *
  */
 public class SitesToShards {
 
@@ -62,6 +62,9 @@ public class SitesToShards {
 
   private static final Pattern SITE_PATTERN = Pattern.compile("^\\s*([\\w\\.]+)\\W+(\\d+)\\W+(\\d+).*$");
 
+  /**
+   * Given a string encoding a site, parse it into a Contig object.
+   */
   public static class SitesToContigsFn extends DoFn<String, Contig> {
 
     @Override
@@ -78,14 +81,18 @@ public class SitesToShards {
     }
   }
 
+  /**
+   * Given a contig object and request prototype, construct a request spanning the region
+   * defined by the contig.
+   */
   public static class ContigsToStreamVariantsRequestsFn extends
       SimpleFunction<Contig, StreamVariantsRequest> {
 
-    private final String variantSetId;
+    private final StreamVariantsRequest prototype;
 
-    public ContigsToStreamVariantsRequestsFn(String variantSetId) {
+    public ContigsToStreamVariantsRequestsFn(StreamVariantsRequest prototype) {
       super();
-      this.variantSetId = variantSetId;
+      this.prototype = prototype;
     }
 
     @Override
@@ -93,26 +100,76 @@ public class SitesToShards {
       if (null == contig) {
         return null;
       }
-      return contig.getStreamVariantsRequest(variantSetId);
+      return contig.getStreamVariantsRequest(prototype);
     }
 
   }
 
+  /**
+   * Use this transform when you have file(s) of sites that should be converted into
+   * streaming requests that each span the region for a site.
+   */
   public static class SitesToStreamVariantsShardsTransform extends
       PTransform<PCollection<String>, PCollection<StreamVariantsRequest>> {
 
-    private final String variantSetId;
+    private final StreamVariantsRequest prototype;
 
-    public SitesToStreamVariantsShardsTransform(String variantSetId) {
+    public SitesToStreamVariantsShardsTransform(StreamVariantsRequest prototype) {
       super();
-      this.variantSetId = variantSetId;
+      this.prototype = prototype;
     }
 
     @Override
     public PCollection<StreamVariantsRequest> apply(PCollection<String> lines) {
       return lines.apply(ParDo.of(new SitesToContigsFn()))
           .apply("Contigs to StreamVariantsRequests",
-          MapElements.via(new ContigsToStreamVariantsRequestsFn(variantSetId)));
+          MapElements.via(new ContigsToStreamVariantsRequestsFn(prototype)));
+    }
+  }
+
+  /**
+   * Given a contig object and request prototype, construct a request spanning the region
+   * defined by the contig.
+   */
+  public static class ContigsToStreamReadsRequestsFn extends
+  SimpleFunction<Contig, StreamReadsRequest> {
+
+    private final StreamReadsRequest prototype;
+
+    public ContigsToStreamReadsRequestsFn(StreamReadsRequest prototype) {
+      super();
+      this.prototype = prototype;
+    }
+
+    @Override
+    public StreamReadsRequest apply(Contig contig) {
+      if (null == contig) {
+        return null;
+      }
+      return contig.getStreamReadsRequest(prototype);
+    }
+
+  }
+
+  /**
+   * Use this transform when you have file(s) of sites that should be converted into
+   * streaming requests that each span the region for a site.
+   */
+  public static class SitesToStreamReadsShardsTransform extends
+  PTransform<PCollection<String>, PCollection<StreamReadsRequest>> {
+
+    private final StreamReadsRequest prototype;
+
+    public SitesToStreamReadsShardsTransform(StreamReadsRequest prototype) {
+      super();
+      this.prototype = prototype;
+    }
+
+    @Override
+    public PCollection<StreamReadsRequest> apply(PCollection<String> lines) {
+      return lines.apply(ParDo.of(new SitesToContigsFn()))
+          .apply("Contigs to StreamReadsRequests",
+              MapElements.via(new ContigsToStreamReadsRequestsFn(prototype)));
     }
   }
 }

@@ -24,17 +24,15 @@ import com.google.cloud.dataflow.sdk.transforms.DoFn;
 import com.google.cloud.dataflow.sdk.transforms.ParDo;
 import com.google.cloud.dataflow.sdk.values.PCollection;
 import com.google.cloud.genomics.dataflow.readers.VariantStreamer;
+import com.google.cloud.genomics.dataflow.utils.CallSetNamesOptions;
 import com.google.cloud.genomics.dataflow.utils.GCSOutputOptions;
 import com.google.cloud.genomics.dataflow.utils.GenomicsOptions;
 import com.google.cloud.genomics.dataflow.utils.ShardOptions;
 import com.google.cloud.genomics.utils.OfflineAuth;
 import com.google.cloud.genomics.utils.ShardBoundary;
 import com.google.cloud.genomics.utils.ShardUtils;
-import com.google.common.base.CharMatcher;
 import com.google.common.base.Joiner;
-import com.google.common.base.Splitter;
 import com.google.common.collect.ImmutableSet;
-import com.google.common.io.Files;
 import com.google.genomics.v1.StreamVariantsRequest;
 import com.google.genomics.v1.Variant;
 import com.google.genomics.v1.VariantCall;
@@ -42,9 +40,7 @@ import com.google.genomics.v1.VariantCall;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.File;
 import java.io.IOException;
-import java.nio.charset.Charset;
 import java.security.GeneralSecurityException;
 import java.util.List;
 
@@ -58,22 +54,24 @@ import java.util.List;
 public class IdentifyPrivateVariants {
 
   public static interface Options extends
-  // Options for calculating over regions, chromosomes, or whole genomes.
-  ShardOptions,
-  // Options for the output destination.
-  GCSOutputOptions {
+    // Options for call set names.
+    CallSetNamesOptions,
+    // Options for calculating over regions, chromosomes, or whole genomes.
+    ShardOptions,
+    // Options for the output destination.
+    GCSOutputOptions {
 
+    @Override
     @Description("The ID of the Google Genomics variant set from which this pipeline "
         + "will identify private variants.")
     @Required
     String getVariantSetId();
-    void setVariantSetId(String variantSetId);
 
-    @Description("A local file path to a list of newline-separated callset IDs. "
-        + "Any variants private to those callset IDs will be deleted.")
+    @Override
+    @Description("A local file path to a list of newline-separated callset names. "
+        + "Any variants private to those callsets will be identified.")
     @Required
-    String getCallSetIdsFilepath();
-    void setCallSetIdsFilepath(String filepath);
+    String getCallSetNamesFilepath();
 
     @Description("Whether variants with no callsets should also be identified.  Defaults to false.")
     @Default.Boolean(false)
@@ -140,17 +138,13 @@ public class IdentifyPrivateVariants {
     // Option validation is not yet automatic, we make an explicit call here.
     Options.Methods.validateOptions(options);
 
+    // Set up the prototype request and auth.
+    StreamVariantsRequest prototype = CallSetNamesOptions.Methods.getRequestPrototype(options);
     OfflineAuth auth = GenomicsOptions.Methods.getGenomicsAuth(options);
 
-    // Grab and parse the list of callset IDs.
-    String fileContents =
-        Files.toString(new File(options.getCallSetIdsFilepath()), Charset.defaultCharset());
-    ImmutableSet<String> callSetIds =
-        ImmutableSet
-            .<String>builder()
-            .addAll(
-                Splitter.on(CharMatcher.breakingWhitespace()).omitEmptyStrings().trimResults()
-                    .split(fileContents)).build();
+    ImmutableSet<String> callSetIds = ImmutableSet.<String>builder()
+        .addAll(CallSetNamesOptions.Methods.getCallSetIds(options))
+        .build();
     LOG.info("The pipeline will identify and write to Cloud Storage variants "
         + "private to " + callSetIds.size() + " genomes with callSetIds: " + callSetIds);
     if (options.getIdentifyVariantsWithoutCalls()) {
@@ -158,10 +152,10 @@ public class IdentifyPrivateVariants {
     }
 
     List<StreamVariantsRequest> shardRequests =
-        options.isAllReferences() ? ShardUtils.getVariantRequests(options.getVariantSetId(),
+        options.isAllReferences() ? ShardUtils.getVariantRequests(prototype,
             ShardUtils.SexChromosomeFilter.INCLUDE_XY, options.getBasesPerShard(), auth)
-            : ShardUtils.getVariantRequests(options.getVariantSetId(), options.getReferences(),
-                options.getBasesPerShard());
+            : ShardUtils.getVariantRequests(prototype, options.getBasesPerShard(),
+                options.getReferences());
 
     Pipeline p = Pipeline.create(options);
     PCollection<Variant> variants = p.begin()

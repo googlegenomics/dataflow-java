@@ -33,6 +33,7 @@ import com.google.cloud.dataflow.sdk.values.KV;
 import com.google.cloud.genomics.dataflow.coders.GenericJsonCoder;
 import com.google.cloud.genomics.dataflow.utils.AnnotationUtils;
 import com.google.cloud.genomics.dataflow.utils.AnnotationUtils.VariantEffect;
+import com.google.cloud.genomics.dataflow.utils.CallSetNamesOptions;
 import com.google.cloud.genomics.dataflow.utils.GCSOutputOptions;
 import com.google.cloud.genomics.dataflow.utils.GenomicsOptions;
 import com.google.cloud.genomics.dataflow.utils.ShardOptions;
@@ -87,20 +88,25 @@ import java.util.logging.Logger;
  */
 public final class AnnotateVariants extends DoFn<StreamVariantsRequest, KV<String, VariantAnnotation>> {
 
-  public static interface Options extends ShardOptions, GCSOutputOptions {
+  public static interface Options extends
+    // Options for call set names.
+    CallSetNamesOptions,
+    // Options for calculating over regions, chromosomes, or whole genomes.
+    ShardOptions,
+    // Options for the output destination.
+    GCSOutputOptions {
 
+    @Override
     @Description("The ID of the Google Genomics variant set this pipeline is accessing. "
         + "Defaults to 1000 Genomes.")
     @Default.String("10473108253681171589")
     String getVariantSetId();
 
-    void setVariantSetId(String variantSetId);
-
-    @Description("The IDs of the Google Genomics call sets this pipeline is working with, comma "
-        + "delimited.Defaults to 1000 Genomes HG00261.")
-    @Default.String("10473108253681171589-0")
-    String getCallSetIds();
-    void setCallSetIds(String callSetIds);
+    @Override
+    @Description("The names of the Google Genomics call sets this pipeline is working with, comma "
+        + "delimited.  Defaults to 1000 Genomes HG00261.")
+    @Default.String("HG00261")
+    String getCallSetNames();
 
     @Description("The IDs of the Google Genomics transcript sets this pipeline is working with, "
         + "comma delimited. Defaults to UCSC refGene (hg19).")
@@ -296,13 +302,12 @@ public final class AnnotateVariants extends DoFn<StreamVariantsRequest, KV<Strin
     // Option validation is not yet automatic, we make an explicit call here.
     Options.Methods.validateOptions(options);
 
+    // Set up the prototype request and auth.
+    StreamVariantsRequest prototype = CallSetNamesOptions.Methods.getRequestPrototype(options);
     OfflineAuth auth = GenomicsOptions.Methods.getGenomicsAuth(options);
     Genomics genomics = GenomicsFactory.builder().build().fromOfflineAuth(auth);
 
-    List<String> callSetIds = ImmutableList.of();
-    if (!Strings.isNullOrEmpty(options.getCallSetIds().trim())) {
-      callSetIds = ImmutableList.copyOf(options.getCallSetIds().split(","));
-    }
+    List<String> callSetIds = CallSetNamesOptions.Methods.getCallSetIds(options);
     List<String> transcriptSetIds =
         validateAnnotationSetsFlag(genomics, options.getTranscriptSetIds(), "TRANSCRIPT");
     List<String> variantAnnotationSetIds =
@@ -310,9 +315,9 @@ public final class AnnotateVariants extends DoFn<StreamVariantsRequest, KV<Strin
     validateRefsetForAnnotationSets(genomics, transcriptSetIds);
 
     List<StreamVariantsRequest> requests = options.isAllReferences() ?
-        ShardUtils.getVariantRequests(options.getVariantSetId(), ShardUtils.SexChromosomeFilter.EXCLUDE_XY,
+        ShardUtils.getVariantRequests(prototype, ShardUtils.SexChromosomeFilter.EXCLUDE_XY,
             options.getBasesPerShard(), auth) :
-              ShardUtils.getVariantRequests(options.getVariantSetId(), options.getReferences(), options.getBasesPerShard());
+              ShardUtils.getVariantRequests(prototype, options.getBasesPerShard(), options.getReferences());
 
     Pipeline p = Pipeline.create(options);
     p.getCoderRegistry().setFallbackCoderProvider(GenericJsonCoder.PROVIDER);

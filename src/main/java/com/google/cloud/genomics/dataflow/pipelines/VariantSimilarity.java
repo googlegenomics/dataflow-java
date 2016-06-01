@@ -27,6 +27,7 @@ import com.google.cloud.genomics.dataflow.functions.SitesToShards;
 import com.google.cloud.genomics.dataflow.functions.pca.ExtractSimilarCallsets;
 import com.google.cloud.genomics.dataflow.functions.pca.OutputPCoAFile;
 import com.google.cloud.genomics.dataflow.readers.VariantStreamer;
+import com.google.cloud.genomics.dataflow.utils.CallSetNamesOptions;
 import com.google.cloud.genomics.dataflow.utils.GCSOutputOptions;
 import com.google.cloud.genomics.dataflow.utils.GenomicsOptions;
 import com.google.cloud.genomics.dataflow.utils.ShardOptions;
@@ -36,6 +37,7 @@ import com.google.cloud.genomics.utils.ShardBoundary;
 import com.google.cloud.genomics.utils.ShardUtils;
 import com.google.common.collect.BiMap;
 import com.google.common.collect.HashBiMap;
+import com.google.common.collect.Lists;
 import com.google.genomics.v1.StreamVariantsRequest;
 
 import java.io.IOException;
@@ -52,19 +54,20 @@ import java.util.List;
 public class VariantSimilarity {
 
   public static interface Options extends
-  // Options for calculating over regions, chromosomes, or whole genomes.
-  ShardOptions,
-  // Options for calculating over a list of sites.
-  SitesToShards.Options,
-  // Options for the output destination.
-  GCSOutputOptions {
+    // Options for call set names.
+    CallSetNamesOptions,
+    // Options for calculating over regions, chromosomes, or whole genomes.
+    ShardOptions,
+    // Options for calculating over a list of sites.
+    SitesToShards.Options,
+    // Options for the output destination.
+    GCSOutputOptions {
 
+    @Override
     @Description("The ID of the Google Genomics variant set this pipeline is accessing. "
         + "Defaults to 1000 Genomes.")
     @Default.String("10473108253681171589")
     String getVariantSetId();
-
-    void setVariantSetId(String variantSetId);
 
     public static class Methods {
       public static void validateOptions(Options options) {
@@ -85,9 +88,14 @@ public class VariantSimilarity {
     // Option validation is not yet automatic, we make an explicit call here.
     Options.Methods.validateOptions(options);
 
+    // Set up the prototype request and auth.
+    StreamVariantsRequest prototype = CallSetNamesOptions.Methods.getRequestPrototype(options);
     OfflineAuth auth = GenomicsOptions.Methods.getGenomicsAuth(options);
 
-    List<String> callSetNames = GenomicsUtils.getCallSetsNames(options.getVariantSetId() , auth);
+    // Make a bimap of the callsets so that the indices the pipeline is passing around are small.
+    List<String> callSetNames = (0 < prototype.getCallSetIdsCount())
+        ? Lists.newArrayList(CallSetNamesOptions.Methods.getCallSetNames(options))
+            : GenomicsUtils.getCallSetsNames(options.getVariantSetId(), auth);
     Collections.sort(callSetNames); // Ensure a stable sort order for reproducible results.
     BiMap<String, Integer> dataIndices = HashBiMap.create();
     for(String callSetName : callSetNames) {
@@ -97,17 +105,18 @@ public class VariantSimilarity {
     Pipeline p = Pipeline.create(options);
     p.begin();
 
-    PCollection<StreamVariantsRequest> requests ;
+    PCollection<StreamVariantsRequest> requests;
     if(null != options.getSitesFilepath()) {
       // Compute PCA on a list of sites.
       requests = p.apply(TextIO.Read.named("ReadSites")
           .from(options.getSitesFilepath()))
-          .apply(new SitesToShards.SitesToStreamVariantsShardsTransform(options.getVariantSetId()));
+          .apply(new SitesToShards.SitesToStreamVariantsShardsTransform(prototype));
     } else {
+      // Compute PCA over genomic regions.
       List<StreamVariantsRequest> shardRequests = options.isAllReferences() ?
-          ShardUtils.getVariantRequests(options.getVariantSetId(), ShardUtils.SexChromosomeFilter.EXCLUDE_XY,
+          ShardUtils.getVariantRequests(prototype, ShardUtils.SexChromosomeFilter.EXCLUDE_XY,
               options.getBasesPerShard(), auth) :
-            ShardUtils.getVariantRequests(options.getVariantSetId(), options.getReferences(), options.getBasesPerShard());
+            ShardUtils.getVariantRequests(prototype, options.getBasesPerShard(), options.getReferences());
 
       requests = p.apply(Create.of(shardRequests));
     }
