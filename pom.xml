@@ -65,10 +65,22 @@
   </distributionManagement>
 
   <dependencies>
+    <!-- Remove this later https://github.com/googlegenomics/dataflow-java/issues/197 -->
+    <dependency>
+      <groupId>io.netty</groupId>
+      <artifactId>netty-codec-http2</artifactId>
+      <version>4.1.0.Final</version>
+    </dependency>
     <dependency>
       <groupId>io.grpc</groupId>
       <artifactId>grpc-all</artifactId>
       <version>${io.grpc.version}</version>
+      <exclusions>
+        <exclusion>
+          <groupId>io.netty</groupId>
+          <artifactId>netty-codec-http2</artifactId>
+        </exclusion>
+      </exclusions>
     </dependency>
     <dependency>
       <groupId>com.google.cloud.dataflow</groupId>
