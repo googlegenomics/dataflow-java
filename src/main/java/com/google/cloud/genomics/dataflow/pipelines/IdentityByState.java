@@ -75,9 +75,6 @@ public class IdentityByState {
     @Default.String("10473108253681171589")
     String getVariantSetId();
 
-    @Override
-    void setVariantSetId(String variantSetId);
-
     @Description("The class that determines the strategy for calculating the similarity of alleles.")
     @Default.Class(SharedMinorAllelesCalculatorFactory.class)
     Class<? extends CallSimilarityCalculatorFactory> getCallSimilarityCalculatorFactory();
@@ -113,13 +110,13 @@ public class IdentityByState {
     Pipeline p = Pipeline.create(options);
     PCollection<Variant> processedVariants = null;
 
-    if(null != options.getSitesFilepath()) {
+    if (null != options.getSitesFilepath()) {
       // Compute IBS on a list of sites (e.g., SNPs).
       PCollection<StreamVariantsRequest> requests = p.apply(TextIO.Read.named("ReadSites")
           .from(options.getSitesFilepath()))
           .apply(new SitesToShards.SitesToStreamVariantsShardsTransform(prototype));
 
-      if(options.getHasNonVariantSegments()) {
+      if (options.getHasNonVariantSegments()) {
         processedVariants = requests.apply(
             new JoinNonVariantSegmentsWithVariants.RetrieveAndCombineTransform(auth, VARIANT_FIELDS));
       } else {
@@ -136,7 +133,7 @@ public class IdentityByState {
               .apply(Create.of(requests))
               .apply(new VariantStreamer(auth, ShardBoundary.Requirement.STRICT, VARIANT_FIELDS));
 
-          if(options.getHasNonVariantSegments()) {
+          if (options.getHasNonVariantSegments()) {
             // Note that this is less exact compared to the above approach on sites.
             // When not run on a whole chromosome or genome, any non-variant segments at the beginning of the region(s)
             // are not considered due to the STRICT shard boundary used to avoid repeated data.
