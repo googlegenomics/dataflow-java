@@ -46,7 +46,7 @@ import java.util.List;
  *      mvn install -DskipITs
  *
  * To run one test:
- *      mvn -Dit.test=IdentityByStateITCase#testStreamingLocal verify
+ *      mvn -Dit.test=IdentityByStateITCase#testLocal verify
  *
  * See also http://maven.apache.org/surefire/maven-failsafe-plugin/examples/single-test.html
  */
@@ -357,7 +357,7 @@ public class IdentityByStateITCase {
   }
 
   @Test
-  public void testSitesFilepathStreamingLocal() throws Exception {
+  public void testSitesFilepathLocal() throws Exception {
 
     String[] ARGS = {
         "--sitesFilepath=" + SITES_FILEPATH,
@@ -369,7 +369,7 @@ public class IdentityByStateITCase {
   }
 
   @Test
-  public void testStreamingLocal() throws Exception {
+  public void testLocal() throws Exception {
     String[] ARGS = {
         "--references=" + helper.PLATINUM_GENOMES_BRCA1_REFERENCES,
         "--variantSetId=" + helper.PLATINUM_GENOMES_DATASET,
@@ -380,7 +380,7 @@ public class IdentityByStateITCase {
   }
 
   @Test
-  public void testStreamingCloud() throws Exception {
+  public void testCloud() throws Exception {
     String[] ARGS = {
         "--references=" + helper.PLATINUM_GENOMES_BRCA1_REFERENCES,
         "--variantSetId=" + helper.PLATINUM_GENOMES_DATASET,
