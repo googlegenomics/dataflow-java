@@ -28,7 +28,6 @@ import com.google.cloud.genomics.utils.grpc.MergeNonVariantSegmentsWithSnps;
 import com.google.cloud.genomics.utils.grpc.VariantEmitterStrategy;
 import com.google.cloud.genomics.utils.grpc.VariantMergeStrategy;
 import com.google.cloud.genomics.utils.grpc.VariantStreamIterator;
-import com.google.cloud.genomics.utils.grpc.VariantUtils;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Iterables;
 import com.google.genomics.v1.StreamVariantsRequest;
@@ -105,7 +104,6 @@ public class JoinNonVariantSegmentsWithVariants {
       return input
           .apply(ParDo.of(new BinVariantsFn()))
           .apply(GroupByKey.<KV<String, Long>, Variant>create())
-          .apply(ParDo.of(new RetrieveWindowOfVariantsFn()))
           .apply(ParDo.of(new CombineVariantsFn()));
     }
 
@@ -125,33 +123,22 @@ public class JoinNonVariantSegmentsWithVariants {
       public void processElement(ProcessContext context) {
         Options options =
             context.getPipelineOptions().as(Options.class);
+        int binSize = options.getBinSize();
         Variant variant = context.element();
-        long startBin = getStartBin(options.getBinSize(), variant);
-        long endBin =
-            VariantUtils.IS_NON_VARIANT_SEGMENT.apply(variant) ? getEndBin(options.getBinSize(),
-                variant) : startBin;
-            for (long bin = startBin; bin <= endBin; bin++) {
-              context.output(KV.of(KV.of(variant.getReferenceName(), bin), variant));
-            }
-      }
-    }
-
-    static final class RetrieveWindowOfVariantsFn extends
-    DoFn<KV<KV<String, Long>, Iterable<Variant>>, Iterable<Variant>> {
-
-      @Override
-      public void processElement(ProcessContext context) {
-
-        // The upper bound on number of variants in the iterable is dependent upon the binSize
-        // used in the prior step to construct the key.
-        KV<KV<String, Long>, Iterable<Variant>> kv = context.element();
-        context.output(kv.getValue());
+        long startBin = getStartBin(binSize, variant);
+        long endBin = getEndBin(binSize, variant);
+        for (long bin = startBin; bin <= endBin; bin++) {
+          context.output(KV.of(KV.of(variant.getReferenceName(), bin * binSize), variant));
+        }
       }
     }
   }
 
   /**
    * Use this transform when working with a collection of sites across the genome.
+   *
+   * It passes the data onto the next step retaining the ordering imposed by the
+   * genomics API which is sorted by (variantset id, contig, start pos, variant id).
    *
    * The amount of RAM needed during the combine step is controlled by the number of
    * base pairs between the start and end position of each site.
@@ -183,7 +170,7 @@ public class JoinNonVariantSegmentsWithVariants {
           .apply(ParDo.of(new CombineVariantsFn()));
     }
 
-    static final class RetrieveFn extends DoFn<StreamVariantsRequest, Iterable<Variant>> {
+    public static final class RetrieveFn extends DoFn<StreamVariantsRequest, KV<KV<String, Long>, Iterable<Variant>>> {
       private final OfflineAuth auth;
       private String fields;
 
@@ -194,11 +181,12 @@ public class JoinNonVariantSegmentsWithVariants {
       }
 
       @Override
-      public void processElement(DoFn<StreamVariantsRequest, Iterable<Variant>>.ProcessContext context)
+      public void processElement(DoFn<StreamVariantsRequest, KV<KV<String, Long>, Iterable<Variant>>>.ProcessContext context)
           throws Exception {
+        StreamVariantsRequest request = context.element();
 
-        Iterator<StreamVariantsResponse> iter = VariantStreamIterator.enforceShardBoundary(auth, context.element(),
-            ShardBoundary.Requirement.NON_VARIANT_OVERLAPS, fields);
+        Iterator<StreamVariantsResponse> iter = VariantStreamIterator.enforceShardBoundary(auth, request,
+            ShardBoundary.Requirement.OVERLAPS, fields);
 
         if (iter.hasNext()) {
           // We do have some data overlapping this site.
@@ -206,17 +194,17 @@ public class JoinNonVariantSegmentsWithVariants {
           while (iter.hasNext()) {
             allVariantsForRequest.add(iter.next().getVariantsList());
           }
-          context.output(Iterables.concat(allVariantsForRequest));
+          context.output(KV.of(KV.of(request.getReferenceName(), request.getStart()), Iterables.concat(allVariantsForRequest)));
         }
       }
     }
   }
 
-  public static final class CombineVariantsFn extends DoFn<Iterable<Variant>, Variant> {
+  public static final class CombineVariantsFn extends DoFn<KV<KV<String, Long>, Iterable<Variant>>, Variant> {
     private VariantMergeStrategy merger;
 
     @Override
-    public void startBundle(DoFn<Iterable<Variant>, Variant>.Context c) throws Exception {
+    public void startBundle(DoFn<KV<KV<String, Long>, Iterable<Variant>>, Variant>.Context c) throws Exception {
       super.startBundle(c);
       Options options = c.getPipelineOptions().as(Options.class);
       merger = options.getVariantMergeStrategy().newInstance();
@@ -224,14 +212,14 @@ public class JoinNonVariantSegmentsWithVariants {
 
     @Override
     public void processElement(ProcessContext context) throws Exception {
-      merger.merge(context.element(), new DataflowVariantEmitter(context));
+      merger.merge(context.element().getKey().getValue(), context.element().getValue(), new DataflowVariantEmitter(context));
     }
   }
 
   public static class DataflowVariantEmitter implements VariantEmitterStrategy {
-    private final DoFn<Iterable<Variant>, Variant>.ProcessContext context;
+    private final DoFn<KV<KV<String, Long>, Iterable<Variant>>, Variant>.ProcessContext context;
 
-    public DataflowVariantEmitter(DoFn<Iterable<Variant>, Variant>.ProcessContext context) {
+    public DataflowVariantEmitter(DoFn<KV<KV<String, Long>, Iterable<Variant>>, Variant>.ProcessContext context) {
       this.context = context;
     }
 

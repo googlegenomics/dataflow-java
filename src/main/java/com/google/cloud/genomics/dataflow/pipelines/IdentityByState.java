@@ -121,10 +121,10 @@ public class IdentityByState {
             new JoinNonVariantSegmentsWithVariants.RetrieveAndCombineTransform(auth, VARIANT_FIELDS));
       } else {
         processedVariants = requests.apply(
-            new VariantStreamer(auth, ShardBoundary.Requirement.NON_VARIANT_OVERLAPS, VARIANT_FIELDS));
+            new VariantStreamer(auth, ShardBoundary.Requirement.STRICT, VARIANT_FIELDS));
       }
     } else {
-      // Computing IBS over genomic region(s) or the whole genome.
+      // Compute IBS over genomic region(s) or the whole genome.
       List<StreamVariantsRequest> requests = options.isAllReferences() ?
           ShardUtils.getVariantRequests(prototype, ShardUtils.SexChromosomeFilter.EXCLUDE_XY,
               options.getBasesPerShard(), auth) :

@@ -150,10 +150,10 @@ public class JoinNonVariantSegmentsWithVariantsTest {
 
   @Test
   public void testCombineVariantsFn() {
-    DoFnTester<Iterable<Variant>, Variant> fn =
+    DoFnTester<KV<KV<String, Long>, Iterable<Variant>>, Variant> fn =
       DoFnTester.of(new JoinNonVariantSegmentsWithVariants.CombineVariantsFn());
 
-    Assert.assertThat(fn.processBatch(Arrays.asList(input)),
+    Assert.assertThat(fn.processBatch(KV.of(KV.of("chr7", 200000L), (Iterable<Variant>) Arrays.asList(input))),
         CoreMatchers.hasItems(expectedSnp1, expectedSnp2, expectedInsert));
   }
 
@@ -163,14 +163,14 @@ public class JoinNonVariantSegmentsWithVariantsTest {
         DoFnTester.of(new JoinNonVariantSegmentsWithVariants.BinShuffleAndCombineTransform.BinVariantsFn());
 
     List<KV<KV<String, Long>, Variant>> binVariantsOutput = binVariantsFn.processBatch(input);
-    assertThat(binVariantsOutput, CoreMatchers.hasItem(KV.of(KV.of("chr7", 200L), snp1)));
-    assertThat(binVariantsOutput, CoreMatchers.hasItem(KV.of(KV.of("chr7", 200L), snp2)));
-    assertThat(binVariantsOutput, CoreMatchers.hasItem(KV.of(KV.of("chr7", 200L), insert)));
-    assertThat(binVariantsOutput, CoreMatchers.hasItem(KV.of(KV.of("chr7", 199L), blockRecord1)));
-    assertThat(binVariantsOutput, CoreMatchers.hasItem(KV.of(KV.of("chr7", 200L), blockRecord1)));
-    assertThat(binVariantsOutput, CoreMatchers.hasItem(KV.of(KV.of("chr7", 201L), blockRecord1)));
-    assertThat(binVariantsOutput, CoreMatchers.hasItem(KV.of(KV.of("chr7", 202L), blockRecord1)));
-    assertThat(binVariantsOutput, CoreMatchers.hasItem(KV.of(KV.of("chr7", 200L), blockRecord2)));
+    assertThat(binVariantsOutput, CoreMatchers.hasItem(KV.of(KV.of("chr7", 200000L), snp1)));
+    assertThat(binVariantsOutput, CoreMatchers.hasItem(KV.of(KV.of("chr7", 200000L), snp2)));
+    assertThat(binVariantsOutput, CoreMatchers.hasItem(KV.of(KV.of("chr7", 200000L), insert)));
+    assertThat(binVariantsOutput, CoreMatchers.hasItem(KV.of(KV.of("chr7", 199000L), blockRecord1)));
+    assertThat(binVariantsOutput, CoreMatchers.hasItem(KV.of(KV.of("chr7", 200000L), blockRecord1)));
+    assertThat(binVariantsOutput, CoreMatchers.hasItem(KV.of(KV.of("chr7", 201000L), blockRecord1)));
+    assertThat(binVariantsOutput, CoreMatchers.hasItem(KV.of(KV.of("chr7", 202000L), blockRecord1)));
+    assertThat(binVariantsOutput, CoreMatchers.hasItem(KV.of(KV.of("chr7", 200000L), blockRecord2)));
     assertEquals(8, binVariantsOutput.size());
   }
 
