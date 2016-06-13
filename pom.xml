@@ -377,7 +377,7 @@
   <properties>
     <!-- Work around dataflow, grpc, and protobuf version issues
          http://stackoverflow.com/questions/36257708/java-lang-noclassdeffounderror-while-deserializing-protobuf-messages -->
-    <google.dataflow.version>1.5.1</google.dataflow.version>
+    <google.dataflow.version>1.6.0</google.dataflow.version>
     <io.grpc.version>0.14.0</io.grpc.version>
     <protobuf.java.version>3.0.0-beta-1</protobuf.java.version>
 
