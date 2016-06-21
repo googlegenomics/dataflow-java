@@ -16,6 +16,7 @@
 package com.google.cloud.genomics.dataflow.pipelines;
 
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.junit.Assert.assertEquals;
 
 import com.google.api.client.util.Lists;
 import com.google.cloud.dataflow.sdk.util.gcsfs.GcsPath;
@@ -163,6 +164,7 @@ public class IdentifyPrivateVariantsITCase {
     }
 
     // Check the pipeline results.
+    assertEquals(results.size(), expectedResult.length);
     assertThat(results,
         CoreMatchers.allOf(CoreMatchers.hasItems(expectedResult)));
   }
