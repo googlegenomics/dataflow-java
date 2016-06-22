@@ -139,7 +139,11 @@ public class IdentifyPrivateVariants {
     Options.Methods.validateOptions(options);
 
     // Set up the prototype request and auth.
-    StreamVariantsRequest prototype = CallSetNamesOptions.Methods.getRequestPrototype(options);
+    StreamVariantsRequest prototype = StreamVariantsRequest.newBuilder(
+        CallSetNamesOptions.Methods.getRequestPrototype(options))
+        // In this case, we do not want responses containing a subset of calls, we want all of them.
+        .clearCallSetIds()
+        .build();
     OfflineAuth auth = GenomicsOptions.Methods.getGenomicsAuth(options);
 
     ImmutableSet<String> callSetIds = ImmutableSet.<String>builder()
