@@ -94,7 +94,8 @@ public class DeleteVariants {
           context.output(1);
           return;
         } catch (Exception e) {
-          if (e.getMessage().startsWith("403 Forbidden")) {
+          if (e.getMessage().startsWith("429 Too Many Requests")) {
+            LOG.warn("Backing-off per: ", e);
             long backOffMillis = backoff.nextBackOffMillis();
             if (backOffMillis == BackOff.STOP) {
               throw e;
