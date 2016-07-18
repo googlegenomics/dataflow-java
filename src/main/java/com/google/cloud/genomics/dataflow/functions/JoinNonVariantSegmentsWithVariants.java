@@ -138,7 +138,7 @@ public class JoinNonVariantSegmentsWithVariants {
    * Use this transform when working with a collection of sites across the genome.
    *
    * It passes the data onto the next step retaining the ordering imposed by the
-   * genomics API which is sorted by (variantset id, contig, start pos, variant id).
+   * Google Genomics API which is sorted by (variantset id, contig, start pos, variant id).
    *
    * The amount of RAM needed during the combine step is controlled by the number of
    * base pairs between the start and end position of each site.
@@ -200,6 +200,11 @@ public class JoinNonVariantSegmentsWithVariants {
     }
   }
 
+  /**
+   * Pass a window of variants from Dataflow to the merge strategy implementation.
+   *
+   * See {@link VariantMergeStrategy} for more detail.
+   */
   public static final class CombineVariantsFn extends DoFn<KV<KV<String, Long>, Iterable<Variant>>, Variant> {
     private VariantMergeStrategy merger;
 
@@ -216,6 +221,11 @@ public class JoinNonVariantSegmentsWithVariants {
     }
   }
 
+  /**
+   * Emit a merged variant to the Dataflow pipeline.
+   *
+   * See {@link VariantEmitterStrategy} for more detail.
+   */
   public static class DataflowVariantEmitter implements VariantEmitterStrategy {
     private final DoFn<KV<KV<String, Long>, Iterable<Variant>>, Variant>.ProcessContext context;
 
