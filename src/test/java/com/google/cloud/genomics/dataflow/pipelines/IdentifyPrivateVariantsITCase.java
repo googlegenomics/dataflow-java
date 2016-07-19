@@ -164,7 +164,7 @@ public class IdentifyPrivateVariantsITCase {
     }
 
     // Check the pipeline results.
-    assertEquals(results.size(), expectedResult.length);
+    assertEquals(expectedResult.length, results.size());
     assertThat(results,
         CoreMatchers.allOf(CoreMatchers.hasItems(expectedResult)));
   }

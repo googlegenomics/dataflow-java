@@ -65,11 +65,15 @@
   </distributionManagement>
 
   <dependencies>
-    <!-- Remove this later https://github.com/googlegenomics/dataflow-java/issues/197 -->
+    <dependency>
+      <groupId>com.google.protobuf</groupId>
+      <artifactId>protobuf-java</artifactId>
+      <version>${protobuf.java.version}</version>
+    </dependency>
     <dependency>
       <groupId>io.netty</groupId>
       <artifactId>netty-codec-http2</artifactId>
-      <version>4.1.0.Final</version>
+      <version>${io.netty.version}</version>
     </dependency>
     <dependency>
       <groupId>io.grpc</groupId>
@@ -83,57 +87,9 @@
       </exclusions>
     </dependency>
     <dependency>
-      <groupId>com.google.cloud.dataflow</groupId>
-      <artifactId>google-cloud-dataflow-java-sdk-all</artifactId>
-      <version>${google.dataflow.version}</version>
-    </dependency>
-    <dependency>
-      <groupId>com.google.api-client</groupId>
-      <artifactId>google-api-client</artifactId>
-      <version>${google.api.version}</version>
-     <exclusions>
-        <!-- Exclude an old version of guava which is being pulled
-             in by a transitive dependency google-api-client. -->
-        <exclusion>
-          <groupId>com.google.guava</groupId>
-          <artifactId>guava-jdk5</artifactId>
-        </exclusion>
-      </exclusions>
-    </dependency>
-    <dependency>
-      <groupId>com.google.oauth-client</groupId>
-      <artifactId>google-oauth-client</artifactId>
-      <version>${google.api.version}</version>
-    </dependency>
-    <dependency>
-      <groupId>com.google.oauth-client</groupId>
-      <artifactId>google-oauth-client-jetty</artifactId>
-      <version>${google.api.version}</version>
-    </dependency>
-    <dependency>
-      <groupId>com.google.oauth-client</groupId>
-      <artifactId>google-oauth-client-java6</artifactId>
-      <version>${google.api.version}</version>
-    </dependency>
-    <dependency>
-      <groupId>com.google.http-client</groupId>
-      <artifactId>google-http-client</artifactId>
-      <version>${google.api.version}</version>
-    </dependency>
-    <dependency>
-      <groupId>com.google.http-client</groupId>
-      <artifactId>google-http-client-jackson2</artifactId>
-      <version>${google.api.version}</version>
-    </dependency>
-    <dependency>
-      <groupId>com.google.apis</groupId>
-      <artifactId>google-api-services-genomics</artifactId>
-      <version>${google.api.genomics.version}</version>
-    </dependency>
-    <dependency>
       <groupId>com.google.cloud.genomics</groupId>
       <artifactId>google-genomics-utils</artifactId>
-      <version>v1-0.3</version>
+      <version>v1-0.6</version>
       <exclusions>
         <!-- Exclude an old version of guava which is being pulled
              in by a transitive dependency google-api-client. -->
@@ -144,9 +100,9 @@
       </exclusions>
     </dependency>
     <dependency>
-      <groupId>com.google.guava</groupId>
-      <artifactId>guava</artifactId>
-      <version>${google.guava.version}</version>
+      <groupId>com.google.cloud.dataflow</groupId>
+      <artifactId>google-cloud-dataflow-java-sdk-all</artifactId>
+      <version>${google.dataflow.version}</version>
     </dependency>
     <dependency>
       <groupId>gov.nist.math.jama</groupId>
@@ -157,11 +113,6 @@
       <groupId>org.apache.commons</groupId>
       <artifactId>commons-math3</artifactId>
       <version>3.2</version>
-    </dependency>
-    <dependency>
-      <groupId>org.reflections</groupId>
-      <artifactId>reflections</artifactId>
-      <version>0.9.9</version>
     </dependency>
     <dependency>
       <groupId>junit</groupId>
@@ -176,43 +127,9 @@
       <scope>test</scope>
     </dependency>
     <dependency>
-      <groupId>org.mortbay.jetty</groupId>
-      <artifactId>jetty</artifactId>
-      <version>${jetty.version}</version>
-      <scope>runtime</scope>
-    </dependency>
-    <dependency>
-      <groupId>org.mortbay.jetty</groupId>
-      <artifactId>jetty-util</artifactId>
-      <version>${jetty.version}</version>
-      <scope>runtime</scope>
-    </dependency>
-    <dependency>
-      <groupId>javax.servlet</groupId>
-      <artifactId>servlet-api</artifactId>
-      <version>2.5</version>
-      <scope>runtime</scope>
-    </dependency>
-    <dependency>
-      <groupId>com.github.samtools</groupId>
-      <artifactId>htsjdk</artifactId>
-      <version>1.128</version>
-      <exclusions>
-        <exclusion>
-          <groupId>org.testng</groupId>
-            <artifactId>testng</artifactId>
-        </exclusion>
-      </exclusions>
-    </dependency>
-    <dependency>
       <groupId>com.google.cloud.genomics</groupId>
       <artifactId>gatk-tools-java</artifactId>
       <version>1.0</version>
-    </dependency>
-    <dependency>
-      <groupId>com.google.protobuf</groupId>
-      <artifactId>protobuf-java</artifactId>
-      <version>${protobuf.java.version}</version>
     </dependency>
   </dependencies>
 
@@ -378,7 +295,8 @@
     <!-- Work around dataflow, grpc, and protobuf version issues
          http://stackoverflow.com/questions/36257708/java-lang-noclassdeffounderror-while-deserializing-protobuf-messages -->
     <google.dataflow.version>1.6.0</google.dataflow.version>
-    <io.grpc.version>0.14.0</io.grpc.version>
+    <io.netty.version>4.1.1.Final</io.netty.version>
+    <io.grpc.version>0.15.0</io.grpc.version>
     <protobuf.java.version>3.0.0-beta-1</protobuf.java.version>
 
     <java.version>1.7</java.version>
