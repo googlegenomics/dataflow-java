@@ -87,6 +87,7 @@ public class AnnotateVariantsITCase {
   @Test
   public void testLocal() throws Exception {
     String[] ARGS = {
+        "--project=" + helper.getTestProject(),
         "--references=chr17:40700000:40800000",
         "--variantSetId=" + helper.PLATINUM_GENOMES_DATASET,
         "--transcriptSetIds=CIjfoPXj9LqPlAEQ5vnql4KewYuSAQ",
@@ -107,6 +108,7 @@ public class AnnotateVariantsITCase {
         + "set id in variant set id 3049512673186936334"));
 
     String[] ARGS = {
+        "--project=" + helper.getTestProject(),
         "--references=chr17:40700000:40800000",
         "--variantSetId=" + helper.PLATINUM_GENOMES_DATASET,
         "--transcriptSetIds=CIjfoPXj9LqPlAEQ5vnql4KewYuSAQ",

@@ -360,6 +360,7 @@ public class IdentityByStateITCase {
   public void testSitesFilepathLocal() throws Exception {
 
     String[] ARGS = {
+        "--project=" + helper.getTestProject(),
         "--sitesFilepath=" + SITES_FILEPATH,
         "--variantSetId=" + helper.PLATINUM_GENOMES_DATASET,
         "--hasNonVariantSegments",
@@ -371,6 +372,7 @@ public class IdentityByStateITCase {
   @Test
   public void testLocal() throws Exception {
     String[] ARGS = {
+        "--project=" + helper.getTestProject(),
         "--references=" + helper.PLATINUM_GENOMES_BRCA1_REFERENCES,
         "--variantSetId=" + helper.PLATINUM_GENOMES_DATASET,
         "--hasNonVariantSegments",
@@ -382,11 +384,11 @@ public class IdentityByStateITCase {
   @Test
   public void testCloud() throws Exception {
     String[] ARGS = {
+        "--project=" + helper.getTestProject(),
         "--references=" + helper.PLATINUM_GENOMES_BRCA1_REFERENCES,
         "--variantSetId=" + helper.PLATINUM_GENOMES_DATASET,
         "--hasNonVariantSegments",
         "--output=" + outputPrefix,
-        "--project=" + helper.getTestProject(),
         "--runner=BlockingDataflowPipelineRunner",
         "--stagingLocation=" + helper.getTestStagingGcsFolder()
         };

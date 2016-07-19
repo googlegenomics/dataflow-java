@@ -139,6 +139,7 @@ public class IdentifyPrivateVariantsITCase {
   @Test
   public void testLocal() throws Exception {
     String[] ARGS = {
+        "--project=" + helper.getTestProject(),
         "--references=chr17:41198200:41198300", // smaller portion of BRCA1
         "--variantSetId=" + helper.PLATINUM_GENOMES_DATASET,
         "--callSetNamesFilepath=" + CALLSET_NAMES_FILEPATH,
