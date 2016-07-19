@@ -75,6 +75,7 @@ public class CountReadsITCase {
       boolean includeUnmapped) throws Exception {
     final String OUTPUT = helper.getTestOutputGcsFolder()+ outputFilename;
     String[] ARGS = {
+        "--project=" + helper.getTestProject(),
         "--output=" + OUTPUT,
         "--references=" + contig,
         "--includeUnmapped=" + includeUnmapped,

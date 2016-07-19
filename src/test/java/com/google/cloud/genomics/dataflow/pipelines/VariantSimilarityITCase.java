@@ -121,6 +121,7 @@ public class VariantSimilarityITCase {
   @Test
   public void testLocal() throws IOException, GeneralSecurityException {
     String[] ARGS = {
+        "--project=" + helper.getTestProject(),
         "--references=" + helper.PLATINUM_GENOMES_BRCA1_REFERENCES,
         "--variantSetId=" + helper.PLATINUM_GENOMES_DATASET,
         "--output=" + outputPrefix,
@@ -131,6 +132,7 @@ public class VariantSimilarityITCase {
   @Test
   public void testSitesFilepathLocal() throws IOException, GeneralSecurityException {
     String[] ARGS = {
+        "--project=" + helper.getTestProject(),
         "--sitesFilepath=" + IdentityByStateITCase.SITES_FILEPATH,
         "--variantSetId=" + helper.PLATINUM_GENOMES_DATASET,
         "--output=" + outputPrefix,
@@ -141,6 +143,7 @@ public class VariantSimilarityITCase {
   @Test
   public void testCallSetsLocal() throws IOException, GeneralSecurityException {
     String[] ARGS = {
+        "--project=" + helper.getTestProject(),
         "--references=" + helper.PLATINUM_GENOMES_BRCA1_REFERENCES,
         "--variantSetId=" + helper.PLATINUM_GENOMES_DATASET,
         "--callSetNames=" + helper.A_FEW_PLATINUM_GENOMES_CALLSET_NAMES,
@@ -152,10 +155,10 @@ public class VariantSimilarityITCase {
   @Test
   public void testCloud() throws IOException, GeneralSecurityException {
     String[] ARGS = {
+        "--project=" + helper.getTestProject(),
         "--references=" + helper.PLATINUM_GENOMES_BRCA1_REFERENCES,
         "--variantSetId=" + helper.PLATINUM_GENOMES_DATASET,
         "--output=" + outputPrefix,
-        "--project=" + helper.getTestProject(),
         "--runner=BlockingDataflowPipelineRunner",
         "--stagingLocation=" + helper.getTestStagingGcsFolder(),
         };

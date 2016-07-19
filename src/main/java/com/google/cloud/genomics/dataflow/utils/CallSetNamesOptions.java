@@ -65,11 +65,15 @@ public interface CallSetNamesOptions extends GenomicsOptions {
      * @throws IOException
      */
     public static StreamVariantsRequest getRequestPrototype(final CallSetNamesOptions options) throws IOException {
-      return StreamVariantsRequest.newBuilder()
-          .setProjectId(options.getProject())
+      StreamVariantsRequest.Builder request = StreamVariantsRequest.newBuilder()
           .setVariantSetId(options.getVariantSetId())
-          .addAllCallSetIds(getCallSetIds(options))
-          .build();
+          .addAllCallSetIds(getCallSetIds(options));
+
+      if (null != options.getProject()) {
+        request.setProjectId(options.getProject());
+      }
+
+      return request.build();
     }
 
     /**
