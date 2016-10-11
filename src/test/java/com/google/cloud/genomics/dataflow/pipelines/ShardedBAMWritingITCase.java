@@ -45,7 +45,7 @@ import htsjdk.samtools.SamReader;
  */
 @RunWith(JUnit4.class)
 public class ShardedBAMWritingITCase {
-  static final String TEST_CONTIG = "11:1:200000000";
+  static final String TEST_CONTIG = "11:0:200000000";
   static final String TEST_BAM_FNAME = "gs://genomics-public-data/ftp-trace.ncbi.nih.gov/1000genomes/ftp/phase3/data/NA12878/exome_alignment/NA12878.chrom11.ILLUMINA.bwa.CEU.exome.20121211.bam";
   static final String OUTPUT_FNAME = "sharded-output.bam";
   static final int EXPECTED_ALL_READS = 10414236;
