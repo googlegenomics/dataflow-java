@@ -19,7 +19,6 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.Assert.assertEquals;
 
 import com.google.api.client.util.Lists;
-import com.google.cloud.dataflow.sdk.util.gcsfs.GcsPath;
 import com.google.cloud.genomics.dataflow.functions.pca.PCoAnalysis.GraphResult;
 
 import org.hamcrest.CoreMatchers;
@@ -29,9 +28,6 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 
-import java.io.BufferedReader;
-import java.io.IOException;
-import java.security.GeneralSecurityException;
 import java.util.List;
 
 /**
@@ -113,13 +109,11 @@ public class VariantSimilarityITCase {
 
   @After
   public void tearDown() throws Exception {
-    for (GcsPath path : helper.gcsUtil.expand(GcsPath.fromUri(outputPrefix + "*"))) {
-      helper.deleteOutput(path.toString());
-    }
+    helper.deleteOutputs(outputPrefix);
   }
 
   @Test
-  public void testLocal() throws IOException, GeneralSecurityException {
+  public void testLocal() throws Exception {
     String[] ARGS = {
         "--project=" + helper.getTestProject(),
         "--references=" + helper.PLATINUM_GENOMES_BRCA1_REFERENCES,
@@ -130,7 +124,7 @@ public class VariantSimilarityITCase {
   }
 
   @Test
-  public void testSitesFilepathLocal() throws IOException, GeneralSecurityException {
+  public void testSitesFilepathLocal() throws Exception {
     String[] ARGS = {
         "--project=" + helper.getTestProject(),
         "--sitesFilepath=" + IdentityByStateITCase.SITES_FILEPATH,
@@ -141,7 +135,7 @@ public class VariantSimilarityITCase {
   }
 
   @Test
-  public void testCallSetsLocal() throws IOException, GeneralSecurityException {
+  public void testCallSetsLocal() throws Exception {
     String[] ARGS = {
         "--project=" + helper.getTestProject(),
         "--references=" + helper.PLATINUM_GENOMES_BRCA1_REFERENCES,
@@ -153,7 +147,7 @@ public class VariantSimilarityITCase {
   }
 
   @Test
-  public void testCloud() throws IOException, GeneralSecurityException {
+  public void testCloud() throws Exception {
     String[] ARGS = {
         "--project=" + helper.getTestProject(),
         "--references=" + helper.PLATINUM_GENOMES_BRCA1_REFERENCES,
@@ -165,17 +159,15 @@ public class VariantSimilarityITCase {
     testBase(ARGS, EXPECTED_BRCA1_RESULT);
   }
 
-  private void testBase(String[] ARGS, GraphResult[] expectedResult) throws IOException, GeneralSecurityException {
+  private void testBase(String[] ARGS, GraphResult[] expectedResult) throws Exception {
     // Run the pipeline.
     VariantSimilarity.main(ARGS);
 
     // Download the pipeline results.
+    List<String> rawResults = helper.downloadOutputs(outputPrefix, expectedResult.length);
     List<GraphResult> results = Lists.newArrayList();
-    for (GcsPath path : helper.gcsUtil.expand(GcsPath.fromUri(outputPrefix + "*"))) {
-      BufferedReader reader = helper.openOutput(path.toString());
-      for (String line = reader.readLine(); line != null; line = reader.readLine()) {
-        results.add(GraphResult.fromString(line));
-      }
+    for (String result : rawResults) {
+      results.add(GraphResult.fromString(result));
     }
 
     // Check the pipeline results.

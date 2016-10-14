@@ -18,6 +18,9 @@ package com.google.cloud.genomics.dataflow.pipelines;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
+import com.google.api.client.util.BackOff;
+import com.google.api.client.util.ExponentialBackOff;
+import com.google.api.client.util.Lists;
 import com.google.api.services.storage.Storage;
 import com.google.cloud.dataflow.sdk.options.GcsOptions;
 import com.google.cloud.dataflow.sdk.options.PipelineOptionsFactory;
@@ -31,10 +34,11 @@ import htsjdk.samtools.SamReader;
 import htsjdk.samtools.ValidationStringency;
 
 import java.io.BufferedReader;
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.Writer;
 import java.nio.channels.Channels;
-import java.security.GeneralSecurityException;
+import java.util.List;
 
 public class IntegrationTestHelper {
 
@@ -86,10 +90,13 @@ public class IntegrationTestHelper {
   }
 
   /**
-   * Make sure we can get to the output.
+   * Make sure we can get to the output for single-file test results.
    *
    * Also write a sentinel value to the file.  This protects against the possibility of prior
    * test output causing a newly failing test to appear to succeed.
+   *
+   * @param outputPath
+   * @throws IOException
    */
   public void touchOutput(String outputPath) throws IOException {
     try (Writer writer = Channels.newWriter(gcsUtil.create(GcsPath.fromUri(outputPath), "text/plain"), "UTF-8")) {
@@ -98,7 +105,7 @@ public class IntegrationTestHelper {
   }
 
   /**
-   * Open test output for reading.
+   * Open test output for reading for single file test results.
    */
   public BufferedReader openOutput(String outputPath) throws IOException {
     return new BufferedReader(Channels.newReader(gcsUtil.open(GcsPath.fromUri(outputPath)), "UTF-8"));
@@ -116,15 +123,79 @@ public class IntegrationTestHelper {
   }
 
   /**
-   * Delete test output.
+   * Download multi file test output.
+   *
+   * Some cloud storage operations are eventually consistent
+   * https://cloud.google.com/storage/docs/consistency so
+   * be robust for those cases.
+   *
+   * @param outputPrefix prefix for files to download
+   * @param numLinesExpected number of line expected
+   * @return lines from all test output files
+   * @throws Exception
    */
-  public void deleteOutput(String outputPath) throws IOException, GeneralSecurityException {
+  public List<String> downloadOutputs(String outputPrefix, int numLinesExpected) throws Exception {
+    // Download the pipeline results.
+    List<String> results = null;
+
+    ExponentialBackOff backoff = new ExponentialBackOff.Builder()
+      .setMaxIntervalMillis(6000)
+      .build();
+
+    while (true) {
+      try {
+        results = Lists.newArrayList();
+        for (GcsPath path : gcsUtil.expand(GcsPath.fromUri(outputPrefix + "*"))) {
+          BufferedReader reader = openOutput(path.toString());
+          for (String line = reader.readLine(); line != null; line = reader.readLine()) {
+            results.add(line);
+          }
+          reader.close();
+        }
+      } catch (FileNotFoundException e) {
+        long backOffMillis = backoff.nextBackOffMillis();
+        if (backOffMillis == BackOff.STOP) {
+          throw e;
+        }
+        Thread.sleep(backOffMillis);
+      }
+      long backOffMillis = backoff.nextBackOffMillis();
+      if (numLinesExpected == results.size()
+          || backOffMillis == BackOff.STOP) {
+        // If we have the number of results we expect OR we've used all the retries
+        // (e.g., due to a real test failure), exit from this loop.
+        break;
+      }
+      Thread.sleep(backOffMillis);
+    }
+    return results;
+  }
+
+  /**
+   * Delete single file test output.
+   *
+   * @param outputPath path to the output file to be deleted.
+   * @throws Exception
+   */
+  public void deleteOutput(String outputPath) throws Exception {
     // boilerplate
     GcsPath path = GcsPath.fromUri(outputPath);
     GcsOptions gcsOptions = popts.as(GcsOptions.class);
     Storage storage = Transport.newStorageClient(gcsOptions).build();
     // do the actual work
     storage.objects().delete(path.getBucket(), path.getObject()).execute();
+  }
+
+  /**
+   * Delete multi file test output.
+   *
+   * @param outputPrefix prefix for files to delete
+   * @throws Exception
+   */
+  public void deleteOutputs(String outputPrefix) throws Exception {
+    for (GcsPath path : gcsUtil.expand(GcsPath.fromUri(outputPrefix + "*"))) {
+      deleteOutput(path.toString());
+    }
   }
 
 }
