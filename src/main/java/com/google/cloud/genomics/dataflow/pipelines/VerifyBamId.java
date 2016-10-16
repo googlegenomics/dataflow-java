@@ -232,7 +232,6 @@ public class VerifyBamId {
     PCollection<Variant> variants = p.apply(Create.of(variantRequests))
     .apply(new VariantStreamer(auth, ShardBoundary.Requirement.STRICT, VARIANT_FIELDS));
 
-		// TODO(sergip): there are no refFreq elements returned by getFreq
     PCollection<KV<Position, AlleleFreq>> refFreq = getFreq(variants, pipelineOptions.getMinFrequency());
 
     PCollection<KV<Position, ReadCounts>> readCountsTable =
