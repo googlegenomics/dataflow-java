@@ -15,17 +15,16 @@
  */
 package com.google.cloud.genomics.dataflow.model;
 
-import com.google.api.client.json.GenericJson;
+import com.google.cloud.dataflow.sdk.coders.AvroCoder;
 import com.google.cloud.dataflow.sdk.coders.DefaultCoder;
-import com.google.cloud.genomics.dataflow.coders.GenericJsonCoder;
 
 import java.util.Objects;
 
 /**
  * Data on a single base in a read, used for pileup.
  */
-@DefaultCoder(GenericJsonCoder.class)
-public class ReadBaseQuality extends GenericJson {
+@DefaultCoder(AvroCoder.class)
+public class ReadBaseQuality {
 
   private String base;
   private int quality;
