@@ -18,9 +18,6 @@ package com.google.cloud.genomics.dataflow.pipelines;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.Assert.assertEquals;
 
-import com.google.api.client.util.Lists;
-import com.google.cloud.dataflow.sdk.util.gcsfs.GcsPath;
-
 import org.hamcrest.CoreMatchers;
 import org.junit.After;
 import org.junit.BeforeClass;
@@ -28,7 +25,6 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 
-import java.io.BufferedReader;
 import java.util.List;
 
 /**
@@ -131,9 +127,7 @@ public class IdentifyPrivateVariantsITCase {
 
   @After
   public void tearDown() throws Exception {
-    for (GcsPath path : helper.gcsUtil.expand(GcsPath.fromUri(outputPrefix + "*"))) {
-      helper.deleteOutput(path.toString());
-    }
+    helper.deleteOutputs(outputPrefix);
   }
 
   @Test
@@ -156,13 +150,7 @@ public class IdentifyPrivateVariantsITCase {
     IdentifyPrivateVariants.main(ARGS);
 
     // Download the pipeline results.
-    List<String> results = Lists.newArrayList();
-    for (GcsPath path : helper.gcsUtil.expand(GcsPath.fromUri(outputPrefix + "*"))) {
-      BufferedReader reader = helper.openOutput(path.toString());
-      for (String line = reader.readLine(); line != null; line = reader.readLine()) {
-        results.add(line);
-      }
-    }
+    List<String> results = helper.downloadOutputs(outputPrefix, expectedResult.length);
 
     // Check the pipeline results.
     assertEquals(expectedResult.length, results.size());
