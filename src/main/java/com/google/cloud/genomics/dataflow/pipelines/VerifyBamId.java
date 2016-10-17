@@ -94,7 +94,7 @@ import java.util.Vector;
  * http://www.sciencedirect.com/science/article/pii/S0002929712004788
  */
 public class VerifyBamId {
-	private static final Logger LOG = Logger.getLogger(VerifyBamId.class.getName());
+  private static final Logger LOG = Logger.getLogger(VerifyBamId.class.getName());
   /**
    * Options required to run this pipeline.
    */
@@ -211,9 +211,9 @@ public class VerifyBamId {
     // Reads in Reads.
     PCollection<Read> reads = p.begin()
       .apply(Create.of(rgsIds))
-			.apply(ParDo.of(new CheckMatchingReferenceSet(referenceSetId, auth)))
-			.apply(new ReadGroupStreamer(auth, ShardBoundary.Requirement.STRICT, null, SexChromosomeFilter.INCLUDE_XY));
-	
+      .apply(ParDo.of(new CheckMatchingReferenceSet(referenceSetId, auth)))
+      .apply(new ReadGroupStreamer(auth, ShardBoundary.Requirement.STRICT, null, SexChromosomeFilter.INCLUDE_XY));
+
     /*
     TODO:  We can reduce the number of requests needed to be created by doing the following:
     1. Stream the Variants first (rather than concurrently with the Reads).  Select a subset of
@@ -243,14 +243,13 @@ public class VerifyBamId {
 
     // Calculates the contamination estimate based on the resulting Map above.
     PCollection<String> result = p.begin()
-			.apply(Create.of(""))
+      .apply(Create.of(""))
       .apply(ParDo.of(new Maximizer(view)).withSideInputs(view));
-		
+
     // Writes the result to the given output location in Cloud Storage.
     result.apply(TextIO.Write.to(pipelineOptions.getOutput()).named("WriteOutput").withoutSharding());
 
     p.run();
-
   }
 
   /**
