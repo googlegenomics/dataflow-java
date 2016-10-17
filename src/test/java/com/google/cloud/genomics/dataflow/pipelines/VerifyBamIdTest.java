@@ -329,7 +329,7 @@ public class VerifyBamIdTest {
 
   @Test
   public void testPileupAndJoinReads() {
-		VerifyBamId.Options popts =
+    VerifyBamId.Options popts =
         PipelineOptionsFactory.create().as(VerifyBamId.Options.class);
     Pipeline p = TestPipeline.create(popts);
     p.getCoderRegistry().setFallbackCoderProvider(GenericJsonCoder.PROVIDER);
@@ -337,7 +337,7 @@ public class VerifyBamIdTest {
     final ReadBaseQuality srq = new ReadBaseQuality("A", 10);
     PCollection<KV<Position, ReadBaseQuality>> readCounts = p.apply(
         Create.of(KV.of(position1, srq)));
-		DataflowAssert.that(readCounts).containsInAnyOrder(KV.of(position1, srq));
+    DataflowAssert.that(readCounts).containsInAnyOrder(KV.of(position1, srq));
 
     PCollection<KV<Position, AlleleFreq>> refFreq = p.apply(Create.of(refCountList));
 
