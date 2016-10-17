@@ -488,7 +488,7 @@ public class VerifyBamId {
     // Grid search step size
     private static final double GRID_STEP = 0.001;
 
-	  public Maximizer(PCollectionView<Map<Position, ReadCounts>> view) {
+    public Maximizer(PCollectionView<Map<Position, ReadCounts>> view) {
       this.view = view;
     }
 
