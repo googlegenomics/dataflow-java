@@ -74,7 +74,7 @@ public class AlleleFreq {
 			&& altBases.containsAll(otherAlleleFreq.getAltBases());
 	}
 
-	/* (non-Javadoc)
+  /* (non-Javadoc)
    * @see java.lang.Object#toString()
    */
   @Override
