@@ -72,7 +72,6 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.Arrays;
 import java.util.List;
-import java.util.logging.Logger;
 import java.util.Map;
 import java.util.Vector;
 
@@ -94,7 +93,6 @@ import java.util.Vector;
  * http://www.sciencedirect.com/science/article/pii/S0002929712004788
  */
 public class VerifyBamId {
-  private static final Logger LOG = Logger.getLogger(VerifyBamId.class.getName());
   /**
    * Options required to run this pipeline.
    */
@@ -170,7 +168,6 @@ public class VerifyBamId {
    * Run the VerifyBamId algorithm and output the resulting contamination estimate.
    */
   public static void main(String[] args) throws GeneralSecurityException, IOException {
-		LOG.info("Starting VerfyBamId");
     // Register the options so that they show up via --help
     PipelineOptionsFactory.register(Options.class);
     pipelineOptions = PipelineOptionsFactory.fromArgs(args)
@@ -210,9 +207,10 @@ public class VerifyBamId {
 
     // Reads in Reads.
     PCollection<Read> reads = p.begin()
-      .apply(Create.of(rgsIds))
-      .apply(ParDo.of(new CheckMatchingReferenceSet(referenceSetId, auth)))
-      .apply(new ReadGroupStreamer(auth, ShardBoundary.Requirement.STRICT, null, SexChromosomeFilter.INCLUDE_XY));
+        .apply(Create.of(rgsIds))
+        .apply(ParDo.of(new CheckMatchingReferenceSet(referenceSetId, auth)))
+        .apply(new ReadGroupStreamer(auth, ShardBoundary.Requirement.STRICT, null,
+                                   SexChromosomeFilter.INCLUDE_XY));
 
     /*
     TODO:  We can reduce the number of requests needed to be created by doing the following:
@@ -227,10 +225,10 @@ public class VerifyBamId {
     List<StreamVariantsRequest> variantRequests = pipelineOptions.isAllReferences() ?
         ShardUtils.getVariantRequests(prototype, ShardUtils.SexChromosomeFilter.INCLUDE_XY,
             pipelineOptions.getBasesPerShard(), auth) :
-          ShardUtils.getVariantRequests(prototype, pipelineOptions.getBasesPerShard(), pipelineOptions.getReferences());
+        ShardUtils.getVariantRequests(prototype, pipelineOptions.getBasesPerShard(), pipelineOptions.getReferences());
 
     PCollection<Variant> variants = p.apply(Create.of(variantRequests))
-    .apply(new VariantStreamer(auth, ShardBoundary.Requirement.STRICT, VARIANT_FIELDS));
+        .apply(new VariantStreamer(auth, ShardBoundary.Requirement.STRICT, VARIANT_FIELDS));
 
     PCollection<KV<Position, AlleleFreq>> refFreq = getFreq(variants, pipelineOptions.getMinFrequency());
 
@@ -243,8 +241,8 @@ public class VerifyBamId {
 
     // Calculates the contamination estimate based on the resulting Map above.
     PCollection<String> result = p.begin()
-      .apply(Create.of(""))
-      .apply(ParDo.of(new Maximizer(view)).withSideInputs(view));
+        .apply(Create.of(""))
+        .apply(ParDo.of(new Maximizer(view)).withSideInputs(view));
 
     // Writes the result to the given output location in Cloud Storage.
     result.apply(TextIO.Write.to(pipelineOptions.getOutput()).named("WriteOutput").withoutSharding());
@@ -494,12 +492,12 @@ public class VerifyBamId {
 
     @Override
     public void processElement(ProcessContext c) throws Exception {
-			float[] steps = new float[]{0.1f, 0.05f, 0.01f, 0.005f, 0.001f};
-			for (float step : steps) {
-				c.output(Float.toString(step) + ": " +
-      		Double.toString(Solver.maximize(new LikelihoodFn(c.sideInput(view)),
-          	0.0, 0.5, step, REL_ERR, ABS_ERR, MAX_ITER, MAX_EVAL)));
-			}
+      float[] steps = new float[]{0.1f, 0.05f, 0.01f, 0.005f, 0.001f};
+      for (float step : steps) {
+        c.output(Float.toString(step) + ": " +
+                Double.toString(Solver.maximize(new LikelihoodFn(c.sideInput(view)),
+                                                0.0, 0.5, step, REL_ERR, ABS_ERR, MAX_ITER, MAX_EVAL)));
+      }
     }
   }
 }
