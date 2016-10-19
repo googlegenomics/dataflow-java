@@ -131,7 +131,7 @@ public class VerifyBamId {
         + "  Defaults to the 1,000 Genomes phase 1 VariantSet with id " + DEFAULT_VARIANTSET + ".")
     @Default.String(DEFAULT_VARIANTSET)
     String getVariantSetId();
-		void setVariantSetId(String variantSetId);
+    void setVariantSetId(String variantSetId);
 
     @Description("The minimum allele frequency to use in analysis.  Defaults to 0.01.")
     @Default.Double(0.01)
@@ -210,7 +210,7 @@ public class VerifyBamId {
         .apply(Create.of(rgsIds))
         .apply(ParDo.of(new CheckMatchingReferenceSet(referenceSetId, auth)))
         .apply(new ReadGroupStreamer(auth, ShardBoundary.Requirement.STRICT, null,
-                                   SexChromosomeFilter.INCLUDE_XY));
+                                     SexChromosomeFilter.INCLUDE_XY));
 
     /*
     TODO:  We can reduce the number of requests needed to be created by doing the following:
