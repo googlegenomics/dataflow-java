@@ -15,18 +15,17 @@
  */
 package com.google.cloud.genomics.dataflow.model;
 
-import com.google.api.client.json.GenericJson;
 import com.google.cloud.dataflow.sdk.coders.DefaultCoder;
-import com.google.cloud.genomics.dataflow.coders.GenericJsonCoder;
-
+import com.google.cloud.dataflow.sdk.coders.AvroCoder;
 import java.util.List;
+import java.util.Objects;
 
 /**
  * Contains frequency for a set of alleles for a single position on a single chromosome.
  * Used in VerifyBamId.
  */
-@DefaultCoder(GenericJsonCoder.class)
-public class AlleleFreq extends GenericJson {
+@DefaultCoder(AvroCoder.class)
+public class AlleleFreq {
   // Strings of length 1 of one of the following bases: ['A', 'C', 'T', 'G'].
   private String refBases;
   // List of length 1 of a String of length 1 of one of the following bases: ['A', 'C', 'T', 'G'].
@@ -57,6 +56,22 @@ public class AlleleFreq extends GenericJson {
 
   public void setRefFreq(double refFreq) {
     this.refFreq = refFreq;
+  }
+	
+  @Override
+  public int hashCode() {
+    return Objects.hash(refBases, altBases, refFreq);
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (!(o instanceof AlleleFreq)) {
+      return false;
+    }
+    AlleleFreq otherAlleleFreq = (AlleleFreq) o;
+    return Objects.equals(refBases, otherAlleleFreq.getRefBases())
+      && (refFreq == otherAlleleFreq.getRefFreq())
+      && altBases.containsAll(otherAlleleFreq.getAltBases());
   }
 
   /* (non-Javadoc)

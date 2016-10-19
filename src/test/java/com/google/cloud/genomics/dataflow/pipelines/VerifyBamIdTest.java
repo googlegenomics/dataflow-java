@@ -15,8 +15,9 @@
  */
 package com.google.cloud.genomics.dataflow.pipelines;
 
-import com.google.cloud.dataflow.sdk.Pipeline;
+import com.google.cloud.dataflow.sdk.coders.AvroCoder;
 import com.google.cloud.dataflow.sdk.options.PipelineOptionsFactory;
+import com.google.cloud.dataflow.sdk.Pipeline;
 import com.google.cloud.dataflow.sdk.testing.DataflowAssert;
 import com.google.cloud.dataflow.sdk.testing.TestPipeline;
 import com.google.cloud.dataflow.sdk.transforms.Create;
@@ -56,12 +57,16 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 
+import java.util.List;
+import java.util.ArrayList;
+import java.util.Arrays;
+import com.google.cloud.dataflow.sdk.transforms.DoFn;
+
 /**
  * Tests for the VerifyBamId pipeline.
  */
 @RunWith(JUnit4.class)
-public class VerifyBamIdTest {
-
+public class VerifyBamIdTest {	
   @Test
   public void testSplitReads_singleMatchedBase() {
     DoFnTester<Read, KV<Position, ReadBaseQuality>> splitReads = DoFnTester.of(new SplitReads());
@@ -235,7 +240,7 @@ public class VerifyBamIdTest {
         .setReferenceBases("C")
         .addAlternateBases("T");
     vBuild.getMutableInfo().put("AF", ListValue.newBuilder()
-        .addValues(Value.newBuilder().setNumberValue(0.25).build()).build());
+        .addValues(Value.newBuilder().setStringValue("0.25").build()).build());
     AlleleFreq af = new AlleleFreq();
     af.setAltBases(Lists.newArrayList("T"));
     af.setRefBases("C");
@@ -260,26 +265,39 @@ public class VerifyBamIdTest {
     Assert.assertTrue(filterFreq.apply(KV.of(pos, af)));
   }
 
-  private final Position position1
-    = Position.newBuilder()
+  private final Position position1 = Position.newBuilder()
       .setReferenceName("1")
       .setPosition(123L)
       .build();
-  private final Position position2
-    = Position.newBuilder()
+  private final Position position2 = Position.newBuilder()
       .setReferenceName("1")
       .setPosition(124L)
       .build();
-  private final Position position3
-    = Position.newBuilder()
+  private final Position position3 = Position.newBuilder()
       .setReferenceName("1")
       .setPosition(125L)
       .build();
-  private final Position position1chrPrefix
-  = Position.newBuilder()
+  private final Position position1chrPrefix = Position.newBuilder()
     .setReferenceName("chr1")
     .setPosition(123L)
     .build();
+
+  private final ReadCounts rc1;
+  {
+    rc1 = new ReadCounts();
+    rc1.setRefFreq(0.8);
+    rc1.addReadQualityCount(ReadQualityCount.Base.REF, 10, 1);
+  }
+  private final ReadCounts rc2;
+  {
+    rc2 = new ReadCounts();
+    rc2.setRefFreq(0.5);
+  }
+  private final ReadCounts rc3;
+  {
+    rc3 = new ReadCounts();
+    rc3.setRefFreq(0.6);
+  }
 
   private ImmutableList<KV<Position, AlleleFreq>> refCountList;
   {
@@ -303,7 +321,6 @@ public class VerifyBamIdTest {
     refCountList = refBuilder.build();
   }
 
-  @Ignore
   @Test
   public void testPileupAndJoinReads() {
     VerifyBamId.Options popts =
@@ -317,6 +334,7 @@ public class VerifyBamIdTest {
     DataflowAssert.that(readCounts).containsInAnyOrder(KV.of(position1, srq));
 
     PCollection<KV<Position, AlleleFreq>> refFreq = p.apply(Create.of(refCountList));
+
     DataflowAssert.that(refFreq).containsInAnyOrder(refCountList);
 
     final TupleTag<ReadBaseQuality> readCountsTag = new TupleTag<>();
@@ -328,16 +346,15 @@ public class VerifyBamIdTest {
 
     PCollection<KV<Position, ReadCounts>> result = joined.apply(
         ParDo.of(new PileupAndJoinReads(readCountsTag, refFreqTag)));
+		
+    KV<Position, ReadCounts> expectedResult1 = KV.of(position1, rc1);
+    KV<Position, ReadCounts> expectedResult2 = KV.of(position2, rc2);
+    KV<Position, ReadCounts> expectedResult3 = KV.of(position3, rc3);
 
-    ReadCounts rc = new ReadCounts();
-    rc.setRefFreq(0.8);
-    rc.addReadQualityCount(ReadQualityCount.Base.REF, 10, 1);
-
-    DataflowAssert.that(result).containsInAnyOrder(KV.of(position1, rc));
+    DataflowAssert.that(result).containsInAnyOrder(expectedResult1, expectedResult2, expectedResult3);
     p.run();
   }
 
-  @Ignore
   @Test
   public void testPileupAndJoinReadsWithChrPrefix() {
     VerifyBamId.Options popts =
@@ -362,15 +379,15 @@ public class VerifyBamIdTest {
 
     PCollection<KV<Position, ReadCounts>> result = joined.apply(
         ParDo.of(new PileupAndJoinReads(readCountsTag, refFreqTag)));
+	
+    KV<Position, ReadCounts> expectedResult1 = KV.of(position1, rc1);
+    KV<Position, ReadCounts> expectedResult2 = KV.of(position2, rc2);
+    KV<Position, ReadCounts> expectedResult3 = KV.of(position3, rc3);
 
-    ReadCounts rc = new ReadCounts();
-    rc.setRefFreq(0.8);
-    rc.addReadQualityCount(ReadQualityCount.Base.REF, 10, 1);
-    DataflowAssert.that(result).containsInAnyOrder(KV.of(position1, rc));
+    DataflowAssert.that(result).containsInAnyOrder(expectedResult1, expectedResult2, expectedResult3);
     p.run();
   }
 
-  @Ignore
   @Test
   public void testCombineReads() {
     VerifyBamId.Options popts =

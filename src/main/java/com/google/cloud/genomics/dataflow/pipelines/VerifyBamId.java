@@ -23,6 +23,7 @@ import com.google.cloud.dataflow.sdk.transforms.Create;
 import com.google.cloud.dataflow.sdk.transforms.DoFn;
 import com.google.cloud.dataflow.sdk.transforms.Filter;
 import com.google.cloud.dataflow.sdk.transforms.ParDo;
+import com.google.cloud.dataflow.sdk.transforms.Sample;
 import com.google.cloud.dataflow.sdk.transforms.SerializableFunction;
 import com.google.cloud.dataflow.sdk.transforms.View;
 import com.google.cloud.dataflow.sdk.transforms.join.CoGbkResult;
@@ -72,6 +73,7 @@ import java.security.NoSuchAlgorithmException;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
+import java.util.Vector;
 
 /**
  * Test a set of reads for contamination.
@@ -91,7 +93,6 @@ import java.util.Map;
  * http://www.sciencedirect.com/science/article/pii/S0002929712004788
  */
 public class VerifyBamId {
-
   /**
    * Options required to run this pipeline.
    */
@@ -130,6 +131,7 @@ public class VerifyBamId {
         + "  Defaults to the 1,000 Genomes phase 1 VariantSet with id " + DEFAULT_VARIANTSET + ".")
     @Default.String(DEFAULT_VARIANTSET)
     String getVariantSetId();
+    void setVariantSetId(String variantSetId);
 
     @Description("The minimum allele frequency to use in analysis.  Defaults to 0.01.")
     @Default.Double(0.01)
@@ -148,7 +150,6 @@ public class VerifyBamId {
         GCSOutputOptions.Methods.validateOptions(options);
       }
     }
-
   }
 
   private static Pipeline p;
@@ -208,7 +209,8 @@ public class VerifyBamId {
     PCollection<Read> reads = p.begin()
         .apply(Create.of(rgsIds))
         .apply(ParDo.of(new CheckMatchingReferenceSet(referenceSetId, auth)))
-        .apply(new ReadGroupStreamer(auth, ShardBoundary.Requirement.STRICT, null, SexChromosomeFilter.INCLUDE_XY));
+        .apply(new ReadGroupStreamer(auth, ShardBoundary.Requirement.STRICT, null,
+                                     SexChromosomeFilter.INCLUDE_XY));
 
     /*
     TODO:  We can reduce the number of requests needed to be created by doing the following:
@@ -219,14 +221,14 @@ public class VerifyBamId {
     3. Stream the Reads from the created requests.
     */
 
-    // Reads in Variants.  TODO potentially provide an option to load the Variants from a file.
+    // Reads in Variants. TODO potentially provide an option to load the Variants from a file.
     List<StreamVariantsRequest> variantRequests = pipelineOptions.isAllReferences() ?
         ShardUtils.getVariantRequests(prototype, ShardUtils.SexChromosomeFilter.INCLUDE_XY,
             pipelineOptions.getBasesPerShard(), auth) :
-          ShardUtils.getVariantRequests(prototype, pipelineOptions.getBasesPerShard(), pipelineOptions.getReferences());
+        ShardUtils.getVariantRequests(prototype, pipelineOptions.getBasesPerShard(), pipelineOptions.getReferences());
 
     PCollection<Variant> variants = p.apply(Create.of(variantRequests))
-    .apply(new VariantStreamer(auth, ShardBoundary.Requirement.STRICT, VARIANT_FIELDS));
+        .apply(new VariantStreamer(auth, ShardBoundary.Requirement.STRICT, VARIANT_FIELDS));
 
     PCollection<KV<Position, AlleleFreq>> refFreq = getFreq(variants, pipelineOptions.getMinFrequency());
 
@@ -238,14 +240,14 @@ public class VerifyBamId {
         .apply(View.<Position, ReadCounts>asMap());
 
     // Calculates the contamination estimate based on the resulting Map above.
-    PCollection<String> result = p.begin().apply(Create.of(""))
+    PCollection<String> result = p.begin()
+        .apply(Create.of(""))
         .apply(ParDo.of(new Maximizer(view)).withSideInputs(view));
 
     // Writes the result to the given output location in Cloud Storage.
     result.apply(TextIO.Write.to(pipelineOptions.getOutput()).named("WriteOutput").withoutSharding());
 
     p.run();
-
   }
 
   /**
@@ -305,7 +307,6 @@ public class VerifyBamId {
    * Split reads into individual aligned bases and emit base + quality.
    */
   static class SplitReads extends DoFn<Read, KV<Position, ReadBaseQuality>> {
-
     @Override
     public void processElement(ProcessContext c) throws Exception {
       List<ReadBaseWithReference> readBases = ReadFunctions.extractReadBases(c.element());
@@ -321,7 +322,6 @@ public class VerifyBamId {
    * Sample bases via a hash mod of position.
    */
   static class SampleReads implements SerializableFunction<KV<Position, ReadBaseQuality>, Boolean> {
-
     private final double samplingFraction;
     private final String samplingPrefix;
 
@@ -365,7 +365,6 @@ public class VerifyBamId {
    * Map a variant to a Position, AlleleFreq pair.
    */
   static class GetAlleleFreq extends DoFn<Variant, KV<Position, AlleleFreq>> {
-
     @Override
     public void processElement(ProcessContext c) throws Exception {
       ListValue lv = c.element().getInfo().get("AF");
@@ -375,7 +374,7 @@ public class VerifyBamId {
             .setReferenceName(c.element().getReferenceName())
             .build();
         AlleleFreq af = new AlleleFreq();
-        af.setRefFreq(lv.getValues(0).getNumberValue());
+        af.setRefFreq(Double.parseDouble(lv.getValues(0).getStringValue()));
         af.setAltBases(c.element().getAlternateBasesList());
         af.setRefBases(c.element().getReferenceBases());
         c.output(KV.of(position, af));
@@ -386,7 +385,7 @@ public class VerifyBamId {
         // step the number of AlleleFreqs retrieved is below a given threshold, then throw an
         // exception.
         throw new IllegalArgumentException("Variant " + c.element().getId() + " does not have "
-            + "allele frequency information stored in INFO field AF.");
+           + "allele frequency information stored in INFO field AF.");
       }
     }
   }
@@ -396,7 +395,6 @@ public class VerifyBamId {
    * frequencies are below a minimum specified at construction.
    */
   static class FilterFreq implements SerializableFunction<KV<Position, AlleleFreq>, Boolean> {
-
     private final double minFreq;
 
     public FilterFreq(double minFreq) {
@@ -432,7 +430,7 @@ public class VerifyBamId {
     public void processElement(ProcessContext c) throws Exception {
       AlleleFreq af = null;
       af = c.element().getValue().getOnly(refFreqTag, null);
-      if (af == null) {
+      if (af == null || af.getAltBases() == null) {
         // no ref stats
         return;
       }
@@ -482,11 +480,11 @@ public class VerifyBamId {
     // Target relative error for Brent's algorithm
     private static final double REL_ERR = 0.0001;
     // Maximum number of evaluations of the Likelihood function in Brent's algorithm
-    private static final int MAX_EVAL = 100;
+    private static final int MAX_EVAL = 1000;
     // Maximum number of iterations of Brent's algorithm
-    private static final int MAX_ITER = 100;
+    private static final int MAX_ITER = 1000;
     // Grid search step size
-    private static final double GRID_STEP = 0.05;
+    private static final double GRID_STEP = 0.001;
 
     public Maximizer(PCollectionView<Map<Position, ReadCounts>> view) {
       this.view = view;
@@ -494,8 +492,12 @@ public class VerifyBamId {
 
     @Override
     public void processElement(ProcessContext c) throws Exception {
-      c.output(Double.toString(Solver.maximize(new LikelihoodFn(c.sideInput(view)),
-          0.0, 0.5, GRID_STEP, REL_ERR, ABS_ERR, MAX_ITER, MAX_EVAL)));
+      float[] steps = new float[]{0.1f, 0.05f, 0.01f, 0.005f, 0.001f};
+      for (float step : steps) {
+        c.output(Float.toString(step) + ": " +
+                Double.toString(Solver.maximize(new LikelihoodFn(c.sideInput(view)),
+                                                0.0, 0.5, step, REL_ERR, ABS_ERR, MAX_ITER, MAX_EVAL)));
+      }
     }
   }
 }
