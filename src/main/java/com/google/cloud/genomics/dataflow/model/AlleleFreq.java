@@ -58,21 +58,21 @@ public class AlleleFreq {
     this.refFreq = refFreq;
   }
 	
-	@Override
-	public int hashCode() {
-		return Objects.hash(refBases, altBases, refFreq);
-	}
+  @Override
+  public int hashCode() {
+    return Objects.hash(refBases, altBases, refFreq);
+  }
 
-	@Override
-	public boolean equals(Object o) {
-		if (!(o instanceof AlleleFreq)) {
-			return false;
-		}
-		AlleleFreq otherAlleleFreq = (AlleleFreq) o;
-		return Objects.equals(refBases, otherAlleleFreq.getRefBases())
-			&& (refFreq == otherAlleleFreq.getRefFreq())
-			&& altBases.containsAll(otherAlleleFreq.getAltBases());
-	}
+  @Override
+  public boolean equals(Object o) {
+    if (!(o instanceof AlleleFreq)) {
+      return false;
+    }
+    AlleleFreq otherAlleleFreq = (AlleleFreq) o;
+    return Objects.equals(refBases, otherAlleleFreq.getRefBases())
+      && (refFreq == otherAlleleFreq.getRefFreq())
+      && altBases.containsAll(otherAlleleFreq.getAltBases());
+  }
 
   /* (non-Javadoc)
    * @see java.lang.Object#toString()
