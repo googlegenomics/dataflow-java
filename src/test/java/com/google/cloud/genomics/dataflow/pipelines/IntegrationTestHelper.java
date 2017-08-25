@@ -51,7 +51,7 @@ public class IntegrationTestHelper {
   public static final String PLATINUM_GENOMES_DATASET = "3049512673186936334";
   public static final String PLATINUM_GENOMES_BRCA1_REFERENCES = "chr17:41196311:41277499";
   public static final int PLATINUM_GENOMES_NUMBER_OF_SAMPLES = 17;
-  public static final String A_FEW_PLATINUM_GENOMES_CALLSET_NAMES = "NA12877,NA12880,NA12890";
+  public static final String A_FEW_PLATINUM_GENOMES_CALLSET_NAMES = "NA12877,NA12889,NA12890";
 
   private GenomicsOptions popts = PipelineOptionsFactory.create().as(GenomicsOptions.class);
   GcsUtil gcsUtil;
