@@ -16,16 +16,16 @@
 package com.google.cloud.genomics.dataflow.readers.bam;
 
 import com.google.api.services.storage.Storage;
-import com.google.cloud.dataflow.sdk.Pipeline;
-import com.google.cloud.dataflow.sdk.coders.SerializableCoder;
-import com.google.cloud.dataflow.sdk.transforms.Aggregator;
-import com.google.cloud.dataflow.sdk.transforms.Create;
-import com.google.cloud.dataflow.sdk.transforms.DoFn;
-import com.google.cloud.dataflow.sdk.transforms.PTransform;
-import com.google.cloud.dataflow.sdk.transforms.ParDo;
-import com.google.cloud.dataflow.sdk.transforms.Sum.SumIntegerFn;
-import com.google.cloud.dataflow.sdk.util.Transport;
-import com.google.cloud.dataflow.sdk.values.PCollection;
+import org.apache.beam.sdk.Pipeline;
+import org.apache.beam.sdk.options.PipelineOptions;
+import org.apache.beam.sdk.coders.SerializableCoder;
+import org.apache.beam.sdk.metrics.Metrics;
+import org.apache.beam.sdk.transforms.Create;
+import org.apache.beam.sdk.transforms.DoFn;
+import org.apache.beam.sdk.transforms.PTransform;
+import org.apache.beam.sdk.transforms.ParDo;
+import org.apache.beam.sdk.util.Transport;
+import org.apache.beam.sdk.values.PCollection;
 import com.google.cloud.genomics.dataflow.utils.GCSOptions;
 import com.google.cloud.genomics.utils.Contig;
 import com.google.cloud.genomics.utils.OfflineAuth;
@@ -46,36 +46,27 @@ public class ReadBAMTransform extends PTransform<PCollection<BAMShard>, PCollect
     OfflineAuth auth;
     Storage.Objects storage;
     ReaderOptions options;
-    Aggregator<Integer, Integer> recordCountAggregator;
-    Aggregator<Integer, Integer> readCountAggregator;
-    Aggregator<Integer, Integer> skippedStartCountAggregator;
-    Aggregator<Integer, Integer> skippedEndCountAggregator;
-    Aggregator<Integer, Integer> skippedRefMismatchAggregator;
 
     public ReadFn(OfflineAuth auth, ReaderOptions options) {
       this.auth = auth;
       this.options = options;
-      recordCountAggregator = createAggregator("Processed records", new SumIntegerFn());
-      readCountAggregator = createAggregator("Reads generated", new SumIntegerFn());
-      skippedStartCountAggregator = createAggregator("Skipped start", new SumIntegerFn());
-      skippedEndCountAggregator = createAggregator("Skipped end", new SumIntegerFn());
-      skippedRefMismatchAggregator = createAggregator("Ref mismatch", new SumIntegerFn());
     }
 
-    @Override
-    public void startBundle(DoFn<BAMShard, Read>.Context c) throws IOException {
+    @StartBundle
+    public void startBundle(DoFn<BAMShard, Read>.StartBundleContext c) throws IOException {
       storage = Transport.newStorageClient(c.getPipelineOptions().as(GCSOptions.class)).build().objects();
     }
 
-    @Override
+    @ProcessElement
     public void processElement(ProcessContext c) throws java.lang.Exception {
       final Reader reader = new Reader(storage, options, c.element(), c);
       reader.process();
-      recordCountAggregator.addValue(reader.recordsProcessed);
-      skippedStartCountAggregator.addValue(reader.recordsBeforeStart);
-      skippedEndCountAggregator.addValue(reader.recordsAfterEnd);
-      skippedRefMismatchAggregator.addValue(reader.mismatchedSequence);
-      readCountAggregator.addValue(reader.readsGenerated);
+      Metrics.counter(ReadBAMTransform.class, "Processed records").inc(reader.recordsProcessed);
+      Metrics.counter(ReadBAMTransform.class, "Reads generated").inc(reader.readsGenerated);
+      Metrics.counter(ReadBAMTransform.class, "Skipped start").inc(reader.recordsBeforeStart);
+      Metrics.counter(ReadBAMTransform.class, "Skipped end").inc(reader.recordsAfterEnd);
+      Metrics.counter(ReadBAMTransform.class, "Ref mismatch").inc(reader.mismatchedSequence);
+
     }
   }
 
@@ -84,6 +75,7 @@ public class ReadBAMTransform extends PTransform<PCollection<BAMShard>, PCollect
 
   public static PCollection<Read> getReadsFromBAMFilesSharded(
       Pipeline p,
+      PipelineOptions pipelineOptions,
       OfflineAuth auth,
       Iterable<Contig> contigs,
       ReaderOptions options,
@@ -93,7 +85,7 @@ public class ReadBAMTransform extends PTransform<PCollection<BAMShard>, PCollect
       readBAMSTransform.setAuth(auth);
 
       final Storage.Objects storage = Transport
-          .newStorageClient(p.getOptions().as(GCSOptions.class)).build().objects();
+          .newStorageClient(pipelineOptions.as(GCSOptions.class)).build().objects();
 
 
       final List<BAMShard> shardsList = Sharder.shardBAMFile(storage, BAMFile, contigs,
@@ -103,11 +95,11 @@ public class ReadBAMTransform extends PTransform<PCollection<BAMShard>, PCollect
           .of(shardsList))
           .setCoder(SerializableCoder.of(BAMShard.class));
 
-      return readBAMSTransform.apply(shards);
+      return readBAMSTransform.expand(shards);
   }
 
   @Override
-  public PCollection<Read> apply(PCollection<BAMShard> shards) {
+  public PCollection<Read> expand(PCollection<BAMShard> shards) {
     final PCollection<Read> reads = shards.apply(ParDo
         .of(new ReadFn(auth, options)));
 

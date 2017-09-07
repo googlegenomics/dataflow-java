@@ -17,7 +17,7 @@ package com.google.cloud.genomics.dataflow.readers.bam;
 
 import com.google.api.services.storage.Storage;
 import com.google.api.services.storage.Storage.Objects;
-import com.google.cloud.dataflow.sdk.transforms.DoFn;
+import org.apache.beam.sdk.transforms.DoFn;
 import com.google.cloud.genomics.utils.Contig;
 import com.google.cloud.genomics.utils.grpc.ReadUtils;
 import com.google.common.base.Stopwatch;

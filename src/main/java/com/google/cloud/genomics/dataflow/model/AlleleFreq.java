@@ -15,8 +15,8 @@
  */
 package com.google.cloud.genomics.dataflow.model;
 
-import com.google.cloud.dataflow.sdk.coders.DefaultCoder;
-import com.google.cloud.dataflow.sdk.coders.AvroCoder;
+import org.apache.beam.sdk.coders.DefaultCoder;
+import org.apache.beam.sdk.coders.AvroCoder;
 import java.util.List;
 import java.util.Objects;
 

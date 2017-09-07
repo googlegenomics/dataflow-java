@@ -22,8 +22,8 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
-import com.google.cloud.dataflow.sdk.transforms.DoFnTester;
-import com.google.cloud.dataflow.sdk.values.KV;
+import org.apache.beam.sdk.transforms.DoFnTester;
+import org.apache.beam.sdk.values.KV;
 import com.google.cloud.genomics.dataflow.utils.DataUtils;
 import com.google.genomics.v1.Variant;
 import com.google.genomics.v1.VariantCall;
@@ -120,7 +120,7 @@ public class CallSimilarityCalculatorTest {
   }
 
   @Test
-  public void testAlleleSimilarityCalculatorWithSharedAllelesRatio() {
+  public void testAlleleSimilarityCalculatorWithSharedAllelesRatio() throws Exception {
     Map<KV<String, String>, KV<Double, Integer>> fnOutputMap =
         calculatorOutputAsMap(new SharedAllelesRatioCalculatorFactory());
 
@@ -134,7 +134,7 @@ public class CallSimilarityCalculatorTest {
   }
 
   @Test
-  public void testAlleleSimilarityCalculatorWithSharedMinorAlleles() {
+  public void testAlleleSimilarityCalculatorWithSharedMinorAlleles() throws Exception {
     Map<KV<String, String>, KV<Double, Integer>> fnOutputMap =
         calculatorOutputAsMap(new SharedMinorAllelesCalculatorFactory());
 
@@ -148,11 +148,11 @@ public class CallSimilarityCalculatorTest {
   }
 
   private Map<KV<String, String>, KV<Double, Integer>> calculatorOutputAsMap(
-      CallSimilarityCalculatorFactory calculatorFactory) {
+      CallSimilarityCalculatorFactory calculatorFactory) throws Exception {
     DoFnTester<Variant, KV<KV<String, String>, KV<Double, Integer>>> fnTester =
         DoFnTester.of(new AlleleSimilarityCalculator(calculatorFactory));
     List<KV<KV<String, String>, KV<Double, Integer>>> fnOutput =
-        fnTester.processBatch(variants.toArray(new Variant[] {}));
+        fnTester.processBundle(variants.toArray(new Variant[] {}));
     Map<KV<String, String>, KV<Double, Integer>> fnOutputMap = newHashMap();
     for (KV<KV<String, String>, KV<Double, Integer>> kv : fnOutput) {
       fnOutputMap.put(kv.getKey(), kv.getValue());

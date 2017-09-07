@@ -1,6 +1,6 @@
 package com.google.cloud.genomics.dataflow.functions;
 
-import com.google.cloud.dataflow.sdk.transforms.DoFn;
+import org.apache.beam.sdk.transforms.DoFn;
 import com.google.cloud.genomics.dataflow.readers.bam.HeaderInfo;
 
 import htsjdk.samtools.SAMFileHeader;
@@ -11,7 +11,7 @@ import java.util.logging.Logger;
 public class GetReferencesFromHeaderFn extends DoFn<HeaderInfo, String> {
   private static final Logger LOG = Logger.getLogger(GetReferencesFromHeaderFn.class.getName());
 
-  @Override
+  @ProcessElement
   public void processElement(DoFn<HeaderInfo, String>.ProcessContext c) throws Exception {
     final SAMFileHeader header = c.element().header;
     for (SAMSequenceRecord sequence : header.getSequenceDictionary().getSequences()) {

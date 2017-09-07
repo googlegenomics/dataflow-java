@@ -13,16 +13,16 @@
  */
 package com.google.cloud.genomics.dataflow.pipelines;
 
-import com.google.cloud.dataflow.sdk.Pipeline;
-import com.google.cloud.dataflow.sdk.io.TextIO;
-import com.google.cloud.dataflow.sdk.options.Default;
-import com.google.cloud.dataflow.sdk.options.Description;
-import com.google.cloud.dataflow.sdk.options.PipelineOptionsFactory;
-import com.google.cloud.dataflow.sdk.options.Validation.Required;
-import com.google.cloud.dataflow.sdk.transforms.Create;
-import com.google.cloud.dataflow.sdk.transforms.DoFn;
-import com.google.cloud.dataflow.sdk.transforms.ParDo;
-import com.google.cloud.dataflow.sdk.values.PCollection;
+import org.apache.beam.sdk.Pipeline;
+import org.apache.beam.sdk.io.TextIO;
+import org.apache.beam.sdk.options.Default;
+import org.apache.beam.sdk.options.Description;
+import org.apache.beam.sdk.options.PipelineOptionsFactory;
+import org.apache.beam.sdk.options.Validation.Required;
+import org.apache.beam.sdk.transforms.Create;
+import org.apache.beam.sdk.transforms.DoFn;
+import org.apache.beam.sdk.transforms.ParDo;
+import org.apache.beam.sdk.values.PCollection;
 import com.google.cloud.genomics.dataflow.readers.VariantStreamer;
 import com.google.cloud.genomics.dataflow.utils.CallSetNamesOptions;
 import com.google.cloud.genomics.dataflow.utils.GCSOutputOptions;
@@ -109,7 +109,7 @@ public class IdentifyPrivateVariants {
       this.retainVariantsWithNoCalls = retainVariantsWithNoCalls;
     }
 
-    @Override
+    @ProcessElement
     public void processElement(ProcessContext context) {
       Variant variant = context.element();
       List<VariantCall> calls = variant.getCallsList();
@@ -168,8 +168,8 @@ public class IdentifyPrivateVariants {
         .apply(ParDo.of(new PrivateVariantsFilterFn(callSetIds,
             options.getIdentifyVariantsWithoutCalls())));
 
-    variants.apply(ParDo.named("FormatResults").of(new DoFn<Variant, String>() {
-      @Override
+    variants.apply("FormatResults", ParDo.of(new DoFn<Variant, String>() {
+      @ProcessElement
       public void processElement(ProcessContext c) {
         Variant v = c.element();
         c.output(Joiner.on("\t").join(v.getId(),
@@ -181,7 +181,7 @@ public class IdentifyPrivateVariants {
             ));
       }
     }))
-    .apply(TextIO.Write.to(options.getOutput()));
+    .apply(TextIO.write().to(options.getOutput()));
 
     p.run();
   }

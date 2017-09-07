@@ -15,25 +15,25 @@
  */
 package com.google.cloud.genomics.dataflow.writers.bam;
 
-import com.google.cloud.dataflow.sdk.Pipeline;
-import com.google.cloud.dataflow.sdk.coders.Coder;
-import com.google.cloud.dataflow.sdk.coders.DelegateCoder;
-import com.google.cloud.dataflow.sdk.coders.StringUtf8Coder;
-import com.google.cloud.dataflow.sdk.transforms.Combine;
-import com.google.cloud.dataflow.sdk.transforms.Create;
-import com.google.cloud.dataflow.sdk.transforms.DoFn;
-import com.google.cloud.dataflow.sdk.transforms.Flatten;
-import com.google.cloud.dataflow.sdk.transforms.PTransform;
-import com.google.cloud.dataflow.sdk.transforms.ParDo;
-import com.google.cloud.dataflow.sdk.transforms.Sum;
-import com.google.cloud.dataflow.sdk.transforms.View;
-import com.google.cloud.dataflow.sdk.values.KV;
-import com.google.cloud.dataflow.sdk.values.PCollection;
-import com.google.cloud.dataflow.sdk.values.PCollectionList;
-import com.google.cloud.dataflow.sdk.values.PCollectionTuple;
-import com.google.cloud.dataflow.sdk.values.PCollectionView;
-import com.google.cloud.dataflow.sdk.values.TupleTag;
-import com.google.cloud.dataflow.sdk.values.TupleTagList;
+import org.apache.beam.sdk.Pipeline;
+import org.apache.beam.sdk.coders.Coder;
+import org.apache.beam.sdk.coders.DelegateCoder;
+import org.apache.beam.sdk.coders.StringUtf8Coder;
+import org.apache.beam.sdk.transforms.Combine;
+import org.apache.beam.sdk.transforms.Create;
+import org.apache.beam.sdk.transforms.DoFn;
+import org.apache.beam.sdk.transforms.Flatten;
+import org.apache.beam.sdk.transforms.PTransform;
+import org.apache.beam.sdk.transforms.ParDo;
+import org.apache.beam.sdk.transforms.Sum;
+import org.apache.beam.sdk.transforms.View;
+import org.apache.beam.sdk.values.KV;
+import org.apache.beam.sdk.values.PCollection;
+import org.apache.beam.sdk.values.PCollectionList;
+import org.apache.beam.sdk.values.PCollectionTuple;
+import org.apache.beam.sdk.values.PCollectionView;
+import org.apache.beam.sdk.values.TupleTag;
+import org.apache.beam.sdk.values.TupleTagList;
 import com.google.cloud.genomics.dataflow.functions.BreakFusionTransform;
 import com.google.cloud.genomics.dataflow.functions.GetReferencesFromHeaderFn;
 import com.google.cloud.genomics.dataflow.readers.bam.HeaderInfo;
@@ -65,7 +65,7 @@ public class WriteBAMTransform extends PTransform<PCollectionTuple, PCollection<
   private Pipeline pipeline;
 
   @Override
-  public PCollection<String> apply(PCollectionTuple tuple) {
+  public PCollection<String> expand(PCollectionTuple tuple) {
     final PCollection<HeaderInfo> header = tuple.get(HEADER_TAG);
     final PCollectionView<HeaderInfo> headerView =
         header.apply(View.<HeaderInfo>asSingleton());
@@ -73,10 +73,10 @@ public class WriteBAMTransform extends PTransform<PCollectionTuple, PCollection<
     final PCollection<Read> shardedReads = tuple.get(SHARDED_READS_TAG);
 
     final PCollectionTuple writeBAMFilesResult =
-        shardedReads.apply(ParDo.named("Write BAM shards")
+        shardedReads.apply("Write BAM shards", ParDo
+          .of(new WriteBAMFn(headerView))
           .withSideInputs(Arrays.asList(headerView))
-          .withOutputTags(WriteBAMFn.WRITTEN_BAM_NAMES_TAG, TupleTagList.of(WriteBAMFn.SEQUENCE_SHARD_SIZES_TAG))
-          .of(new WriteBAMFn(headerView)));
+          .withOutputTags(WriteBAMFn.WRITTEN_BAM_NAMES_TAG, TupleTagList.of(WriteBAMFn.SEQUENCE_SHARD_SIZES_TAG)));
 
     PCollection<String> writtenBAMShardNames = writeBAMFilesResult.get(WriteBAMFn.WRITTEN_BAM_NAMES_TAG);
     final PCollectionView<Iterable<String>> writtenBAMShardsView =
@@ -84,8 +84,7 @@ public class WriteBAMTransform extends PTransform<PCollectionTuple, PCollection<
 
     final PCollection<KV<Integer, Long>> sequenceShardSizes = writeBAMFilesResult.get(WriteBAMFn.SEQUENCE_SHARD_SIZES_TAG);
     final PCollection<KV<Integer, Long>> sequenceShardSizesCombined = sequenceShardSizes.apply(
-        Combine.<Integer, Long, Long>perKey(
-            new Sum.SumLongFn()));
+        Combine.<Integer, Long, Long>perKey(Sum.ofLongs()));
     final PCollectionView<Iterable<KV<Integer, Long>>> sequenceShardSizesView =
         sequenceShardSizesCombined.apply(View.<KV<Integer, Long>>asIterable());
 
@@ -97,25 +96,25 @@ public class WriteBAMTransform extends PTransform<PCollectionTuple, PCollection<
         .apply(View.<byte[]>asSingleton());
 
     final PCollection<String> writtenBAMFile = destinationBAMPath.apply(
-        ParDo.named("Combine BAM shards")
-          .withSideInputs(writtenBAMShardsView, eofForBAM)
-          .of(new CombineShardsFn(writtenBAMShardsView, eofForBAM)));
+        "Combine BAM shards", ParDo
+          .of(new CombineShardsFn(writtenBAMShardsView, eofForBAM))
+          .withSideInputs(writtenBAMShardsView, eofForBAM));
 
     final PCollectionView<String> writtenBAMFileView =
         writtenBAMFile.apply(View.<String>asSingleton());
 
     final PCollection<String> indexShards = header.apply(
-        ParDo.named("Generate index shard tasks")
+        "Generate index shard tasks", ParDo
         .of(new GetReferencesFromHeaderFn()));
 
     final PCollectionTuple indexingResult = indexShards
         .apply(new BreakFusionTransform<String>())
         .apply(
-          ParDo.named("Write index shards")
+          "Write index shards", ParDo
+            .of(new WriteBAIFn(headerView, writtenBAMFileView, sequenceShardSizesView))
             .withSideInputs(headerView, writtenBAMFileView, sequenceShardSizesView)
             .withOutputTags(WriteBAIFn.WRITTEN_BAI_NAMES_TAG,
-                TupleTagList.of(WriteBAIFn.NO_COORD_READS_COUNT_TAG))
-            .of(new WriteBAIFn(headerView, writtenBAMFileView, sequenceShardSizesView)));
+                TupleTagList.of(WriteBAIFn.NO_COORD_READS_COUNT_TAG)));
 
     final PCollection<String> writtenBAIShardNames = indexingResult.get(WriteBAIFn.WRITTEN_BAI_NAMES_TAG);
     final PCollectionView<Iterable<String>> writtenBAIShardsView =
@@ -126,10 +125,10 @@ public class WriteBAMTransform extends PTransform<PCollectionTuple, PCollection<
     final PCollection<Long> totalNoCoordCount = noCoordCounts
           .apply(new BreakFusionTransform<Long>())
           .apply(
-              Combine.globally(new Sum.SumLongFn()));
+              Combine.globally(Sum.ofLongs()));
 
     final PCollection<byte[]> totalNoCoordCountBytes = totalNoCoordCount.apply(
-        ParDo.named("No coord count to bytes").of(new Long2BytesFn()));
+        "No coord count to bytes", ParDo.of(new Long2BytesFn()));
     final PCollectionView<byte[]> eofForBAI = totalNoCoordCountBytes
         .apply(View.<byte[]>asSingleton());
 
@@ -137,9 +136,9 @@ public class WriteBAMTransform extends PTransform<PCollectionTuple, PCollection<
         Create.<String>of(this.output + ".bai"));
 
     final PCollection<String> writtenBAIFile = destinationBAIPath.apply(
-        ParDo.named("Combine BAI shards")
-          .withSideInputs(writtenBAIShardsView, eofForBAI)
-          .of(new CombineShardsFn(writtenBAIShardsView, eofForBAI)));
+        "Combine BAI shards", ParDo
+          .of(new CombineShardsFn(writtenBAIShardsView, eofForBAI))
+          .withSideInputs(writtenBAIShardsView, eofForBAI));
 
     final PCollection<String> writtenFileNames = PCollectionList.of(writtenBAMFile).and(writtenBAIFile)
         .apply(Flatten.<String>pCollections());
@@ -156,7 +155,7 @@ public class WriteBAMTransform extends PTransform<PCollectionTuple, PCollection<
     public Long2BytesFn() {
     }
 
-    @Override
+    @ProcessElement
     public void processElement(DoFn<Long, byte[]>.ProcessContext c) throws Exception {
       ByteBuffer b = ByteBuffer.allocate(8);
       b.order(ByteOrder.LITTLE_ENDIAN);
@@ -175,7 +174,7 @@ public class WriteBAMTransform extends PTransform<PCollectionTuple, PCollection<
     final PCollectionTuple tuple = PCollectionTuple
         .of(SHARDED_READS_TAG,shardedReads)
         .and(HEADER_TAG, pipeline.apply(Create.of(headerInfo).withCoder(HEADER_INFO_CODER)));
-    return (new WriteBAMTransform(output, pipeline)).apply(tuple);
+    return (new WriteBAMTransform(output, pipeline)).expand(tuple);
   }
 
   static Coder<HeaderInfo> HEADER_INFO_CODER = DelegateCoder.of(

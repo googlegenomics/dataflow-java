@@ -13,10 +13,7 @@
  */
 package com.google.cloud.genomics.dataflow.utils;
 
-import com.google.cloud.dataflow.sdk.options.Default;
-import com.google.cloud.dataflow.sdk.options.Description;
-import com.google.cloud.dataflow.sdk.options.GcsOptions;
-import com.google.cloud.dataflow.sdk.runners.DirectPipelineRunner;
+import org.apache.beam.sdk.extensions.gcp.options.GcsOptions;
 import com.google.cloud.genomics.utils.OfflineAuth;
 
 import java.util.Scanner;
@@ -24,25 +21,15 @@ import java.util.Scanner;
 /**
  * Contains pipeline options relevant to the creation of Genomics API clients.
  */
+
+// TODO: This class has almost nothing in it now. Refactor it out of the codebase.
 public interface GenomicsOptions extends GcsOptions {
 
   public static class Methods {
 
     public static OfflineAuth getGenomicsAuth(GenomicsOptions options) {
-      if (DirectPipelineRunner.class != options.getRunner()
-          && null != options.getSecretsFile()
-          && options.getWarnUserCredential()) {
-        requestConfirmation("This pipeline will run on GCE VMs and your user credential will"
-            + " be used by all Dataflow worker instances.  Your credentials may be visible to"
-            + " others with access to the VMs.");
-      }
-
-      if (null != options.getSecretsFile()) {
-        // User credential will be available on all Dataflow workers.
-        return new OfflineAuth(options.getGcpCredential());
-      }
       // This "empty" OfflineAuth will default to the Application
-      // Default Credential available from whereever it is
+      // Default Credential available from where ever it is
       // accessed (e.g., locally or on GCE).
       return new OfflineAuth();
     }
@@ -68,11 +55,4 @@ public interface GenomicsOptions extends GcsOptions {
       }
     }
   }
-
-  @Description("Set this option to 'false' to disable the yes/no prompt when running"
-      + " the pipeline with a user credential.")
-  @Default.Boolean(true)
-  boolean getWarnUserCredential();
-
-  void setWarnUserCredential(boolean warnUserCredential);
 }

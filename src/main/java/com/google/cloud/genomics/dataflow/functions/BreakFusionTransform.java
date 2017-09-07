@@ -13,13 +13,13 @@
  */
 package com.google.cloud.genomics.dataflow.functions;
 
-import com.google.cloud.dataflow.sdk.transforms.DoFn;
-import com.google.cloud.dataflow.sdk.transforms.GroupByKey;
-import com.google.cloud.dataflow.sdk.transforms.Keys;
-import com.google.cloud.dataflow.sdk.transforms.PTransform;
-import com.google.cloud.dataflow.sdk.transforms.ParDo;
-import com.google.cloud.dataflow.sdk.values.KV;
-import com.google.cloud.dataflow.sdk.values.PCollection;
+import org.apache.beam.sdk.transforms.DoFn;
+import org.apache.beam.sdk.transforms.GroupByKey;
+import org.apache.beam.sdk.transforms.Keys;
+import org.apache.beam.sdk.transforms.PTransform;
+import org.apache.beam.sdk.transforms.ParDo;
+import org.apache.beam.sdk.values.KV;
+import org.apache.beam.sdk.values.PCollection;
 
 /*
  * Breaks Dataflow fusion by doing GroupByKey/Ungroup that forces materialization of the data,
@@ -47,11 +47,9 @@ public class BreakFusionTransform<T> extends PTransform<PCollection<T>, PCollect
   }
 
   @Override
-  public PCollection<T> apply(PCollection<T> input) {
+  public PCollection<T> expand(PCollection<T> input) {
     return input
-        .apply(
-            ParDo.named("Break fusion mapper")
-              .of(new DummyMapFn<T>()))
+        .apply("Break fusion mapper", ParDo.of(new DummyMapFn<T>()))
         .apply(GroupByKey.<T, Integer>create())
         .apply(Keys.<T>create());
   }
@@ -60,7 +58,7 @@ public class BreakFusionTransform<T> extends PTransform<PCollection<T>, PCollect
    static class DummyMapFn<T> extends DoFn<T, KV<T, Integer>> {
     private static final int DUMMY_VALUE = 42;
 
-    @Override
+    @ProcessElement
     public void processElement(DoFn<T, KV<T, Integer>>.ProcessContext c) throws Exception {
       c.output( KV.of(c.element(), DUMMY_VALUE));
     }

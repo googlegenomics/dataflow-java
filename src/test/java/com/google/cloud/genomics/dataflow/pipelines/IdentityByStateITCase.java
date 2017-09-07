@@ -133,20 +133,6 @@ public class IdentityByStateITCase {
     testBase(ARGS, EXPECTED_BRCA1_RESULT);
   }
 
-  @Test
-  public void testCloud() throws Exception {
-    String[] ARGS = {
-        "--project=" + helper.getTestProject(),
-        "--references=" + helper.PLATINUM_GENOMES_BRCA1_REFERENCES,
-        "--variantSetId=" + helper.PLATINUM_GENOMES_DATASET,
-        "--hasNonVariantSegments",
-        "--output=" + outputPrefix,
-        "--runner=BlockingDataflowPipelineRunner",
-        "--stagingLocation=" + helper.getTestStagingGcsFolder()
-        };
-    testBase(ARGS, EXPECTED_BRCA1_RESULT);
-  }
-
   private void testBase(String[] ARGS, String[] expectedResult) throws Exception {
     // Run the pipeline.
     IdentityByState.main(ARGS);

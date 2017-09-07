@@ -15,9 +15,9 @@
  */
 package com.google.cloud.genomics.dataflow.coders;
 
-import com.google.cloud.dataflow.sdk.coders.AtomicCoder;
-import com.google.cloud.dataflow.sdk.coders.Coder;
-import com.google.cloud.dataflow.sdk.coders.CoderException;
+import org.apache.beam.sdk.coders.AtomicCoder;
+import org.apache.beam.sdk.coders.Coder;
+import org.apache.beam.sdk.coders.CoderException;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -31,14 +31,16 @@ public abstract class DelegatingAtomicCoder<X, Y> extends AtomicCoder<X> {
     this.delegate = delegate;
   }
 
-  @Override public final X decode(InputStream inStream, Context context)
+  @Override
+  public final X decode(InputStream inStream)
       throws CoderException, IOException {
-    return from(delegate.decode(inStream, context));
+    return from(delegate.decode(inStream));
   }
 
-  @Override public final void encode(X value, OutputStream outStream, Context context)
+  @Override
+  public final void encode(X value, OutputStream outStream)
       throws CoderException, IOException {
-    delegate.encode(to(value), outStream, context);
+    delegate.encode(to(value), outStream);
   }
 
   protected abstract X from(Y object) throws CoderException, IOException;

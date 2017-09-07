@@ -16,13 +16,14 @@
 package com.google.cloud.genomics.dataflow.utils;
 
 import com.google.api.services.genomics.model.CallSet;
-import com.google.cloud.dataflow.sdk.options.Description;
-import com.google.cloud.dataflow.sdk.options.Validation.Required;
+import org.apache.beam.sdk.options.Description;
+import org.apache.beam.sdk.options.Validation.Required;
 import com.google.cloud.genomics.utils.CallSetUtils;
 import com.google.cloud.genomics.utils.GenomicsUtils;
 import com.google.common.base.CharMatcher;
 import com.google.common.base.Preconditions;
 import com.google.common.base.Splitter;
+import com.google.common.base.Strings;
 import com.google.common.collect.BiMap;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.io.Files;
@@ -87,7 +88,7 @@ public interface CallSetNamesOptions extends GenomicsOptions {
       Preconditions.checkArgument(
           null == options.getCallSetNames() || null == options.getCallSetNamesFilepath(),
           "Only specify one of --callSetNamesList or --callSetNamesFilepath");
-      if (null != options.getCallSetNamesFilepath()) {
+      if (!Strings.isNullOrEmpty(options.getCallSetNamesFilepath())) {
         String fileContents =
             Files.toString(new File(options.getCallSetNamesFilepath()), Charset.defaultCharset());
         return ImmutableSet
@@ -96,7 +97,7 @@ public interface CallSetNamesOptions extends GenomicsOptions {
                 Splitter.on(CharMatcher.breakingWhitespace()).omitEmptyStrings().trimResults()
                     .split(fileContents)).build().asList();
       }
-      if (null != options.getCallSetNames()) {
+      if (!Strings.isNullOrEmpty(options.getCallSetNames())) {
         return ImmutableSet
             .<String>builder()
             .addAll(

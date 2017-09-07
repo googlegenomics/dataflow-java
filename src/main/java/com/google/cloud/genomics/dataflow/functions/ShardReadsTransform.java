@@ -15,11 +15,11 @@
  */
 package com.google.cloud.genomics.dataflow.functions;
 
-import com.google.cloud.dataflow.sdk.transforms.GroupByKey;
-import com.google.cloud.dataflow.sdk.transforms.PTransform;
-import com.google.cloud.dataflow.sdk.transforms.ParDo;
-import com.google.cloud.dataflow.sdk.values.KV;
-import com.google.cloud.dataflow.sdk.values.PCollection;
+import org.apache.beam.sdk.transforms.GroupByKey;
+import org.apache.beam.sdk.transforms.PTransform;
+import org.apache.beam.sdk.transforms.ParDo;
+import org.apache.beam.sdk.values.KV;
+import org.apache.beam.sdk.values.PCollection;
 import com.google.cloud.genomics.utils.Contig;
 import com.google.genomics.v1.Read;
 
@@ -32,13 +32,13 @@ public class ShardReadsTransform extends PTransform<PCollection<Read>, PCollecti
   static public interface Options extends KeyReadsFn.Options {}
 
   @Override
-  public PCollection<KV<Contig, Iterable<Read>>> apply(PCollection<Read> reads) {
+  public PCollection<KV<Contig, Iterable<Read>>> expand(PCollection<Read> reads) {
     return reads
-      .apply(ParDo.named("KeyReads").of(new KeyReadsFn()))
+      .apply("KeyReads", ParDo.of(new KeyReadsFn()))
       .apply(GroupByKey.<Contig, Read>create());
   }
 
   public static PCollection<KV<Contig, Iterable<Read>>> shard(PCollection<Read> reads) {
-    return (new ShardReadsTransform()).apply(reads);
+    return (new ShardReadsTransform()).expand(reads);
   }
 }

@@ -16,18 +16,15 @@
 package com.google.cloud.genomics.dataflow.writers.bam;
 
 import com.google.api.services.storage.Storage;
-import com.google.cloud.dataflow.sdk.transforms.Aggregator;
-import com.google.cloud.dataflow.sdk.transforms.DoFn;
-import com.google.cloud.dataflow.sdk.transforms.Max;
-import com.google.cloud.dataflow.sdk.transforms.Min;
-import com.google.cloud.dataflow.sdk.transforms.Sum;
-import com.google.cloud.dataflow.sdk.transforms.Sum.SumIntegerFn;
-import com.google.cloud.dataflow.sdk.util.GcsUtil;
-import com.google.cloud.dataflow.sdk.util.Transport;
-import com.google.cloud.dataflow.sdk.util.gcsfs.GcsPath;
-import com.google.cloud.dataflow.sdk.values.KV;
-import com.google.cloud.dataflow.sdk.values.PCollectionView;
-import com.google.cloud.dataflow.sdk.values.TupleTag;
+import org.apache.beam.sdk.metrics.Metrics;
+import org.apache.beam.sdk.transforms.DoFn;
+import org.apache.beam.sdk.transforms.windowing.BoundedWindow;
+import org.apache.beam.sdk.util.GcsUtil;
+import org.apache.beam.sdk.util.Transport;
+import org.apache.beam.sdk.util.gcsfs.GcsPath;
+import org.apache.beam.sdk.values.KV;
+import org.apache.beam.sdk.values.PCollectionView;
+import org.apache.beam.sdk.values.TupleTag;
 import com.google.cloud.genomics.dataflow.functions.KeyReadsFn;
 import com.google.cloud.genomics.dataflow.readers.bam.BAMIO;
 import com.google.cloud.genomics.dataflow.readers.bam.HeaderInfo;
@@ -64,14 +61,6 @@ public class WriteBAMFn extends DoFn<Read, String> {
 
   final PCollectionView<HeaderInfo> headerView;
   Storage.Objects storage;
-  Aggregator<Integer, Integer> readCountAggregator;
-  Aggregator<Integer, Integer> unmappedReadCountAggregator;
-  Aggregator<Integer, Integer> initializedShardCount;
-  Aggregator<Integer, Integer> finishedShardCount;
-  Aggregator<Long, Long> shardTimeMaxSec;
-  Aggregator<Long, Long> shardReadCountMax;
-  Aggregator<Long, Long> shardReadCountMin;
-  Aggregator<Integer, Integer> outOfOrderCount;
 
   Stopwatch stopWatch;
   int readCount;
@@ -89,24 +78,18 @@ public class WriteBAMFn extends DoFn<Read, String> {
   long maxAlignment = Long.MIN_VALUE;
   boolean hadOutOfOrder = false;
 
+  private BoundedWindow window;
+
   public WriteBAMFn(final PCollectionView<HeaderInfo> headerView) {
     this.headerView = headerView;
-    readCountAggregator = createAggregator("Written reads", new SumIntegerFn());
-    unmappedReadCountAggregator = createAggregator("Written unmapped reads", new SumIntegerFn());
-    initializedShardCount = createAggregator("Initialized Write Shard Count", new Sum.SumIntegerFn());
-    finishedShardCount = createAggregator("Finished Write Shard Count", new Sum.SumIntegerFn());
-    shardTimeMaxSec = createAggregator("Maximum Write Shard Processing Time (sec)", new Max.MaxLongFn());
-    shardReadCountMax = createAggregator("Maximum Reads Per Shard", new Max.MaxLongFn());
-    shardReadCountMin = createAggregator("Minimum Reads Per Shard", new Min.MinLongFn());
-    outOfOrderCount  = createAggregator("Out of order reads",  new Sum.SumIntegerFn());
   }
 
-  @Override
-  public void startBundle(DoFn<Read, String>.Context c) throws IOException {
+  @StartBundle
+  public void startBundle(DoFn<Read, String>.StartBundleContext c) throws IOException {
     LOG.info("Starting bundle ");
     storage = Transport.newStorageClient(c.getPipelineOptions().as(GCSOptions.class)).build().objects();
 
-    initializedShardCount.addValue(1);
+    Metrics.counter(WriteBAMFn.class, "Initialized Write Shard Count").inc();
     stopWatch = Stopwatch.createStarted();
 
     options = c.getPipelineOptions().as(Options.class);
@@ -120,27 +103,30 @@ public class WriteBAMFn extends DoFn<Read, String> {
     hadOutOfOrder = false;
   }
 
-  @Override
-  public void finishBundle(DoFn<Read, String>.Context c) throws IOException {
+  @FinishBundle
+  public void finishBundle(DoFn<Read, String>.FinishBundleContext c) throws IOException {
     bw.close();
-    shardTimeMaxSec.addValue(stopWatch.elapsed(TimeUnit.SECONDS));
+    Metrics.distribution(WriteBAMFn.class, "Maximum Write Shard Processing Time (sec)")
+        .update(stopWatch.elapsed(TimeUnit.SECONDS));
     LOG.info("Finished writing " + shardContig);
-    finishedShardCount.addValue(1);
+    Metrics.counter(WriteBAMFn.class, "Finished Write Shard Count").inc();
     final long bytesWritten = ts.getBytesWrittenExceptingTruncation();
     LOG.info("Wrote " + readCount + " reads, " + unmappedReadCount + " unmapped, into " + shardName +
         (hadOutOfOrder ? "ignored out of order" : "") + ", wrote " + bytesWritten + " bytes");
-    readCountAggregator.addValue(readCount);
-    unmappedReadCountAggregator.addValue(unmappedReadCount);
+    Metrics.counter(WriteBAMFn.class, "Written reads").inc(readCount);
+    Metrics.counter(WriteBAMFn.class, "Written unmapped reads").inc(unmappedReadCount);
     final long totalReadCount = (long)readCount + (long)unmappedReadCount;
-    shardReadCountMax.addValue(totalReadCount);
-    shardReadCountMin.addValue(totalReadCount);
-    c.output(shardName);
-    c.sideOutput(SEQUENCE_SHARD_SIZES_TAG, KV.of(sequenceIndex, bytesWritten));
+    Metrics.distribution(WriteBAMFn.class, "Maximum Reads Per Shard").update(totalReadCount);
+    c.output(shardName, window.maxTimestamp(), window);
+    c.output(SEQUENCE_SHARD_SIZES_TAG, KV.of(sequenceIndex, bytesWritten),
+        window.maxTimestamp(), window);
   }
 
-  @Override
-  public void processElement(DoFn<Read, String>.ProcessContext c)
+  @ProcessElement
+  public void processElement(DoFn<Read, String>.ProcessContext c, BoundedWindow window)
       throws Exception {
+
+    this.window = window;
 
     if (headerInfo == null) {
       headerInfo = c.sideInput(headerView);
@@ -180,7 +166,7 @@ public class WriteBAMFn extends DoFn<Read, String> {
           minAlignment + " and max is " + maxAlignment + ", this read is " +
           (samRecord.getReadUnmappedFlag() ? "unmapped" : "mapped") + " and its mate is " +
           (samRecord.getMateUnmappedFlag() ? "unmapped" : "mapped"));
-      outOfOrderCount.addValue(1);
+      Metrics.counter(WriteBAMFn.class, "Out of order reads").inc();
       readCount++;
       hadOutOfOrder = true;
       return;

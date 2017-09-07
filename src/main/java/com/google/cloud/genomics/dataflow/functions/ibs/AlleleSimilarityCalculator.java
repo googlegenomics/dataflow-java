@@ -13,8 +13,9 @@
  */
 package com.google.cloud.genomics.dataflow.functions.ibs;
 
-import com.google.cloud.dataflow.sdk.transforms.DoFn;
-import com.google.cloud.dataflow.sdk.values.KV;
+import org.apache.beam.sdk.transforms.DoFn;
+import org.apache.beam.sdk.transforms.windowing.BoundedWindow;
+import org.apache.beam.sdk.values.KV;
 import com.google.cloud.genomics.dataflow.utils.CallFilters;
 import com.google.cloud.genomics.dataflow.utils.PairGenerator;
 import com.google.cloud.genomics.utils.grpc.VariantCallUtils;
@@ -36,6 +37,7 @@ public class AlleleSimilarityCalculator extends
     DoFn<Variant, KV<KV<String, String>, KV<Double, Integer>>> {
 
   private CallSimilarityCalculatorFactory callSimilarityCalculatorFactory;
+  private BoundedWindow window;
 
   // HashMap<KV<callsetname1, callsetname2>, <sum of call similarity scores, count of scores>
   private HashMap<KV<String, String>, KV<Double, Integer>> accumulator;
@@ -45,13 +47,15 @@ public class AlleleSimilarityCalculator extends
     this.callSimilarityCalculatorFactory = callSimilarityCalculatorFactory;
   }
 
-  @Override
-  public void startBundle(Context c) {
+  @StartBundle
+  public void startBundle(StartBundleContext c) {
     accumulator = Maps.newHashMap();
   }
 
-  @Override
-  public void processElement(ProcessContext context) {
+  @ProcessElement
+  public void processElement(ProcessContext context, BoundedWindow window) {
+    this.window = window;
+
     Variant variant = context.element();
     CallSimilarityCalculator callSimilarityCalculator =
         callSimilarityCalculatorFactory.get(isReferenceMajor(variant));
@@ -74,9 +78,9 @@ public class AlleleSimilarityCalculator extends
         callPairAccumulation.getValue() + 1));
   }
 
-  @Override
-  public void finishBundle(Context context) {
-    output(context, accumulator);
+  @FinishBundle
+  public void finishBundle(FinishBundleContext context) {
+    output(context, accumulator, window);
   }
 
   static ImmutableList<VariantCall> getSamplesWithVariant(Variant variant) {
@@ -98,9 +102,11 @@ public class AlleleSimilarityCalculator extends
     return referenceAlleles >= alternateAlleles;
   }
 
-  static <K, V> void output(DoFn<?, KV<K, V>>.Context context, Map<? extends K, ? extends V> map) {
+  static <K, V> void output(DoFn<?, KV<K, V>>.FinishBundleContext context,
+                            Map<? extends K, ? extends V> map,
+                            BoundedWindow window) {
     for (Map.Entry<? extends K, ? extends V> entry : map.entrySet()) {
-      context.output(KV.<K, V>of(entry.getKey(), entry.getValue()));
+      context.output(KV.<K, V>of(entry.getKey(), entry.getValue()), window.maxTimestamp(), window);
     }
   }
 

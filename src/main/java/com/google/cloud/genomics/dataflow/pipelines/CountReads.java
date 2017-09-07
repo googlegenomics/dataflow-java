@@ -15,17 +15,18 @@ package com.google.cloud.genomics.dataflow.pipelines;
 
 import com.google.api.services.storage.Storage;
 import com.google.api.services.storage.model.StorageObject;
-import com.google.cloud.dataflow.sdk.Pipeline;
-import com.google.cloud.dataflow.sdk.io.TextIO;
-import com.google.cloud.dataflow.sdk.options.Default;
-import com.google.cloud.dataflow.sdk.options.Description;
-import com.google.cloud.dataflow.sdk.options.PipelineOptionsFactory;
-import com.google.cloud.dataflow.sdk.transforms.Count;
-import com.google.cloud.dataflow.sdk.transforms.Create;
-import com.google.cloud.dataflow.sdk.transforms.DoFn;
-import com.google.cloud.dataflow.sdk.transforms.ParDo;
-import com.google.cloud.dataflow.sdk.util.gcsfs.GcsPath;
-import com.google.cloud.dataflow.sdk.values.PCollection;
+import org.apache.beam.sdk.Pipeline;
+import org.apache.beam.sdk.PipelineResult;
+import org.apache.beam.sdk.io.TextIO;
+import org.apache.beam.sdk.options.Default;
+import org.apache.beam.sdk.options.Description;
+import org.apache.beam.sdk.options.PipelineOptionsFactory;
+import org.apache.beam.sdk.transforms.Count;
+import org.apache.beam.sdk.transforms.Create;
+import org.apache.beam.sdk.transforms.DoFn;
+import org.apache.beam.sdk.transforms.ParDo;
+import org.apache.beam.sdk.util.gcsfs.GcsPath;
+import org.apache.beam.sdk.values.PCollection;
 import com.google.cloud.genomics.dataflow.readers.ReadGroupStreamer;
 import com.google.cloud.genomics.dataflow.readers.bam.ReadBAMTransform;
 import com.google.cloud.genomics.dataflow.readers.bam.Reader;
@@ -86,6 +87,12 @@ public class CountReads {
 
     void setIncludeUnmapped(boolean newValue);
 
+    @Description("Whether to wait until the pipeline completes. This is useful "
+      + "for test purposes.")
+    @Default.Boolean(false)
+    boolean getWait();
+    void setWait(boolean wait);
+
     public static class Methods {
       public static void validateOptions(Options options) {
         GCSOutputOptions.Methods.validateOptions(options);
@@ -138,15 +145,18 @@ public class CountReads {
 
     PCollection<Read> reads = getReads();
     PCollection<Long> readCount = reads.apply(Count.<Read>globally());
-    PCollection<String> readCountText = readCount.apply(ParDo.of(new DoFn<Long, String>() {
-      @Override
+    PCollection<String> readCountText = readCount.apply("toString", ParDo.of(new DoFn<Long, String>() {
+      @ProcessElement
       public void processElement(DoFn<Long, String>.ProcessContext c) throws Exception {
         c.output(String.valueOf(c.element()));
       }
-    }).named("toString"));
-    readCountText.apply(TextIO.Write.to(pipelineOptions.getOutput()).named("WriteOutput").withoutSharding());
+    }));
+    readCountText.apply("WriteOutput", TextIO.write().to(pipelineOptions.getOutput()).withoutSharding());
 
-    p.run();
+    PipelineResult result = p.run();
+    if(pipelineOptions.getWait()) {
+      result.waitUntilFinish();
+    }
   }
 
   private static boolean GCSURLExists(String url) {
@@ -191,6 +201,7 @@ public class CountReads {
     if (pipelineOptions.isShardBAMReading()) {
       LOG.info("Sharded reading of "+ pipelineOptions.getBAMFilePath());
       return ReadBAMTransform.getReadsFromBAMFilesSharded(p,
+          pipelineOptions,
           auth,
           contigs,
           readerOptions,

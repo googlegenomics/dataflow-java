@@ -20,21 +20,23 @@ import com.google.api.services.genomics.model.Annotation;
 import com.google.api.services.genomics.model.AnnotationSet;
 import com.google.api.services.genomics.model.BatchCreateAnnotationsRequest;
 import com.google.api.services.genomics.model.Position;
-import com.google.cloud.dataflow.sdk.Pipeline;
-import com.google.cloud.dataflow.sdk.options.Default;
-import com.google.cloud.dataflow.sdk.options.Description;
-import com.google.cloud.dataflow.sdk.options.PipelineOptionsFactory;
-import com.google.cloud.dataflow.sdk.options.Validation;
-import com.google.cloud.dataflow.sdk.transforms.ApproximateQuantiles;
-import com.google.cloud.dataflow.sdk.transforms.Combine;
-import com.google.cloud.dataflow.sdk.transforms.Create;
-import com.google.cloud.dataflow.sdk.transforms.DoFn;
-import com.google.cloud.dataflow.sdk.transforms.GroupByKey;
-import com.google.cloud.dataflow.sdk.transforms.PTransform;
-import com.google.cloud.dataflow.sdk.transforms.ParDo;
-import com.google.cloud.dataflow.sdk.transforms.SerializableFunction;
-import com.google.cloud.dataflow.sdk.values.KV;
-import com.google.cloud.dataflow.sdk.values.PCollection;
+import org.apache.beam.sdk.Pipeline;
+import org.apache.beam.sdk.coders.Coder;
+import org.apache.beam.sdk.coders.CoderRegistry;
+import org.apache.beam.sdk.options.Default;
+import org.apache.beam.sdk.options.Description;
+import org.apache.beam.sdk.options.PipelineOptionsFactory;
+import org.apache.beam.sdk.options.Validation;
+import org.apache.beam.sdk.transforms.ApproximateQuantiles;
+import org.apache.beam.sdk.transforms.Combine;
+import org.apache.beam.sdk.transforms.Create;
+import org.apache.beam.sdk.transforms.DoFn;
+import org.apache.beam.sdk.transforms.GroupByKey;
+import org.apache.beam.sdk.transforms.PTransform;
+import org.apache.beam.sdk.transforms.ParDo;
+import org.apache.beam.sdk.transforms.SerializableFunction;
+import org.apache.beam.sdk.values.KV;
+import org.apache.beam.sdk.values.PCollection;
 import com.google.cloud.genomics.dataflow.coders.GenericJsonCoder;
 import com.google.cloud.genomics.dataflow.model.PosRgsMq;
 import com.google.cloud.genomics.dataflow.readers.ReadGroupStreamer;
@@ -148,6 +150,21 @@ public class CalculateCoverage {
   private static Pipeline p;
   private static OfflineAuth auth;
 
+  public static void registerPipelineCoders(Pipeline p) {
+    CoderRegistry cr = p.getCoderRegistry();
+    cr.registerCoderForClass(Annotation.class,
+      (Coder<Annotation>) GenericJsonCoder.of(Annotation.class));
+    cr.registerCoderForClass(AnnotationSet.class,
+      (Coder<AnnotationSet>) GenericJsonCoder.of(AnnotationSet.class));
+    cr.registerCoderForClass(BatchCreateAnnotationsRequest.class,
+      (Coder<BatchCreateAnnotationsRequest>) GenericJsonCoder
+        .of(BatchCreateAnnotationsRequest.class));
+    cr.registerCoderForClass(PosRgsMq.class,
+      (Coder<PosRgsMq>) GenericJsonCoder.of(PosRgsMq.class));
+    cr.registerCoderForClass(Position.class,
+      (Coder<Position>) GenericJsonCoder.of(Position.class));
+  }
+
   public static void main(String[] args) throws GeneralSecurityException, IOException {
     // Register the options so that they show up via --help
     PipelineOptionsFactory.register(Options.class);
@@ -156,7 +173,7 @@ public class CalculateCoverage {
     auth = GenomicsOptions.Methods.getGenomicsAuth(options);
 
     p = Pipeline.create(options);
-    p.getCoderRegistry().setFallbackCoderProvider(GenericJsonCoder.PROVIDER);
+    registerPipelineCoders(p);
 
     if (options.getInputDatasetId().isEmpty() && options.getReadGroupSetIds().isEmpty()) {
       throw new IllegalArgumentException("InputDatasetId or ReadGroupSetIds must be specified");
@@ -211,7 +228,7 @@ public class CalculateCoverage {
       this.auth = auth;
     }
 
-    @Override
+    @ProcessElement
     public void processElement(DoFn<String, String>.ProcessContext c) throws Exception {
       String readGroupSetId = c.element();
       String referenceSetId = GenomicsUtils.getReferenceSetId(readGroupSetId, auth);
@@ -237,7 +254,7 @@ public class CalculateCoverage {
       PCollection<KV<PosRgsMq, Double>>> {
 
     @Override
-    public PCollection<KV<PosRgsMq, Double>> apply(PCollection<Read> input) {
+    public PCollection<KV<PosRgsMq, Double>> expand(PCollection<Read> input) {
       return input.apply(ParDo.of(new CoverageCounts()))
           .apply(Combine.<PosRgsMq, Long>perKey(new SumCounts()))
           .apply(ParDo.of(new CoverageMeans()));
@@ -249,7 +266,7 @@ public class CalculateCoverage {
     private static final int LOW_MQ = 10;
     private static final int HIGH_MQ = 30;
 
-    @Override
+    @ProcessElement
     public void processElement(ProcessContext c) {
       if (c.element().getAlignment() != null) { //is mapped
         // Calculate length of read
@@ -340,7 +357,7 @@ public class CalculateCoverage {
 
   static class CoverageMeans extends DoFn<KV<PosRgsMq, Long>, KV<PosRgsMq, Double>> {
 
-    @Override
+    @ProcessElement
     public void processElement(ProcessContext c) {
       KV ans = KV.of(c.element().getKey(),
           (double) c.element().getValue()
@@ -368,7 +385,7 @@ public class CalculateCoverage {
     }
 
     @Override
-    public PCollection<KV<Position, KV<PosRgsMq.MappingQuality, List<Double>>>> apply(
+    public PCollection<KV<Position, KV<PosRgsMq.MappingQuality, List<Double>>>> expand(
         PCollection<KV<PosRgsMq, Double>> input) {
       return input.apply(ParDo.of(new RemoveRgsId()))
           .apply(ApproximateQuantiles
@@ -380,7 +397,7 @@ public class CalculateCoverage {
   static class RemoveRgsId extends DoFn<KV<PosRgsMq, Double>,
       KV<KV<Position, PosRgsMq.MappingQuality>, Double>> {
 
-    @Override
+    @ProcessElement
     public void processElement(ProcessContext c) {
       KV ans = KV.of(KV.of(c.element().getKey().getPos(), c.element().getKey().getMq()),
           c.element().getValue());
@@ -391,7 +408,7 @@ public class CalculateCoverage {
   static class MoveMapping extends DoFn<KV<KV<Position, PosRgsMq.MappingQuality>, List<Double>>,
       KV<Position, KV<PosRgsMq.MappingQuality, List<Double>>>> {
 
-    @Override
+    @ProcessElement
     public void processElement(ProcessContext c) {
       KV ans = KV.of(c.element().getKey().getKey(),
           KV.of(c.element().getKey().getValue(), c.element().getValue()));
@@ -418,7 +435,7 @@ public class CalculateCoverage {
       this.write = write;
     }
 
-    @Override
+    @ProcessElement
     public void processElement(ProcessContext c) throws GeneralSecurityException, IOException {
       Options pOptions = c.getPipelineOptions().as(Options.class);
       Position bucket = c.element().getKey();
@@ -447,8 +464,8 @@ public class CalculateCoverage {
       c.output(a);
     }
 
-    @Override
-    public void finishBundle(Context c) throws IOException, GeneralSecurityException {
+    @FinishBundle
+    public void finishBundle(FinishBundleContext c) throws IOException, GeneralSecurityException {
       // Finish up any leftover annotations at the end.
       if (write && !currAnnotations.isEmpty()) {
         batchCreateAnnotations();

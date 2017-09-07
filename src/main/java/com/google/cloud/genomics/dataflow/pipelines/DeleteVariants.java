@@ -16,15 +16,15 @@ package com.google.cloud.genomics.dataflow.pipelines;
 import com.google.api.client.util.BackOff;
 import com.google.api.client.util.ExponentialBackOff;
 import com.google.api.services.genomics.Genomics;
-import com.google.cloud.dataflow.sdk.Pipeline;
-import com.google.cloud.dataflow.sdk.io.TextIO;
-import com.google.cloud.dataflow.sdk.options.Description;
-import com.google.cloud.dataflow.sdk.options.PipelineOptionsFactory;
-import com.google.cloud.dataflow.sdk.options.Validation.Required;
-import com.google.cloud.dataflow.sdk.transforms.Aggregator;
-import com.google.cloud.dataflow.sdk.transforms.DoFn;
-import com.google.cloud.dataflow.sdk.transforms.ParDo;
-import com.google.cloud.dataflow.sdk.transforms.Sum;
+import org.apache.beam.sdk.Pipeline;
+import org.apache.beam.sdk.io.TextIO;
+import org.apache.beam.sdk.options.Description;
+import org.apache.beam.sdk.options.PipelineOptionsFactory;
+import org.apache.beam.sdk.options.Validation.Required;
+import org.apache.beam.sdk.metrics.Metrics;
+import org.apache.beam.sdk.transforms.DoFn;
+import org.apache.beam.sdk.transforms.ParDo;
+import org.apache.beam.sdk.transforms.Sum;
 import com.google.cloud.genomics.dataflow.utils.GCSOutputOptions;
 import com.google.cloud.genomics.dataflow.utils.GenomicsOptions;
 import com.google.cloud.genomics.utils.GenomicsFactory;
@@ -65,10 +65,6 @@ public class DeleteVariants {
 
   public static final class DeleteVariantFn extends DoFn<String, Integer> {
     private final OfflineAuth auth;
-    private final Aggregator<Long, Long> notFoundVariantCount =
-        createAggregator("Number of variants not found (previously deleted)", new Sum.SumLongFn());
-    private final Aggregator<Long, Long> deletedVariantCount =
-        createAggregator("Number of variants deleted", new Sum.SumLongFn());
     private Genomics genomics;
 
     public DeleteVariantFn(OfflineAuth auth) {
@@ -76,12 +72,12 @@ public class DeleteVariants {
       this.auth = auth;
     }
 
-    @Override
-    public void startBundle(Context context) throws IOException, GeneralSecurityException {
+    @StartBundle
+    public void startBundle(StartBundleContext context) throws IOException, GeneralSecurityException {
       genomics = GenomicsFactory.builder().build().fromOfflineAuth(auth);
     }
 
-    @Override
+    @ProcessElement
     public void processElement(DoFn<String, Integer>.ProcessContext context) throws Exception {
       String variantId = context.element();
       // Call the deletion operation via exponential backoff so that "Rate Limit Exceeded"
@@ -90,7 +86,7 @@ public class DeleteVariants {
       while (true) {
         try {
           genomics.variants().delete(variantId).execute();
-          deletedVariantCount.addValue(1L);
+          Metrics.counter(DeleteVariantFn.class, "Number of variants deleted").inc();
           context.output(1);
           return;
         } catch (Exception e) {
@@ -123,9 +119,9 @@ public class DeleteVariants {
 
     Pipeline p = Pipeline.create(options);
 
-    p.apply(TextIO.Read.named("ReadLines").from(options.getInput()))
-        .apply(ParDo.named("ParseVariantIds").of(new DoFn<String, String>() {
-          @Override
+    p.apply("ReadLines", TextIO.read().from(options.getInput()))
+        .apply("ParseVariantIds", ParDo.of(new DoFn<String, String>() {
+          @ProcessElement
           public void processElement(ProcessContext c) {
             String record = c.element();
 
@@ -145,13 +141,13 @@ public class DeleteVariants {
         }))
         .apply(ParDo.of(new DeleteVariantFn(auth)))
         .apply(Sum.integersGlobally())
-        .apply(ParDo.named("FormatResults").of(new DoFn<Integer, String>() {
-          @Override
+        .apply("FormatResults", ParDo.of(new DoFn<Integer, String>() {
+          @ProcessElement
           public void processElement(ProcessContext c) {
             c.output("Deleted Variant Count: " + c.element());
           }
         }))
-        .apply(TextIO.Write.named("Write Count").to(options.getOutput()));
+        .apply("Write Count", TextIO.write().to(options.getOutput()));
 
     p.run();
   }

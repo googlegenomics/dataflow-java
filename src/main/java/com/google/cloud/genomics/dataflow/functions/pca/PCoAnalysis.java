@@ -21,8 +21,8 @@ import Jama.Matrix;
 
 import com.google.api.client.util.Lists;
 import com.google.api.client.util.Preconditions;
-import com.google.cloud.dataflow.sdk.transforms.DoFn;
-import com.google.cloud.dataflow.sdk.values.KV;
+import org.apache.beam.sdk.transforms.DoFn;
+import org.apache.beam.sdk.values.KV;
 import com.google.common.collect.BiMap;
 import com.google.common.collect.ImmutableList;
 
@@ -67,7 +67,8 @@ public class PCoAnalysis extends DoFn<Iterable<KV<KV<String, String>, Long>>,
       this.graphY = Math.floor(y * 100) / 100;
     }
 
-    @Override public String toString() {
+    @Override
+    public String toString() {
       return String.format("%s\t\t%s\t%s", name, graphX, graphY);
     }
 
@@ -194,7 +195,8 @@ public class PCoAnalysis extends DoFn<Iterable<KV<KV<String, String>, Long>>,
     return results;
   }
 
-  @Override public void processElement(ProcessContext context) {
+  @ProcessElement
+  public void processElement(ProcessContext context) {
     Collection<KV<KV<String, String>, Long>> element = ImmutableList.copyOf(context.element());
 
     int dataSize = dataIndices.size();

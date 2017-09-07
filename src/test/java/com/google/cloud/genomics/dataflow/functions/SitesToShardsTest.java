@@ -13,21 +13,22 @@
  */
 package com.google.cloud.genomics.dataflow.functions;
 
-import com.google.cloud.dataflow.sdk.Pipeline;
-import com.google.cloud.dataflow.sdk.coders.StringUtf8Coder;
-import com.google.cloud.dataflow.sdk.testing.DataflowAssert;
-import com.google.cloud.dataflow.sdk.testing.RunnableOnService;
-import com.google.cloud.dataflow.sdk.testing.TestPipeline;
-import com.google.cloud.dataflow.sdk.transforms.Create;
-import com.google.cloud.dataflow.sdk.transforms.DoFnTester;
-import com.google.cloud.dataflow.sdk.values.PCollection;
+import org.apache.beam.sdk.coders.StringUtf8Coder;
+import org.apache.beam.sdk.options.PipelineOptionsFactory;
+import org.apache.beam.sdk.testing.PAssert;
+import org.apache.beam.sdk.testing.TestPipeline;
+import org.apache.beam.sdk.testing.TestPipelineOptions;
+import org.apache.beam.sdk.transforms.Create;
+import org.apache.beam.sdk.transforms.DoFnTester;
+import org.apache.beam.sdk.values.PCollection;
 import com.google.cloud.genomics.utils.Contig;
 import com.google.genomics.v1.StreamVariantsRequest;
 
 import org.hamcrest.collection.IsIterableContainingInAnyOrder;
 import org.junit.Assert;
+import org.junit.BeforeClass;
+import org.junit.Rule;
 import org.junit.Test;
-import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 
@@ -38,8 +39,16 @@ import java.util.List;
 @RunWith(JUnit4.class)
 public class SitesToShardsTest {
 
+  @Rule
+  public final transient TestPipeline p = TestPipeline.create();
+
+  @BeforeClass
+  public static void setUp() {
+    PipelineOptionsFactory.register(TestPipelineOptions.class);
+  }
+
   @Test
-  public void testSiteParsing() {
+  public void testSiteParsing() throws Exception {
     DoFnTester<String, Contig> sitesToContigsFn =
         DoFnTester.of(new SitesToShards.SitesToContigsFn());
     String [] input = {
@@ -56,7 +65,7 @@ public class SitesToShardsTest {
         "track name=pairedReads description=\"Clone Paired Reads\" useScore=1", // BED header
     };
 
-    Assert.assertThat(sitesToContigsFn.processBatch(input),
+    Assert.assertThat(sitesToContigsFn.processBundle(input),
         IsIterableContainingInAnyOrder.containsInAnyOrder(
             new Contig("chrX", 2000001, 3000000),
             new Contig("chrX", 2000002, 3000000),
@@ -73,7 +82,6 @@ public class SitesToShardsTest {
 
   // Test the PTransform by using an in-memory input and inspecting the output.
   @Test
-  @Category(RunnableOnService.class)
   public void testSitesToStreamVariantsShards() throws Exception {
 
     final List<String> SITES  = Arrays.asList(new String[] {
@@ -99,14 +107,12 @@ public class SitesToShardsTest {
         .setEnd(3000000)
         .build());
 
-    Pipeline p = TestPipeline.create();
-
     PCollection<String> input = p.apply(Create.of(SITES).withCoder(StringUtf8Coder.of()));
 
     PCollection<StreamVariantsRequest> output = input.apply("test transform",
         new SitesToShards.SitesToStreamVariantsShardsTransform(prototype));
 
-    DataflowAssert.that(output).containsInAnyOrder(expectedOutput);
+    PAssert.that(output).containsInAnyOrder(expectedOutput);
     p.run();
   }
 

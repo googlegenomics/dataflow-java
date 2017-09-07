@@ -20,13 +20,12 @@ import com.google.api.services.storage.Storage.Objects.Compose;
 import com.google.api.services.storage.model.ComposeRequest;
 import com.google.api.services.storage.model.ComposeRequest.SourceObjects;
 import com.google.api.services.storage.model.StorageObject;
-import com.google.cloud.dataflow.sdk.transforms.Aggregator;
-import com.google.cloud.dataflow.sdk.transforms.DoFn;
-import com.google.cloud.dataflow.sdk.transforms.Sum.SumIntegerFn;
-import com.google.cloud.dataflow.sdk.util.GcsUtil;
-import com.google.cloud.dataflow.sdk.util.Transport;
-import com.google.cloud.dataflow.sdk.util.gcsfs.GcsPath;
-import com.google.cloud.dataflow.sdk.values.PCollectionView;
+import org.apache.beam.sdk.metrics.Metrics;
+import org.apache.beam.sdk.transforms.DoFn;
+import org.apache.beam.sdk.util.GcsUtil;
+import org.apache.beam.sdk.util.Transport;
+import org.apache.beam.sdk.util.gcsfs.GcsPath;
+import org.apache.beam.sdk.values.PCollectionView;
 import com.google.cloud.genomics.dataflow.utils.GCSOptions;
 import com.google.cloud.genomics.dataflow.utils.GCSOutputOptions;
 import com.google.common.collect.Lists;
@@ -55,21 +54,13 @@ public class CombineShardsFn extends DoFn<String, String> {
 
   final PCollectionView<Iterable<String>> shards;
   final PCollectionView<byte[]> eofContents;
-  Aggregator<Integer, Integer> filesToCombineAggregator;
-  Aggregator<Integer, Integer> combinedFilesAggregator;
-  Aggregator<Integer, Integer> createdFilesAggregator;
-  Aggregator<Integer, Integer> deletedFilesAggregator;
 
   public CombineShardsFn(PCollectionView<Iterable<String>> shards, PCollectionView<byte[]> eofContent) {
     this.shards = shards;
     this.eofContents = eofContent;
-    filesToCombineAggregator = createAggregator("Files to combine", new SumIntegerFn());
-    combinedFilesAggregator = createAggregator("Files combined", new SumIntegerFn());
-    createdFilesAggregator = createAggregator("Created files", new SumIntegerFn());
-    deletedFilesAggregator = createAggregator("Deleted files", new SumIntegerFn());
   }
 
-  @Override
+  @ProcessElement
   public void processElement(DoFn<String, String>.ProcessContext c) throws Exception {
     final String result =
         combineShards(
@@ -165,7 +156,7 @@ public class CombineShardsFn extends DoFn<String, String> {
       addedShardCount++;
     }
     LOG.info("Added " + addedShardCount + " shards for composition");
-    filesToCombineAggregator.addValue(addedShardCount);
+    Metrics.counter(CombineShardsFn.class, "Files to combine").inc(addedShardCount);
 
     final ComposeRequest composeRequest =
         new ComposeRequest().setDestination(destination).setSourceObjects(sourceObjects);
@@ -174,8 +165,8 @@ public class CombineShardsFn extends DoFn<String, String> {
     final StorageObject result = compose.execute();
     final String combineResult = GcsPath.fromObject(result).toString();
     LOG.info("Combine result is " + combineResult);
-    combinedFilesAggregator.addValue(addedShardCount);
-    createdFilesAggregator.addValue(1);
+    Metrics.counter(CombineShardsFn.class, "Files combined").inc(addedShardCount);
+    Metrics.counter(CombineShardsFn.class, "Files created").inc();
     for (SourceObjects sourceObject : sourceObjects) {
       final String shardToDelete = sourceObject.getName();
       LOG.info("Cleaning up shard  " + shardToDelete + " for result " + dest);
@@ -190,7 +181,7 @@ public class CombineShardsFn extends DoFn<String, String> {
         }
         retryCount--;
       }
-      deletedFilesAggregator.addValue(1);
+      Metrics.counter(CombineShardsFn.class, "Files deleted").inc();
     }
 
     return combineResult;

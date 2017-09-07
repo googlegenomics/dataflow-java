@@ -15,15 +15,15 @@
  */
 package com.google.cloud.genomics.dataflow.functions.pca;
 
-import com.google.cloud.dataflow.sdk.io.TextIO;
-import com.google.cloud.dataflow.sdk.transforms.Combine;
-import com.google.cloud.dataflow.sdk.transforms.DoFn;
-import com.google.cloud.dataflow.sdk.transforms.PTransform;
-import com.google.cloud.dataflow.sdk.transforms.ParDo;
-import com.google.cloud.dataflow.sdk.transforms.Sum;
-import com.google.cloud.dataflow.sdk.values.KV;
-import com.google.cloud.dataflow.sdk.values.PCollection;
-import com.google.cloud.dataflow.sdk.values.PDone;
+import org.apache.beam.sdk.io.TextIO;
+import org.apache.beam.sdk.transforms.Combine;
+import org.apache.beam.sdk.transforms.DoFn;
+import org.apache.beam.sdk.transforms.PTransform;
+import org.apache.beam.sdk.transforms.ParDo;
+import org.apache.beam.sdk.transforms.Sum;
+import org.apache.beam.sdk.values.KV;
+import org.apache.beam.sdk.values.PCollection;
+import org.apache.beam.sdk.values.PDone;
 import com.google.common.collect.BiMap;
 
 import java.util.ArrayList;
@@ -79,14 +79,14 @@ public class OutputPCoAFile extends PTransform<PCollection<KV<KV<String, String>
   }
 
   @Override
-  public PDone apply(PCollection<KV<KV<String, String>, Long>> similarPairs) {
+  public PDone expand(PCollection<KV<KV<String, String>, Long>> similarPairs) {
     return similarPairs
         .apply(Sum.<KV<String, String>>longsPerKey())
         .apply(Combine.globally(TO_LIST))
-        .apply(ParDo.named("PCoAAnalysis").of(new PCoAnalysis(dataIndices)))
-        .apply(ParDo.named("FormatGraphData")
+        .apply("PCoAAnalysis", ParDo.of(new PCoAnalysis(dataIndices)))
+        .apply("FormatGraphData", ParDo
             .of(new DoFn<Iterable<PCoAnalysis.GraphResult>, String>() {
-              @Override
+              @ProcessElement
               public void processElement(ProcessContext c) throws Exception {
                 Iterable<PCoAnalysis.GraphResult> graphResults = c.element();
                 for (PCoAnalysis.GraphResult result : graphResults) {
@@ -94,6 +94,6 @@ public class OutputPCoAFile extends PTransform<PCollection<KV<KV<String, String>
                 }
               }
             }))
-        .apply(TextIO.Write.named("WriteCounts").to(outputFile));
+        .apply("WriteCounts", TextIO.write().to(outputFile));
   }
 }

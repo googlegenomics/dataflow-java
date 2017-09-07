@@ -18,14 +18,14 @@ package com.google.cloud.genomics.dataflow.coders;
 import com.google.api.client.googleapis.util.Utils;
 import com.google.api.client.json.GenericJson;
 import com.google.api.client.json.JsonFactory;
-import com.google.cloud.dataflow.sdk.coders.CannotProvideCoderException;
-import com.google.cloud.dataflow.sdk.coders.Coder;
-import com.google.cloud.dataflow.sdk.coders.CoderProvider;
-import com.google.cloud.dataflow.sdk.coders.SerializableCoder;
-import com.google.cloud.dataflow.sdk.coders.StringUtf8Coder;
-import com.google.cloud.dataflow.sdk.coders.protobuf.ProtoCoder;
-import com.google.cloud.dataflow.sdk.util.CloudObject;
-import com.google.cloud.dataflow.sdk.values.TypeDescriptor;
+import org.apache.beam.sdk.coders.CannotProvideCoderException;
+import org.apache.beam.sdk.coders.Coder;
+import org.apache.beam.sdk.coders.CoderProvider;
+import org.apache.beam.sdk.coders.SerializableCoder;
+import org.apache.beam.sdk.coders.StringUtf8Coder;
+import org.apache.beam.sdk.extensions.protobuf.ProtoCoder;
+import org.apache.beam.runners.dataflow.util.CloudObject;
+import org.apache.beam.sdk.values.TypeDescriptor;
 import com.google.protobuf.Message;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
@@ -61,13 +61,6 @@ public class GenericJsonCoder<T extends GenericJson> extends DelegatingAtomicCod
     this.type = type;
   }
 
-  @Override
-  public CloudObject asCloudObject() {
-    CloudObject result = super.asCloudObject();
-    result.put("type", type.getName());
-    return result;
-  }
-
   @Override protected T from(String object) throws IOException {
     return JSON_FACTORY.fromString(object, type);
   }
@@ -75,29 +68,4 @@ public class GenericJsonCoder<T extends GenericJson> extends DelegatingAtomicCod
   @Override protected String to(T object) throws IOException {
     return JSON_FACTORY.toString(object);
   }
-
-  /**
-   * Coder provider for all objects in the Google Genomics Java client library.
-   */
-  public static final CoderProvider PROVIDER = new CoderProvider() {
-    @Override
-    @SuppressWarnings("unchecked")
-    public <T> Coder<T> getCoder(TypeDescriptor<T> typeDescriptor)
-        throws CannotProvideCoderException {
-      Class<T> rawType = (Class<T>) typeDescriptor.getRawType();
-      if (!GenericJson.class.isAssignableFrom(rawType)) {
-        if (Message.class.isAssignableFrom(rawType)) {
-          return (Coder<T>) ProtoCoder.of((Class<? extends Message>) rawType);
-        } else if (Serializable.class.isAssignableFrom(rawType)) {
-          // Fall back this here because if this is used as the fallback coder, it overwrites the
-          // default fallback CoderProvider of SerializableCoder.PROVIDER.
-          return (Coder<T>) SerializableCoder.of((Class<? extends Serializable>) rawType);
-        } else {
-          throw new CannotProvideCoderException("Class " + rawType
-              + " does not implement GenericJson, Message, or Serializable");
-        }
-      }
-      return (Coder<T>) GenericJsonCoder.of((Class<? extends GenericJson>) rawType);
-    }
-  };
 }

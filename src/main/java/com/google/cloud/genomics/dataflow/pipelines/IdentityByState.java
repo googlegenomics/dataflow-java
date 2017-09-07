@@ -13,17 +13,17 @@
  */
 package com.google.cloud.genomics.dataflow.pipelines;
 
-import com.google.cloud.dataflow.sdk.Pipeline;
-import com.google.cloud.dataflow.sdk.io.TextIO;
-import com.google.cloud.dataflow.sdk.options.Default;
-import com.google.cloud.dataflow.sdk.options.Description;
-import com.google.cloud.dataflow.sdk.options.PipelineOptionsFactory;
-import com.google.cloud.dataflow.sdk.transforms.Combine;
-import com.google.cloud.dataflow.sdk.transforms.Create;
-import com.google.cloud.dataflow.sdk.transforms.Filter;
-import com.google.cloud.dataflow.sdk.transforms.ParDo;
-import com.google.cloud.dataflow.sdk.values.KV;
-import com.google.cloud.dataflow.sdk.values.PCollection;
+import org.apache.beam.sdk.Pipeline;
+import org.apache.beam.sdk.io.TextIO;
+import org.apache.beam.sdk.options.Default;
+import org.apache.beam.sdk.options.Description;
+import org.apache.beam.sdk.options.PipelineOptionsFactory;
+import org.apache.beam.sdk.transforms.Combine;
+import org.apache.beam.sdk.transforms.Create;
+import org.apache.beam.sdk.transforms.Filter;
+import org.apache.beam.sdk.transforms.ParDo;
+import org.apache.beam.sdk.values.KV;
+import org.apache.beam.sdk.values.PCollection;
 import com.google.cloud.genomics.dataflow.functions.JoinNonVariantSegmentsWithVariants;
 import com.google.cloud.genomics.dataflow.functions.SitesToShards;
 import com.google.cloud.genomics.dataflow.functions.VariantFunctions;
@@ -69,12 +69,6 @@ public class IdentityByState {
     GCSOutputOptions
     {
 
-    @Override
-    @Description("The ID of the Google Genomics variant set this pipeline is accessing. "
-        + "Defaults to 1000 Genomes.")
-    @Default.String("10473108253681171589")
-    String getVariantSetId();
-
     @Description("The class that determines the strategy for calculating the similarity of alleles.")
     @Default.Class(SharedMinorAllelesCalculatorFactory.class)
     Class<? extends CallSimilarityCalculatorFactory> getCallSimilarityCalculatorFactory();
@@ -112,7 +106,7 @@ public class IdentityByState {
 
     if (null != options.getSitesFilepath()) {
       // Compute IBS on a list of sites (e.g., SNPs).
-      PCollection<StreamVariantsRequest> requests = p.apply(TextIO.Read.named("ReadSites")
+      PCollection<StreamVariantsRequest> requests = p.apply("ReadSites", TextIO.read()
           .from(options.getSitesFilepath()))
           .apply(new SitesToShards.SitesToStreamVariantsShardsTransform(prototype));
 
@@ -144,13 +138,13 @@ public class IdentityByState {
     }
 
     processedVariants
-        .apply(Filter.byPredicate(VariantFunctions.IS_SINGLE_ALTERNATE_SNP))
+        .apply(Filter.by(VariantFunctions.IS_SINGLE_ALTERNATE_SNP))
         .apply(
-            ParDo.named(AlleleSimilarityCalculator.class.getSimpleName()).of(
+            AlleleSimilarityCalculator.class.getSimpleName(), ParDo.of(
                 new AlleleSimilarityCalculator(getCallSimilarityCalculatorFactory(options))))
         .apply(Combine.<KV<String, String>, KV<Double, Integer>>perKey(new IBSCalculator()))
-        .apply(ParDo.named(FormatIBSData.class.getSimpleName()).of(new FormatIBSData()))
-        .apply(TextIO.Write.named("WriteIBSData").to(options.getOutput()));
+        .apply(FormatIBSData.class.getSimpleName(), ParDo.of(new FormatIBSData()))
+        .apply("WriteIBSData", TextIO.write().to(options.getOutput()));
 
     p.run();
   }

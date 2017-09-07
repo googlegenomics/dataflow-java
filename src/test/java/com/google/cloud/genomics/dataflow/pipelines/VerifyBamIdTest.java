@@ -15,21 +15,19 @@
  */
 package com.google.cloud.genomics.dataflow.pipelines;
 
-import com.google.cloud.dataflow.sdk.coders.AvroCoder;
-import com.google.cloud.dataflow.sdk.options.PipelineOptionsFactory;
-import com.google.cloud.dataflow.sdk.Pipeline;
-import com.google.cloud.dataflow.sdk.testing.DataflowAssert;
-import com.google.cloud.dataflow.sdk.testing.TestPipeline;
-import com.google.cloud.dataflow.sdk.transforms.Create;
-import com.google.cloud.dataflow.sdk.transforms.DoFnTester;
-import com.google.cloud.dataflow.sdk.transforms.ParDo;
-import com.google.cloud.dataflow.sdk.transforms.join.CoGbkResult;
-import com.google.cloud.dataflow.sdk.transforms.join.CoGroupByKey;
-import com.google.cloud.dataflow.sdk.transforms.join.KeyedPCollectionTuple;
-import com.google.cloud.dataflow.sdk.values.KV;
-import com.google.cloud.dataflow.sdk.values.PCollection;
-import com.google.cloud.dataflow.sdk.values.TupleTag;
-import com.google.cloud.genomics.dataflow.coders.GenericJsonCoder;
+import org.apache.beam.sdk.options.PipelineOptionsFactory;
+import org.apache.beam.sdk.testing.PAssert;
+import org.apache.beam.sdk.testing.TestPipeline;
+import org.apache.beam.sdk.testing.TestPipelineOptions;
+import org.apache.beam.sdk.transforms.Create;
+import org.apache.beam.sdk.transforms.DoFnTester;
+import org.apache.beam.sdk.transforms.ParDo;
+import org.apache.beam.sdk.transforms.join.CoGbkResult;
+import org.apache.beam.sdk.transforms.join.CoGroupByKey;
+import org.apache.beam.sdk.transforms.join.KeyedPCollectionTuple;
+import org.apache.beam.sdk.values.KV;
+import org.apache.beam.sdk.values.PCollection;
+import org.apache.beam.sdk.values.TupleTag;
 import com.google.cloud.genomics.dataflow.model.AlleleFreq;
 import com.google.cloud.genomics.dataflow.model.ReadBaseQuality;
 import com.google.cloud.genomics.dataflow.model.ReadCounts;
@@ -52,23 +50,34 @@ import com.google.protobuf.Value;
 
 import org.hamcrest.CoreMatchers;
 import org.junit.Assert;
-import org.junit.Ignore;
+import org.junit.Before;
+import org.junit.BeforeClass;
+import org.junit.Rule;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
-
-import java.util.List;
-import java.util.ArrayList;
-import java.util.Arrays;
-import com.google.cloud.dataflow.sdk.transforms.DoFn;
 
 /**
  * Tests for the VerifyBamId pipeline.
  */
 @RunWith(JUnit4.class)
-public class VerifyBamIdTest {	
+public class VerifyBamIdTest {
+
+  @Rule
+  public final transient TestPipeline p = TestPipeline.create();
+
+  @BeforeClass
+  public static void setUpBeforeClass() {
+    PipelineOptionsFactory.register(TestPipelineOptions.class);
+  }
+
+  @Before
+  public void setUp() {
+    VerifyBamId.registerPipelineCoders(p);
+  }
+
   @Test
-  public void testSplitReads_singleMatchedBase() {
+  public void testSplitReads_singleMatchedBase() throws Exception {
     DoFnTester<Read, KV<Position, ReadBaseQuality>> splitReads = DoFnTester.of(new SplitReads());
 
     // single matched base -> one SingleReadQuality proto
@@ -84,7 +93,7 @@ public class VerifyBamIdTest {
         .setAlignedSequence("A")
         .addAlignedQuality(3)
         .build();
-    Assert.assertThat(splitReads.processBatch(r), CoreMatchers.hasItems(KV.of(Position.newBuilder()
+    Assert.assertThat(splitReads.processBundle(r), CoreMatchers.hasItems(KV.of(Position.newBuilder()
             .setReferenceName("1")
             .setPosition(123L)
             .build(),
@@ -92,7 +101,7 @@ public class VerifyBamIdTest {
   }
 
   @Test
-  public void testSplitReads_twoMatchedBases() {
+  public void testSplitReads_twoMatchedBases() throws Exception {
     DoFnTester<Read, KV<Position, ReadBaseQuality>> splitReads = DoFnTester.of(new SplitReads());
 
     // two matched bases -> two SingleReadQuality protos
@@ -108,7 +117,7 @@ public class VerifyBamIdTest {
         .setAlignedSequence("AG")
         .addAllAlignedQuality(ImmutableList.of(3, 4))
         .build();
-    Assert.assertThat(splitReads.processBatch(r), CoreMatchers.hasItems(KV.of(Position.newBuilder()
+    Assert.assertThat(splitReads.processBundle(r), CoreMatchers.hasItems(KV.of(Position.newBuilder()
             .setReferenceName("1")
             .setPosition(123L)
             .build(),
@@ -121,7 +130,7 @@ public class VerifyBamIdTest {
   }
 
   @Test
-  public void testSplitReads_matchedBasesProperPlacementDifferentOffsets() {
+  public void testSplitReads_matchedBasesProperPlacementDifferentOffsets() throws Exception {
     DoFnTester<Read, KV<Position, ReadBaseQuality>> splitReads = DoFnTester.of(new SplitReads());
 
     // matched bases with different offsets onto the reference
@@ -147,7 +156,7 @@ public class VerifyBamIdTest {
         .setAlignedSequence("ACGT")
         .addAllAlignedQuality(ImmutableList.of(1, 2, 3, 4))
         .build();
-    Assert.assertThat(splitReads.processBatch(r), CoreMatchers.hasItems(KV.of(Position.newBuilder()
+    Assert.assertThat(splitReads.processBundle(r), CoreMatchers.hasItems(KV.of(Position.newBuilder()
             .setReferenceName("1")
             .setPosition(123L)
             .build(),
@@ -165,7 +174,7 @@ public class VerifyBamIdTest {
   }
 
   @Test
-  public void testSplitReads_twoMatchedBasesDifferentOffsets() {
+  public void testSplitReads_twoMatchedBasesDifferentOffsets() throws Exception {
     DoFnTester<Read, KV<Position, ReadBaseQuality>> splitReads = DoFnTester.of(new SplitReads());
 
     // matched bases with different offsets onto the reference
@@ -190,7 +199,7 @@ public class VerifyBamIdTest {
         .setAlignedSequence("ACGT")
         .addAllAlignedQuality(ImmutableList.of(1, 2, 3, 4))
         .build();
-    Assert.assertThat(splitReads.processBatch(r), CoreMatchers.hasItems(KV.of(Position.newBuilder()
+    Assert.assertThat(splitReads.processBundle(r), CoreMatchers.hasItems(KV.of(Position.newBuilder()
             .setReferenceName("1")
             .setPosition(124L)
             .build(),
@@ -208,7 +217,7 @@ public class VerifyBamIdTest {
   }
 
   @Test
-  public void testSampleReads() {
+  public void testSampleReads() throws Exception {
     SampleReads sampleReads = new SampleReads(0.5, "");
     Assert.assertTrue(sampleReads.apply(KV.of(
         Position.newBuilder()
@@ -227,7 +236,7 @@ public class VerifyBamIdTest {
   }
 
   @Test
-  public void testGetAlleleFreq() {
+  public void testGetAlleleFreq() throws Exception {
     DoFnTester<Variant, KV<Position, AlleleFreq>> getAlleleFreq = DoFnTester.of(
         new GetAlleleFreq());
     Position pos = Position.newBuilder()
@@ -245,12 +254,12 @@ public class VerifyBamIdTest {
     af.setAltBases(Lists.newArrayList("T"));
     af.setRefBases("C");
     af.setRefFreq(0.25);
-    Assert.assertThat(getAlleleFreq.processBatch(vBuild.build()),
+    Assert.assertThat(getAlleleFreq.processBundle(vBuild.build()),
         CoreMatchers.hasItems(KV.of(pos, af)));
   }
 
   @Test
-  public void testFilterFreq() {
+  public void testFilterFreq() throws Exception {
     FilterFreq filterFreq = new FilterFreq(0.01);
     Position pos = Position.newBuilder()
         .setReferenceName("1")
@@ -322,20 +331,15 @@ public class VerifyBamIdTest {
   }
 
   @Test
-  public void testPileupAndJoinReads() {
-    VerifyBamId.Options popts =
-        PipelineOptionsFactory.create().as(VerifyBamId.Options.class);
-    Pipeline p = TestPipeline.create(popts);
-    p.getCoderRegistry().setFallbackCoderProvider(GenericJsonCoder.PROVIDER);
-
+  public void testPileupAndJoinReads() throws Exception {
     final ReadBaseQuality srq = new ReadBaseQuality("A", 10);
     PCollection<KV<Position, ReadBaseQuality>> readCounts = p.apply(
-        Create.of(KV.of(position1, srq)));
-    DataflowAssert.that(readCounts).containsInAnyOrder(KV.of(position1, srq));
+        "createInput", Create.of(KV.of(position1, srq)));
+    PAssert.that(readCounts).containsInAnyOrder(KV.of(position1, srq));
 
     PCollection<KV<Position, AlleleFreq>> refFreq = p.apply(Create.of(refCountList));
 
-    DataflowAssert.that(refFreq).containsInAnyOrder(refCountList);
+    PAssert.that(refFreq).containsInAnyOrder(refCountList);
 
     final TupleTag<ReadBaseQuality> readCountsTag = new TupleTag<>();
     TupleTag<AlleleFreq> refFreqTag = new TupleTag<>();
@@ -346,29 +350,24 @@ public class VerifyBamIdTest {
 
     PCollection<KV<Position, ReadCounts>> result = joined.apply(
         ParDo.of(new PileupAndJoinReads(readCountsTag, refFreqTag)));
-		
+
     KV<Position, ReadCounts> expectedResult1 = KV.of(position1, rc1);
     KV<Position, ReadCounts> expectedResult2 = KV.of(position2, rc2);
     KV<Position, ReadCounts> expectedResult3 = KV.of(position3, rc3);
 
-    DataflowAssert.that(result).containsInAnyOrder(expectedResult1, expectedResult2, expectedResult3);
+    PAssert.that(result).containsInAnyOrder(expectedResult1, expectedResult2, expectedResult3);
     p.run();
   }
 
   @Test
-  public void testPileupAndJoinReadsWithChrPrefix() {
-    VerifyBamId.Options popts =
-        PipelineOptionsFactory.create().as(VerifyBamId.Options.class);
-    Pipeline p = TestPipeline.create(popts);
-    p.getCoderRegistry().setFallbackCoderProvider(GenericJsonCoder.PROVIDER);
-
+  public void testPileupAndJoinReadsWithChrPrefix() throws Exception {
     ReadBaseQuality srq = new ReadBaseQuality("A", 10);
     PCollection<KV<Position, ReadBaseQuality>> readCounts = p.apply(
-        Create.of(KV.of(position1chrPrefix, srq)));
-    DataflowAssert.that(readCounts).containsInAnyOrder(KV.of(position1chrPrefix, srq));
+        "createInput", Create.of(KV.of(position1chrPrefix, srq)));
+    PAssert.that(readCounts).containsInAnyOrder(KV.of(position1chrPrefix, srq));
 
     PCollection<KV<Position, AlleleFreq>> refFreq = p.apply(Create.of(refCountList));
-    DataflowAssert.that(refFreq).containsInAnyOrder(refCountList);
+    PAssert.that(refFreq).containsInAnyOrder(refCountList);
 
     TupleTag<ReadBaseQuality> readCountsTag = new TupleTag<>();
     TupleTag<AlleleFreq> refFreqTag = new TupleTag<>();
@@ -379,24 +378,19 @@ public class VerifyBamIdTest {
 
     PCollection<KV<Position, ReadCounts>> result = joined.apply(
         ParDo.of(new PileupAndJoinReads(readCountsTag, refFreqTag)));
-	
+
     KV<Position, ReadCounts> expectedResult1 = KV.of(position1, rc1);
     KV<Position, ReadCounts> expectedResult2 = KV.of(position2, rc2);
     KV<Position, ReadCounts> expectedResult3 = KV.of(position3, rc3);
 
-    DataflowAssert.that(result).containsInAnyOrder(expectedResult1, expectedResult2, expectedResult3);
+    PAssert.that(result).containsInAnyOrder(expectedResult1, expectedResult2, expectedResult3);
     p.run();
   }
 
   @Test
-  public void testCombineReads() {
-    VerifyBamId.Options popts =
-        PipelineOptionsFactory.create().as(VerifyBamId.Options.class);
-    Pipeline p = TestPipeline.create(popts);
-    p.getCoderRegistry().setFallbackCoderProvider(GenericJsonCoder.PROVIDER);
-
-    PCollection<KV<Position, AlleleFreq>> refCounts = p.apply(Create.of(refCountList));
-    DataflowAssert.that(refCounts).containsInAnyOrder(refCountList);
+  public void testCombineReads() throws Exception {
+    PCollection<KV<Position, AlleleFreq>> refCounts = p.apply("createInput", Create.of(refCountList));
+    PAssert.that(refCounts).containsInAnyOrder(refCountList);
 
     Read read = Read.newBuilder()
         .setProperPlacement(true)
@@ -412,7 +406,7 @@ public class VerifyBamIdTest {
         .build();
 
     PCollection<Read> reads = p.apply(Create.of(read));
-    DataflowAssert.that(reads).containsInAnyOrder(read);
+    PAssert.that(reads).containsInAnyOrder(read);
 
     PCollection<KV<Position, ReadCounts>> results =
         VerifyBamId.combineReads(reads, 1.0, "", refCounts);
@@ -427,7 +421,7 @@ public class VerifyBamIdTest {
     three.setRefFreq(0.6);
     three.addReadQualityCount(ReadQualityCount.Base.OTHER, 5, 1L);
 
-    DataflowAssert.that(results)
+    PAssert.that(results)
         .containsInAnyOrder(KV.of(position1, one), KV.of(position2, two), KV.of(position3, three));
     p.run();
   }

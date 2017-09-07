@@ -131,8 +131,9 @@ public class VariantSimilarityITCase {
         "--references=" + helper.PLATINUM_GENOMES_BRCA1_REFERENCES,
         "--variantSetId=" + helper.PLATINUM_GENOMES_DATASET,
         "--output=" + outputPrefix,
-        "--runner=BlockingDataflowPipelineRunner",
         "--stagingLocation=" + helper.getTestStagingGcsFolder(),
+        "--runner=DataflowRunner",
+        "--wait=true"
         };
     testBase(ARGS, EXPECTED_BRCA1_RESULT);
   }

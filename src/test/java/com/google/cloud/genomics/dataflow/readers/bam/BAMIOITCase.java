@@ -15,8 +15,8 @@
  */
 package com.google.cloud.genomics.dataflow.readers.bam;
 import com.google.api.services.storage.Storage;
-import com.google.cloud.dataflow.sdk.options.PipelineOptionsFactory;
-import com.google.cloud.dataflow.sdk.util.Transport;
+import org.apache.beam.sdk.options.PipelineOptionsFactory;
+import org.apache.beam.sdk.util.Transport;
 import com.google.cloud.genomics.dataflow.utils.GCSOptions;
 
 import org.junit.Assert;
