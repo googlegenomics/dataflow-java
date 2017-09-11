@@ -52,6 +52,7 @@ import com.google.genomics.v1.StreamReadsRequest;
 import htsjdk.samtools.ValidationStringency;
 
 import java.io.IOException;
+import java.net.URISyntaxException;
 import java.security.GeneralSecurityException;
 import java.util.Collections;
 import java.util.List;
@@ -100,9 +101,9 @@ public class ShardedBAMWriting {
   private static Options pipelineOptions;
   private static Pipeline pipeline;
   private static OfflineAuth auth;
-  private static Iterable<Contig> contigs;
+  private static List<Contig> contigs;
 
-  public static void main(String[] args) throws GeneralSecurityException, IOException {
+  public static void main(String[] args) throws GeneralSecurityException, IOException, URISyntaxException {
     // Register the options so that they show up via --help
     PipelineOptionsFactory.register(Options.class);
     pipelineOptions = PipelineOptionsFactory.fromArgs(args)
@@ -115,7 +116,7 @@ public class ShardedBAMWriting {
     pipeline.getCoderRegistry().registerCoderForClass(Contig.class, CONTIG_CODER);
     // Process options.
     contigs = pipelineOptions.isAllReferences() ? null :
-      Contig.parseContigsFromCommandLine(pipelineOptions.getReferences());
+        Lists.newArrayList(Contig.parseContigsFromCommandLine(pipelineOptions.getReferences()));
 
 
     // Get the reads and shard them.
@@ -160,12 +161,12 @@ public class ShardedBAMWriting {
         .withoutSharding());
 
     PipelineResult result = pipeline.run();
-    if(pipelineOptions.getWait()) {
+    if (pipelineOptions.getWait()) {
       result.waitUntilFinish();
     }
   }
 
-  private static PCollection<Read> getReadsFromBAMFile() throws IOException {
+  private static PCollection<Read> getReadsFromBAMFile() throws IOException, URISyntaxException {
     /**
      * Policy used to shard Reads.
      * By default we are using the default sharding supplied by the policy class.
@@ -179,7 +180,7 @@ public class ShardedBAMWriting {
      *   };
      * </pre>
      */
-    final ShardingPolicy BAM_FILE_READ_SHARDING_POLICY = ShardingPolicy.BYTE_SIZE_POLICY;
+    final ShardingPolicy BAM_FILE_READ_SHARDING_POLICY = ShardingPolicy.BYTE_SIZE_POLICY_10MB;
 
     LOG.info("Sharded reading of " + pipelineOptions.getBAMFilePath());
 
@@ -187,7 +188,9 @@ public class ShardedBAMWriting {
         ValidationStringency.DEFAULT_STRINGENCY,
         true);
 
-    return ReadBAMTransform.getReadsFromBAMFilesSharded(pipeline,
+    // TODO: change this to ReadBAMTransform.getReadsFromBAMFilesSharded when
+    // https://github.com/googlegenomics/dataflow-java/issues/214 is fixed.
+    return ReadBAMTransform.getReadsFromBAMFileSharded(pipeline,
         pipelineOptions,
         auth,
         contigs,

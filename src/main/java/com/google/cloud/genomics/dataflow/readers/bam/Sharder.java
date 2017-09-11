@@ -69,7 +69,7 @@ public class Sharder {
   HashMap<String, Contig> contigsByReference;
 
   public static List<BAMShard> shardBAMFile(Objects storageClient,
-      String filePath, Iterable<Contig> requestedContigs,
+      String filePath, List<Contig> requestedContigs,
       ShardingPolicy shardingPolicy) throws IOException {
     final List<BAMShard> shards = Lists.newArrayList();
     (new Sharder(storageClient, filePath, requestedContigs, shardingPolicy,
@@ -83,7 +83,7 @@ public class Sharder {
     return shards;
   }
 
-  public Sharder(Objects storageClient, String filePath, Iterable<Contig> requestedContigs,
+  public Sharder(Objects storageClient, String filePath, List<Contig> requestedContigs,
       ShardingPolicy shardingPolicy,
       SharderOutput output) {
     super();
@@ -232,7 +232,7 @@ public class Sharder {
         LOG.fine("Extending the shard  to " + index.getLastLocusInBin(bin));
       }
 
-      if (shardingPolicy.shardBigEnough(currentShard)) {
+      if (shardingPolicy.apply(currentShard)) {
         LOG.info("Shard size is big enough to finalize: " +
             currentShard.sizeInLoci() + ", " + currentShard.approximateSizeInBytes() + " bytes");
         final BAMShard bamShard = currentShard.finalize(index, Math.min(index.getLastLocusInBin(bin), (int)contig.end));

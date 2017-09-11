@@ -20,6 +20,11 @@ import com.google.api.services.genomics.model.Annotation;
 import com.google.api.services.genomics.model.AnnotationSet;
 import com.google.api.services.genomics.model.BatchCreateAnnotationsRequest;
 import com.google.api.services.genomics.model.Position;
+import com.google.cloud.genomics.dataflow.readers.bam.BAMShard;
+import com.google.cloud.genomics.dataflow.readers.bam.ReadBAMTransform;
+import com.google.cloud.genomics.dataflow.readers.bam.ReaderOptions;
+import com.google.cloud.genomics.dataflow.readers.bam.ShardingPolicy;
+import htsjdk.samtools.ValidationStringency;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.coders.Coder;
 import org.apache.beam.sdk.coders.CoderRegistry;
@@ -54,6 +59,8 @@ import com.google.genomics.v1.CigarUnit;
 import com.google.genomics.v1.Read;
 
 import java.io.IOException;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.security.GeneralSecurityException;
 import java.util.HashMap;
 import java.util.List;
@@ -86,12 +93,20 @@ public class CalculateCoverage {
    */
   public static interface Options extends ShardOptions {
 
+    @Description("Cloud storage prefix containing BAM and BAI files from which to read."
+        + "(e.g. gs://genomics-public-data/platinum-genomes/bam/)"
+        + " Use one of --bamInput, --inputDatasetId, or --readGroupSetIds.")
+    @Default.String("")
+    String getBamInput();
+    void setBamInput(String value);
+
     @Description("A comma delimited list of the IDs of the Google Genomics ReadGroupSets this "
         + "pipeline is working with. Default (empty) indicates all ReadGroupSets in InputDatasetId."
         + "  This or InputDatasetId must be set.  InputDatasetId overrides ReadGroupSetIds "
         + "(if InputDatasetId is set, this field will be ignored).  All of the referenceSetIds for"
         + " all ReadGroupSets in this list must be the same for the purposes of setting the"
-        + " referenceSetId of the output AnnotationSet.")
+        + " referenceSetId of the output AnnotationSet."
+        + " Use one of --bamInput, --inputDatasetId, or --readGroupSetIds.")
     @Default.String("")
     String getReadGroupSetIds();
 
@@ -102,7 +117,8 @@ public class CalculateCoverage {
         + " must be set.  InputDatasetId overrides ReadGroupSetIds (if this field is set, "
         + "ReadGroupSetIds will be ignored).  All of the referenceSetIds for all ReadGroupSets in"
         + " this Dataset must be the same for the purposes of setting the referenceSetId"
-        + " of the output AnnotationSet.")
+        + " of the output AnnotationSet."
+        + " Use one of --bamInput, --inputDatasetId, or --readGroupSetIds.")
     @Default.String("")
     String getInputDatasetId();
 
@@ -115,6 +131,19 @@ public class CalculateCoverage {
     String getOutputDatasetId();
 
     void setOutputDatasetId(String outputDatasetId);
+
+    @Description("The Google Genomics reference set id to use for the annotation set."
+    + "Only used when --bamInput is used. Defaults to \"EMWV_ZfLxrDY-wE\" for hg19.")
+    @Default.String("EMWV_ZfLxrDY-wE")
+    String getReferenceSetId();
+    void setReferenceSetId(String referenceSetId);
+
+    @Description("For BAM file input, the maximum size in bytes of a shard processed by a "
+        + "single worker. Only used when --bamInput is used. (For --inputDatasetId or "
+        + "--readGroupSetIds, shard size is controlled by --basesPerShard.)")
+    @Default.Integer(100 * 1024 * 1024)  // 100 MB
+    int getMaxShardSizeBytes();
+    void setMaxShardSizeBytes(int maxShardSizeBytes);
 
     @Description("The bucket width you would like to calculate coverage for.  Default is 2048.  "
         + "Buckets are non-overlapping.  If bucket width does not divide into the reference "
@@ -165,7 +194,7 @@ public class CalculateCoverage {
       (Coder<Position>) GenericJsonCoder.of(Position.class));
   }
 
-  public static void main(String[] args) throws GeneralSecurityException, IOException {
+  public static void main(String[] args) throws GeneralSecurityException, IOException, URISyntaxException {
     // Register the options so that they show up via --help
     PipelineOptionsFactory.register(Options.class);
     options = PipelineOptionsFactory.fromArgs(args).withValidation().as(Options.class);
@@ -175,45 +204,80 @@ public class CalculateCoverage {
     p = Pipeline.create(options);
     registerPipelineCoders(p);
 
-    if (options.getInputDatasetId().isEmpty() && options.getReadGroupSetIds().isEmpty()) {
-      throw new IllegalArgumentException("InputDatasetId or ReadGroupSetIds must be specified");
+    if (options.getBamInput().isEmpty() && options.getInputDatasetId().isEmpty() && options.getReadGroupSetIds().isEmpty()) {
+      throw new IllegalArgumentException("BamInput or InputDatasetId or ReadGroupSetIds must be specified");
     }
 
-    List<String> rgsIds;
-    if (options.getInputDatasetId().isEmpty()) {
-      rgsIds = Lists.newArrayList(options.getReadGroupSetIds().split(","));
+    PCollection<Read> reads = null;
+    String referenceSetId = options.getReferenceSetId();
+
+    if (!options.getBamInput().isEmpty()) {
+
+      if (options.isAllReferences()) {
+        throw new IllegalArgumentException("--allReferences is not currently supported for BAM "
+        + "file reading. Instead use --references and list all of the genomic regions in the file.");
+      }
+
+      final List<Contig> contigs = Lists.newArrayList(Contig.parseContigsFromCommandLine(options.getReferences()));
+      final ReaderOptions readerOptions = new ReaderOptions(
+          ValidationStringency.LENIENT,
+          false);  // Do not include unmapped reads.
+
+      ShardingPolicy policy = new ShardingPolicy() {
+        final int MAX_BYTES_PER_SHARD = options.getMaxShardSizeBytes();
+        @Override
+        public Boolean apply(BAMShard shard) {
+          return shard.approximateSizeInBytes() > MAX_BYTES_PER_SHARD;
+        }
+      };
+
+      reads = ReadBAMTransform.getReadsFromBAMFilesSharded (
+          p,
+          options,
+          auth,
+          contigs,
+          readerOptions,
+          options.getBamInput(),
+          policy);
+
     } else {
-      rgsIds = GenomicsUtils.getReadGroupSetIds(options.getInputDatasetId(), auth);
-    }
 
-    if (rgsIds.size() < options.getNumQuantiles()) {
-      throw new IllegalArgumentException("Number of ReadGroupSets must be greater than or equal to"
-          + " the number of requested quantiles.");
-    }
+      List<String> rgsIds;
+      if (options.getInputDatasetId().isEmpty()) {
+        rgsIds = Lists.newArrayList(options.getReadGroupSetIds().split(","));
+      } else {
+        rgsIds = GenomicsUtils.getReadGroupSetIds(options.getInputDatasetId(), auth);
+      }
 
-    // Grab one ReferenceSetId to be used within the pipeline to confirm that all ReadGroupSets
-    // are associated with the same ReferenceSet.
-    String referenceSetId = GenomicsUtils.getReferenceSetId(rgsIds.get(0), auth);
-    if (Strings.isNullOrEmpty(referenceSetId)) {
-      throw new IllegalArgumentException("No ReferenceSetId associated with ReadGroupSetId "
-          + rgsIds.get(0)
-          + ". All ReadGroupSets in given input must have an associated ReferenceSet.");
+      if (rgsIds.size() < options.getNumQuantiles()) {
+        throw new IllegalArgumentException("Number of ReadGroupSets must be greater than or equal to"
+            + " the number of requested quantiles.");
+      }
+
+      // Grab one ReferenceSetId to be used within the pipeline to confirm that all ReadGroupSets
+      // are associated with the same ReferenceSet.
+      referenceSetId = GenomicsUtils.getReferenceSetId(rgsIds.get(0), auth);
+      if (Strings.isNullOrEmpty(referenceSetId)) {
+        throw new IllegalArgumentException("No ReferenceSetId associated with ReadGroupSetId "
+            + rgsIds.get(0)
+            + ". All ReadGroupSets in given input must have an associated ReferenceSet.");
+      }
+
+      reads = p.begin()
+          .apply(Create.of(rgsIds))
+          .apply(ParDo.of(new CheckMatchingReferenceSet(referenceSetId, auth)))
+          .apply(new ReadGroupStreamer(auth, ShardBoundary.Requirement.STRICT, READ_FIELDS, SexChromosomeFilter.INCLUDE_XY));
     }
 
     // Create our destination AnnotationSet for the associated ReferenceSet.
     AnnotationSet annotationSet = createAnnotationSet(referenceSetId);
 
-    PCollection<Read> reads = p.begin()
-        .apply(Create.of(rgsIds))
-        .apply(ParDo.of(new CheckMatchingReferenceSet(referenceSetId, auth)))
-        .apply(new ReadGroupStreamer(auth, ShardBoundary.Requirement.STRICT, READ_FIELDS, SexChromosomeFilter.INCLUDE_XY));
-
-    PCollection<KV<PosRgsMq, Double>> coverageMeans = reads.apply(new CalculateCoverageMean());
+    PCollection<KV<PosRgsMq, Double>> coverageMeans = reads.apply("CalculateCoverateMean", new CalculateCoverageMean());
     PCollection<KV<Position, KV<PosRgsMq.MappingQuality, List<Double>>>> quantiles
-        = coverageMeans.apply(new CalculateQuantiles(options.getNumQuantiles()));
+        = coverageMeans.apply("CalculateQuantiles", new CalculateQuantiles(options.getNumQuantiles()));
     PCollection<KV<Position, Iterable<KV<PosRgsMq.MappingQuality, List<Double>>>>> answer =
         quantiles.apply(GroupByKey.<Position, KV<PosRgsMq.MappingQuality, List<Double>>>create());
-    answer.apply(ParDo.of(new CreateAnnotations(annotationSet.getId(), auth, true)));
+    answer.apply("CreateAnnotations", ParDo.of(new CreateAnnotations(annotationSet.getId(), auth, true)));
 
     p.run();
   }

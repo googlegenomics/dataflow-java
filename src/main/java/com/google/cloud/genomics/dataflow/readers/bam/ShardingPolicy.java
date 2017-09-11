@@ -15,33 +15,32 @@
  */
 package com.google.cloud.genomics.dataflow.readers.bam;
 
+import org.apache.beam.sdk.transforms.SerializableFunction;
+
 /**
  * Different sharding policies and constants governing
  * how we slice the data in BAM file.
  */
-public interface ShardingPolicy  {
+public interface ShardingPolicy extends SerializableFunction<BAMShard, Boolean> {
+
   /**
    * Decides whether a shard we are growing is large enough to be finalized
    * and submitted for processing.
    */
-  public boolean shardBigEnough(BAMShard shard);
+  public static ShardingPolicy BYTE_SIZE_POLICY_10MB = new ShardingPolicy() {
+    static final int MAX_BYTES_PER_SHARD = 10*1024*1024;    // 10MB
+    @Override
+    public Boolean apply(BAMShard shard) {
+      return shard.approximateSizeInBytes() > MAX_BYTES_PER_SHARD;
+    }
+  };
 
-  static final int MAX_BYTES_PER_SHARD = 10*1024*1024;    // 10MB
-  public static ShardingPolicy BYTE_SIZE_POLICY =
-   new ShardingPolicy() {
-      @Override
-      public boolean shardBigEnough(BAMShard shard) {
-        return shard.approximateSizeInBytes() > MAX_BYTES_PER_SHARD;
-      }
-    };
-
-  static final int MAX_BASE_PAIRS_PER_SHARD = 100000;
-  public static ShardingPolicy LOCI_SIZE_POLICY =
-    new ShardingPolicy() {
-      @Override
-      public boolean shardBigEnough(BAMShard shard) {
-        return shard.sizeInLoci() > MAX_BASE_PAIRS_PER_SHARD;
-      }
-    };
+  public static ShardingPolicy LOCI_SIZE_POLICY_100KBP = new ShardingPolicy() {
+    static final int MAX_BASE_PAIRS_PER_SHARD = 100000;
+    @Override
+    public Boolean apply(BAMShard shard) {
+      return shard.sizeInLoci() > MAX_BASE_PAIRS_PER_SHARD;
+    }
+  };
 }
 

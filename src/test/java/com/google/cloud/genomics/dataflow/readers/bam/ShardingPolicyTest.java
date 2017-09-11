@@ -34,7 +34,7 @@ public class ShardingPolicyTest {
     Assert.assertTrue(
     		"Shard of size " + shard.approximateSizeInBytes() +
     		" is NOT big enough but it should be",
-    		ShardingPolicy.BYTE_SIZE_POLICY.shardBigEnough(shard));
+    		ShardingPolicy.BYTE_SIZE_POLICY_10MB.apply(shard));
 
     shard = new BAMShard("f","chr20",1);
     chunk = new Chunk(1,1L*1024L*1024L << 16);
@@ -42,7 +42,7 @@ public class ShardingPolicyTest {
     Assert.assertFalse(
     		"Shard of size " + shard.approximateSizeInBytes() +
     		" is big enough but it should NOT be",
-    		ShardingPolicy.BYTE_SIZE_POLICY.shardBigEnough(shard));
+    		ShardingPolicy.BYTE_SIZE_POLICY_10MB.apply(shard));
   }
 
   @Test
@@ -53,7 +53,7 @@ public class ShardingPolicyTest {
     Assert.assertTrue(
     		"Shard of size " + shard.sizeInLoci() +
     		" is NOT big enough but it should be",
-    		ShardingPolicy.LOCI_SIZE_POLICY.shardBigEnough(shard));
+    		ShardingPolicy.LOCI_SIZE_POLICY_100KBP.apply(shard));
 
     shard = new BAMShard("f","chr20",1);
     chunk = new Chunk(1,9*1024*1024);
@@ -61,6 +61,6 @@ public class ShardingPolicyTest {
     Assert.assertFalse(
     		"Shard of size " + shard.sizeInLoci() +
     		" is big enough but it should NOT be",
-    		ShardingPolicy.LOCI_SIZE_POLICY.shardBigEnough(shard));
+    		ShardingPolicy.LOCI_SIZE_POLICY_100KBP.apply(shard));
   }
 }
