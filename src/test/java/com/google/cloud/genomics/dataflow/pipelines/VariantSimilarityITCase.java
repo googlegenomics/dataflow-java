@@ -53,49 +53,27 @@ import java.util.List;
 public class VariantSimilarityITCase {
 
   static final GraphResult[] EXPECTED_SITES_RESULT = {
-    new GraphResult("NA12892", -0.6, -0.07),
-    new GraphResult("NA12887", -0.6, -0.07),
-    new GraphResult("NA12880", -0.6, -0.07),
-    new GraphResult("NA12877", 0.35, 0.23),
-    new GraphResult("NA12878", -0.6, -0.07),
-    new GraphResult("NA12889", -0.6, -0.07),
-    new GraphResult("NA12888", -0.6, -0.07),
-    new GraphResult("NA12879", 0.65, -0.72),
-    new GraphResult("NA12881", 0.35, 0.23),
-    new GraphResult("NA12885", 0.35, 0.23),
-    new GraphResult("NA12891", 0.35, 0.23),
-    new GraphResult("NA12884", 0.35, 0.23),
-    new GraphResult("NA12883", -0.6, -0.07),
-    new GraphResult("NA12886", 0.35, 0.23),
-    new GraphResult("NA12893", 0.65, -0.72),
-    new GraphResult("NA12882", 0.35, 0.23),
-    new GraphResult("NA12890", 0.35, 0.23)
+    new GraphResult("NA12892", 0.5, -0.01),
+    new GraphResult("NA12877", -0.5, -0.01),
+    new GraphResult("NA12878", 0.5, 0.0),
+    new GraphResult("NA12889", 0.5, 0.0),
+    new GraphResult("NA12891", -0.51, 0.0),
+    new GraphResult("NA12890", -0.5, -0.01)
   };
 
   static final GraphResult[] EXPECTED_BRCA1_RESULT = {
-    new GraphResult("NA12877", 5.18, 0.22),
-    new GraphResult("NA12878", -7.39, -1.7),
-    new GraphResult("NA12879", 5.26, 1.37),
-    new GraphResult("NA12880", -7.41, -2.74),
-    new GraphResult("NA12881", 5.27, -1.06),
-    new GraphResult("NA12882", 5.21, 1.19),
-    new GraphResult("NA12883", -7.57, -3.73),
-    new GraphResult("NA12884", 5.33, 0.95),
-    new GraphResult("NA12885", 5.21, 1.07),
-    new GraphResult("NA12886", 5.28, -0.15),
-    new GraphResult("NA12887", -7.44, 1.69),
-    new GraphResult("NA12888", -7.47, 2.72),
-    new GraphResult("NA12889", -7.34, 1.65),
-    new GraphResult("NA12890", 5.04, -1.61),
-    new GraphResult("NA12891", 5.24, -0.88),
-    new GraphResult("NA12892", -7.64, 2.1),
-    new GraphResult("NA12893", 5.18, -1.18)
+    new GraphResult("NA12877", -6.51, -0.52),
+    new GraphResult("NA12878", 6.36, 4.89),
+    new GraphResult("NA12889", 6.37, -1.17),
+    new GraphResult("NA12890", -6.5, -0.36),
+    new GraphResult("NA12891", -6.51, 0.75),
+    new GraphResult("NA12892", 6.75, -3.63),
   };
 
   static final GraphResult[] EXPECTED_CALLSETS_RESULT = {
-    new GraphResult("NA12877", 4.58, 2.63),
-    new GraphResult("NA12880", -9.1, 0.01),
-    new GraphResult("NA12890", 4.5, -2.66)
+    new GraphResult("NA12877", 4.45, 2.66),
+    new GraphResult("NA12889", -9.17, -0.05),
+    new GraphResult("NA12890", 4.7, -2.62)
   };
 
   static String outputPrefix;
@@ -153,8 +131,9 @@ public class VariantSimilarityITCase {
         "--references=" + helper.PLATINUM_GENOMES_BRCA1_REFERENCES,
         "--variantSetId=" + helper.PLATINUM_GENOMES_DATASET,
         "--output=" + outputPrefix,
-        "--runner=BlockingDataflowPipelineRunner",
         "--stagingLocation=" + helper.getTestStagingGcsFolder(),
+        "--runner=DataflowRunner",
+        "--wait=true"
         };
     testBase(ARGS, EXPECTED_BRCA1_RESULT);
   }

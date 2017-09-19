@@ -18,7 +18,7 @@ package com.google.cloud.genomics.dataflow.coders;
 import static org.junit.Assert.assertTrue;
 
 import com.google.api.services.genomics.model.Read;
-import com.google.cloud.dataflow.sdk.coders.Coder.Context;
+import org.apache.beam.sdk.coders.Coder.Context;
 
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -42,14 +42,14 @@ public class GenericJsonCoderTest {
 
     GenericJsonCoder<Read> coder = GenericJsonCoder.of(Read.class);
     ByteArrayOutputStream output = new ByteArrayOutputStream();
-    coder.encode(read, output, Context.NESTED);
+    coder.encode(read, output);
     read.setId("TEST_READ_2");
-    coder.encode(read, output, Context.NESTED);
+    coder.encode(read, output);
 
     InputStream input = new ByteArrayInputStream(output.toByteArray());
-    Read out = coder.decode(input, Context.NESTED);
+    Read out = coder.decode(input);
     assertTrue(out.getId().equals("TEST_READ_1"));
-    out = coder.decode(input, Context.NESTED);
+    out = coder.decode(input);
     assertTrue(out.getId().equals("TEST_READ_2"));
   }
 }

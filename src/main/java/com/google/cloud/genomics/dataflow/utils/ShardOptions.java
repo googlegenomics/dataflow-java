@@ -13,8 +13,8 @@
  */
 package com.google.cloud.genomics.dataflow.utils;
 
-import com.google.cloud.dataflow.sdk.options.Default;
-import com.google.cloud.dataflow.sdk.options.Description;
+import org.apache.beam.sdk.options.Default;
+import org.apache.beam.sdk.options.Description;
 
 /**
  * A common options class for pipelines that shard by genomic region.

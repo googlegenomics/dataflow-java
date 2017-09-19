@@ -16,17 +16,17 @@
 package com.google.cloud.genomics.dataflow.writers.bam;
 
 import com.google.api.services.storage.Storage;
-import com.google.cloud.dataflow.sdk.transforms.Aggregator;
-import com.google.cloud.dataflow.sdk.transforms.DoFn;
-import com.google.cloud.dataflow.sdk.transforms.Max;
-import com.google.cloud.dataflow.sdk.transforms.Min;
-import com.google.cloud.dataflow.sdk.transforms.Sum;
-import com.google.cloud.dataflow.sdk.util.GcsUtil;
-import com.google.cloud.dataflow.sdk.util.Transport;
-import com.google.cloud.dataflow.sdk.util.gcsfs.GcsPath;
-import com.google.cloud.dataflow.sdk.values.KV;
-import com.google.cloud.dataflow.sdk.values.PCollectionView;
-import com.google.cloud.dataflow.sdk.values.TupleTag;
+import org.apache.beam.sdk.metrics.Metrics;
+import org.apache.beam.sdk.transforms.DoFn;
+import org.apache.beam.sdk.transforms.Max;
+import org.apache.beam.sdk.transforms.Min;
+import org.apache.beam.sdk.transforms.Sum;
+import org.apache.beam.sdk.util.GcsUtil;
+import org.apache.beam.sdk.util.Transport;
+import org.apache.beam.sdk.util.gcsfs.GcsPath;
+import org.apache.beam.sdk.values.KV;
+import org.apache.beam.sdk.values.PCollectionView;
+import org.apache.beam.sdk.values.TupleTag;
 import com.google.cloud.genomics.dataflow.readers.bam.BAMIO;
 import com.google.cloud.genomics.dataflow.readers.bam.HeaderInfo;
 import com.google.cloud.genomics.dataflow.utils.GCSOptions;
@@ -64,35 +64,17 @@ public class WriteBAIFn extends DoFn<String, String> {
   PCollectionView<HeaderInfo> headerView;
   PCollectionView<Iterable<KV<Integer, Long>>> sequenceShardSizesView;
 
-  Aggregator<Long, Long> readCountAggregator;
-  Aggregator<Long, Long> noCoordReadCountAggregator;
-  Aggregator<Integer, Integer> initializedShardCount;
-  Aggregator<Integer, Integer> finishedShardCount;
-  Aggregator<Long, Long> shardTimeMaxSec;
-  Aggregator<Long, Long> shardTimeMinSec;
-  Aggregator<Long, Long> shardReadCountMax;
-  Aggregator<Long, Long> shardReadCountMin;
-
   public WriteBAIFn(PCollectionView<HeaderInfo> headerView,
       PCollectionView<String> writtenBAMFilerView,
       PCollectionView<Iterable<KV<Integer, Long>>> sequenceShardSizesView) {
     this.writtenBAMFilerView = writtenBAMFilerView;
     this.headerView = headerView;
     this.sequenceShardSizesView = sequenceShardSizesView;
-
-    readCountAggregator = createAggregator("Indexed reads", new Sum.SumLongFn());
-    noCoordReadCountAggregator = createAggregator("Indexed no coordinate reads", new Sum.SumLongFn());
-    initializedShardCount = createAggregator("Initialized Indexing Shard Count", new Sum.SumIntegerFn());
-    finishedShardCount = createAggregator("Finished Indexing Shard Count", new Sum.SumIntegerFn());
-    shardTimeMaxSec = createAggregator("Maximum Indexing Shard Processing Time (sec)", new Max.MaxLongFn());
-    shardTimeMinSec = createAggregator("Minimum Indexing Shard Processing Time (sec)", new Min.MinLongFn());
-    shardReadCountMax = createAggregator("Maximum Reads Per Indexing Shard", new Max.MaxLongFn());
-    shardReadCountMin = createAggregator("Minimum Reads Per Indexing Shard", new Min.MinLongFn());
   }
 
-  @Override
+  @ProcessElement
   public void processElement(DoFn<String, String>.ProcessContext c) throws Exception {
-    initializedShardCount.addValue(1);
+    Metrics.counter(WriteBAIFn.class, "Initialized Indexing Shard Count").inc();
     Stopwatch stopWatch = Stopwatch.createStarted();
 
     final HeaderInfo header = c.sideInput(headerView);
@@ -165,17 +147,16 @@ public class WriteBAIFn extends DoFn<String, String> {
     }
     long noCoordinateReads = indexer.finish();
     c.output(baiFilePath);
-    c.sideOutput(NO_COORD_READS_COUNT_TAG, noCoordinateReads);
+    c.output(NO_COORD_READS_COUNT_TAG, noCoordinateReads);
     LOG.info("Generated " + baiFilePath + ", " + processedReads + " reads, " +
         noCoordinateReads + " no coordinate reads, " + skippedReads + ", skipped reads");
     stopWatch.stop();
-    shardTimeMaxSec.addValue(stopWatch.elapsed(TimeUnit.SECONDS));
-    shardTimeMinSec.addValue(stopWatch.elapsed(TimeUnit.SECONDS));
-    finishedShardCount.addValue(1);
-    readCountAggregator.addValue(processedReads);
-    noCoordReadCountAggregator.addValue(noCoordinateReads);
-    shardReadCountMax.addValue(processedReads);
-    shardReadCountMin.addValue(processedReads);
+    Metrics.distribution(WriteBAIFn.class, "Indexing Shard Processing Time (sec)").update(
+        stopWatch.elapsed(TimeUnit.SECONDS));
+    Metrics.counter(WriteBAIFn.class, "Finished Indexing Shard Count").inc();
+    Metrics.counter(WriteBAIFn.class, "Indexed reads").inc(processedReads);
+    Metrics.counter(WriteBAIFn.class, "Indexed no coordinate reads").inc(noCoordinateReads);
+    Metrics.distribution(WriteBAIFn.class, "Reads Per Indexing Shard").update(processedReads);
   }
 }
 

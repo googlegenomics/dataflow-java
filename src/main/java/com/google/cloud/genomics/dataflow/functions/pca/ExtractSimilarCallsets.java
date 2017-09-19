@@ -13,8 +13,9 @@
  */
 package com.google.cloud.genomics.dataflow.functions.pca;
 
-import com.google.cloud.dataflow.sdk.transforms.DoFn;
-import com.google.cloud.dataflow.sdk.values.KV;
+import org.apache.beam.sdk.transforms.DoFn;
+import org.apache.beam.sdk.transforms.windowing.BoundedWindow;
+import org.apache.beam.sdk.values.KV;
 import com.google.cloud.genomics.dataflow.utils.CallFilters;
 import com.google.cloud.genomics.dataflow.utils.PairGenerator;
 import com.google.common.base.Function;
@@ -33,14 +34,16 @@ import com.google.genomics.v1.VariantCall;
 public class ExtractSimilarCallsets extends DoFn<Variant, KV<KV<String, String>, Long>> {
 
   private ImmutableMultiset.Builder<KV<String, String>> accumulator;
+  private BoundedWindow window;
 
-  @Override
-  public void startBundle(Context c) {
+  @StartBundle
+  public void startBundle(StartBundleContext c) {
     accumulator = ImmutableMultiset.builder();
   }
 
-  @Override
-  public void processElement(ProcessContext context) {
+  @ProcessElement
+  public void processElement(ProcessContext context, BoundedWindow window) {
+    this.window = window;
     FluentIterable<KV<String, String>> pairs = PairGenerator.WITH_REPLACEMENT.allPairs(
         getSamplesWithVariant(context.element()), Ordering.natural());
     for (KV<String, String> pair : pairs) {
@@ -48,10 +51,11 @@ public class ExtractSimilarCallsets extends DoFn<Variant, KV<KV<String, String>,
     }
   }
 
-  @Override
-  public void finishBundle(Context context) {
+  @FinishBundle
+  public void finishBundle(FinishBundleContext context) {
     for (Multiset.Entry<KV<String, String>> entry : accumulator.build().entrySet()) {
-      context.output(KV.of(entry.getElement(), Long.valueOf(entry.getCount())));
+      context.output(KV.of(entry.getElement(), Long.valueOf(entry.getCount())),
+          window.maxTimestamp(), window);
     }
   }
 

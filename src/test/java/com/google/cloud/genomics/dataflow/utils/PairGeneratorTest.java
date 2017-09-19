@@ -18,7 +18,7 @@ package com.google.cloud.genomics.dataflow.utils;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertThat;
 
-import com.google.cloud.dataflow.sdk.values.KV;
+import org.apache.beam.sdk.values.KV;
 import com.google.common.collect.FluentIterable;
 import com.google.common.collect.ImmutableList;
 

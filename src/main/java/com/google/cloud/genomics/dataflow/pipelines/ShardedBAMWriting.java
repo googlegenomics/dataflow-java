@@ -14,18 +14,19 @@
 package com.google.cloud.genomics.dataflow.pipelines;
 
 import com.google.api.services.storage.Storage;
-import com.google.cloud.dataflow.sdk.Pipeline;
-import com.google.cloud.dataflow.sdk.coders.Coder;
-import com.google.cloud.dataflow.sdk.coders.DelegateCoder;
-import com.google.cloud.dataflow.sdk.coders.StringUtf8Coder;
-import com.google.cloud.dataflow.sdk.io.TextIO;
-import com.google.cloud.dataflow.sdk.options.Default;
-import com.google.cloud.dataflow.sdk.options.Description;
-import com.google.cloud.dataflow.sdk.options.PipelineOptionsFactory;
-import com.google.cloud.dataflow.sdk.transforms.Create;
-import com.google.cloud.dataflow.sdk.util.Transport;
-import com.google.cloud.dataflow.sdk.util.gcsfs.GcsPath;
-import com.google.cloud.dataflow.sdk.values.PCollection;
+import org.apache.beam.sdk.Pipeline;
+import org.apache.beam.sdk.PipelineResult;
+import org.apache.beam.sdk.coders.Coder;
+import org.apache.beam.sdk.coders.DelegateCoder;
+import org.apache.beam.sdk.coders.StringUtf8Coder;
+import org.apache.beam.sdk.io.TextIO;
+import org.apache.beam.sdk.options.Default;
+import org.apache.beam.sdk.options.Description;
+import org.apache.beam.sdk.options.PipelineOptionsFactory;
+import org.apache.beam.sdk.transforms.Create;
+import org.apache.beam.sdk.util.Transport;
+import org.apache.beam.sdk.util.gcsfs.GcsPath;
+import org.apache.beam.sdk.values.PCollection;
 import com.google.cloud.genomics.dataflow.functions.ShardReadsTransform;
 import com.google.cloud.genomics.dataflow.readers.ReadStreamer;
 import com.google.cloud.genomics.dataflow.readers.bam.HeaderInfo;
@@ -51,6 +52,7 @@ import com.google.genomics.v1.StreamReadsRequest;
 import htsjdk.samtools.ValidationStringency;
 
 import java.io.IOException;
+import java.net.URISyntaxException;
 import java.security.GeneralSecurityException;
 import java.util.Collections;
 import java.util.List;
@@ -78,6 +80,12 @@ public class ShardedBAMWriting {
 
     void setReadGroupSetId(String readGroupSetId);
 
+    @Description("Whether to wait until the pipeline completes. This is useful "
+      + "for test purposes.")
+    @Default.Boolean(false)
+    boolean getWait();
+    void setWait(boolean wait);
+
     public static class Methods {
       public static void validateOptions(Options options) {
         GCSOutputOptions.Methods.validateOptions(options);
@@ -93,9 +101,9 @@ public class ShardedBAMWriting {
   private static Options pipelineOptions;
   private static Pipeline pipeline;
   private static OfflineAuth auth;
-  private static Iterable<Contig> contigs;
+  private static List<Contig> contigs;
 
-  public static void main(String[] args) throws GeneralSecurityException, IOException {
+  public static void main(String[] args) throws GeneralSecurityException, IOException, URISyntaxException {
     // Register the options so that they show up via --help
     PipelineOptionsFactory.register(Options.class);
     pipelineOptions = PipelineOptionsFactory.fromArgs(args)
@@ -105,10 +113,10 @@ public class ShardedBAMWriting {
 
     auth = GenomicsOptions.Methods.getGenomicsAuth(pipelineOptions);
     pipeline = Pipeline.create(pipelineOptions);
-    pipeline.getCoderRegistry().registerCoder(Contig.class, CONTIG_CODER);
+    pipeline.getCoderRegistry().registerCoderForClass(Contig.class, CONTIG_CODER);
     // Process options.
     contigs = pipelineOptions.isAllReferences() ? null :
-      Contig.parseContigsFromCommandLine(pipelineOptions.getReferences());
+        Lists.newArrayList(Contig.parseContigsFromCommandLine(pipelineOptions.getReferences()));
 
 
     // Get the reads and shard them.
@@ -148,14 +156,17 @@ public class ShardedBAMWriting {
 
     writtenFiles
         .apply(
-            TextIO.Write
+            "Write Output Result", TextIO.write()
               .to(pipelineOptions.getOutput() + "-result")
-        .named("Write Output Result")
         .withoutSharding());
-    pipeline.run();
+
+    PipelineResult result = pipeline.run();
+    if (pipelineOptions.getWait()) {
+      result.waitUntilFinish();
+    }
   }
 
-  private static PCollection<Read> getReadsFromBAMFile() throws IOException {
+  private static PCollection<Read> getReadsFromBAMFile() throws IOException, URISyntaxException {
     /**
      * Policy used to shard Reads.
      * By default we are using the default sharding supplied by the policy class.
@@ -169,7 +180,7 @@ public class ShardedBAMWriting {
      *   };
      * </pre>
      */
-    final ShardingPolicy BAM_FILE_READ_SHARDING_POLICY = ShardingPolicy.BYTE_SIZE_POLICY;
+    final ShardingPolicy BAM_FILE_READ_SHARDING_POLICY = ShardingPolicy.BYTE_SIZE_POLICY_10MB;
 
     LOG.info("Sharded reading of " + pipelineOptions.getBAMFilePath());
 
@@ -177,7 +188,10 @@ public class ShardedBAMWriting {
         ValidationStringency.DEFAULT_STRINGENCY,
         true);
 
-    return ReadBAMTransform.getReadsFromBAMFilesSharded(pipeline,
+    // TODO: change this to ReadBAMTransform.getReadsFromBAMFilesSharded when
+    // https://github.com/googlegenomics/dataflow-java/issues/214 is fixed.
+    return ReadBAMTransform.getReadsFromBAMFileSharded(pipeline,
+        pipelineOptions,
         auth,
         contigs,
         readerOptions,

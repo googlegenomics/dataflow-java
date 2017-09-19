@@ -15,7 +15,7 @@
  */
 package com.google.cloud.genomics.dataflow.functions.verifybamid;
 
-import com.google.cloud.dataflow.sdk.transforms.SerializableFunction;
+import org.apache.beam.sdk.transforms.SerializableFunction;
 import com.google.cloud.genomics.dataflow.model.ReadBaseQuality;
 import com.google.cloud.genomics.dataflow.model.ReadBaseWithReference;
 import com.google.common.collect.ImmutableList;

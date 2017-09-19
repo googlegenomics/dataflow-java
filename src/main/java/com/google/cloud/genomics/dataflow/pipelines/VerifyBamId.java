@@ -14,25 +14,27 @@
 package com.google.cloud.genomics.dataflow.pipelines;
 
 import com.google.api.client.util.Strings;
-import com.google.cloud.dataflow.sdk.Pipeline;
-import com.google.cloud.dataflow.sdk.io.TextIO;
-import com.google.cloud.dataflow.sdk.options.Default;
-import com.google.cloud.dataflow.sdk.options.Description;
-import com.google.cloud.dataflow.sdk.options.PipelineOptionsFactory;
-import com.google.cloud.dataflow.sdk.transforms.Create;
-import com.google.cloud.dataflow.sdk.transforms.DoFn;
-import com.google.cloud.dataflow.sdk.transforms.Filter;
-import com.google.cloud.dataflow.sdk.transforms.ParDo;
-import com.google.cloud.dataflow.sdk.transforms.Sample;
-import com.google.cloud.dataflow.sdk.transforms.SerializableFunction;
-import com.google.cloud.dataflow.sdk.transforms.View;
-import com.google.cloud.dataflow.sdk.transforms.join.CoGbkResult;
-import com.google.cloud.dataflow.sdk.transforms.join.CoGroupByKey;
-import com.google.cloud.dataflow.sdk.transforms.join.KeyedPCollectionTuple;
-import com.google.cloud.dataflow.sdk.values.KV;
-import com.google.cloud.dataflow.sdk.values.PCollection;
-import com.google.cloud.dataflow.sdk.values.PCollectionView;
-import com.google.cloud.dataflow.sdk.values.TupleTag;
+import org.apache.beam.sdk.Pipeline;
+import org.apache.beam.sdk.coders.Coder;
+import org.apache.beam.sdk.coders.CoderRegistry;
+import org.apache.beam.sdk.extensions.protobuf.ProtoCoder;
+import org.apache.beam.sdk.io.TextIO;
+import org.apache.beam.sdk.options.Default;
+import org.apache.beam.sdk.options.Description;
+import org.apache.beam.sdk.options.PipelineOptionsFactory;
+import org.apache.beam.sdk.transforms.Create;
+import org.apache.beam.sdk.transforms.DoFn;
+import org.apache.beam.sdk.transforms.Filter;
+import org.apache.beam.sdk.transforms.ParDo;
+import org.apache.beam.sdk.transforms.SerializableFunction;
+import org.apache.beam.sdk.transforms.View;
+import org.apache.beam.sdk.transforms.join.CoGbkResult;
+import org.apache.beam.sdk.transforms.join.CoGroupByKey;
+import org.apache.beam.sdk.transforms.join.KeyedPCollectionTuple;
+import org.apache.beam.sdk.values.KV;
+import org.apache.beam.sdk.values.PCollection;
+import org.apache.beam.sdk.values.PCollectionView;
+import org.apache.beam.sdk.values.TupleTag;
 import com.google.cloud.genomics.dataflow.coders.GenericJsonCoder;
 import com.google.cloud.genomics.dataflow.functions.VariantFunctions;
 import com.google.cloud.genomics.dataflow.functions.verifybamid.LikelihoodFn;
@@ -46,7 +48,6 @@ import com.google.cloud.genomics.dataflow.model.ReadQualityCount;
 import com.google.cloud.genomics.dataflow.pipelines.CalculateCoverage.CheckMatchingReferenceSet;
 import com.google.cloud.genomics.dataflow.readers.ReadGroupStreamer;
 import com.google.cloud.genomics.dataflow.readers.VariantStreamer;
-import com.google.cloud.genomics.dataflow.utils.CallSetNamesOptions;
 import com.google.cloud.genomics.dataflow.utils.GCSOutputOptions;
 import com.google.cloud.genomics.dataflow.utils.GenomicsOptions;
 import com.google.cloud.genomics.dataflow.utils.ShardOptions;
@@ -73,7 +74,6 @@ import java.security.NoSuchAlgorithmException;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
-import java.util.Vector;
 
 /**
  * Test a set of reads for contamination.
@@ -97,8 +97,6 @@ public class VerifyBamId {
    * Options required to run this pipeline.
    */
   public static interface Options extends
-    // Options for call set names.
-    CallSetNamesOptions,
     // Options for calculating over regions, chromosomes, or whole genomes.
     ShardOptions,
     // Options for the output destination.
@@ -124,7 +122,6 @@ public class VerifyBamId {
     void setInputDatasetId(String inputDatasetId);
 
     public String DEFAULT_VARIANTSET = "10473108253681171589";
-    @Override
     @Description("The ID of the Google Genomics VariantSet this pipeline is working with."
         + "  It assumes the variant set has INFO field 'AF' from which it retrieves the"
         + " allele frequency for the variant, such as 1,000 Genomes phase 1 or phase 3 variants."
@@ -164,6 +161,13 @@ public class VerifyBamId {
   // https://developers.google.com/apis-explorer/#p/genomics/v1/genomics.variants.stream?fields=variants(alternateBases%252Ccalls(callSetName%252Cgenotype)%252CreferenceBases)&_h=3&resource=%257B%250A++%2522variantSetId%2522%253A+%25223049512673186936334%2522%252C%250A++%2522referenceName%2522%253A+%2522chr17%2522%252C%250A++%2522start%2522%253A+%252241196311%2522%252C%250A++%2522end%2522%253A+%252241196312%2522%252C%250A++%2522callSetIds%2522%253A+%250A++%255B%25223049512673186936334-0%2522%250A++%255D%250A%257D&
   private static final String VARIANT_FIELDS = "variants(alternateBases,filter,info,quality,referenceBases,referenceName,start)";
 
+  public static void registerPipelineCoders(Pipeline p) {
+    CoderRegistry cr = p.getCoderRegistry();
+    cr.registerCoderForClass(ReadCounts.class,
+      (Coder<ReadCounts>) GenericJsonCoder.of(ReadCounts.class));
+    cr.registerCoderForClass(Position.class, ProtoCoder.of(Position.class));
+  }
+
   /**
    * Run the VerifyBamId algorithm and output the resulting contamination estimate.
    */
@@ -176,11 +180,16 @@ public class VerifyBamId {
     Options.Methods.validateOptions(pipelineOptions);
 
     // Set up the prototype request and auth.
-    StreamVariantsRequest prototype = CallSetNamesOptions.Methods.getRequestPrototype(pipelineOptions);
+    StreamVariantsRequest.Builder request = StreamVariantsRequest.newBuilder()
+        .setVariantSetId(pipelineOptions.getVariantSetId());
+    if (null != pipelineOptions.getProject()) {
+      request.setProjectId(pipelineOptions.getProject());
+    }
+    StreamVariantsRequest prototype = request.build();
     auth = GenomicsOptions.Methods.getGenomicsAuth(pipelineOptions);
 
     p = Pipeline.create(pipelineOptions);
-    p.getCoderRegistry().setFallbackCoderProvider(GenericJsonCoder.PROVIDER);
+    registerPipelineCoders(p);
 
     if (pipelineOptions.getInputDatasetId().isEmpty() && pipelineOptions.getReadGroupSetIds().isEmpty()) {
       throw new IllegalArgumentException("InputDatasetId or ReadGroupSetIds must be specified");
@@ -245,7 +254,7 @@ public class VerifyBamId {
         .apply(ParDo.of(new Maximizer(view)).withSideInputs(view));
 
     // Writes the result to the given output location in Cloud Storage.
-    result.apply(TextIO.Write.to(pipelineOptions.getOutput()).named("WriteOutput").withoutSharding());
+    result.apply("WriteOutput", TextIO.write().to(pipelineOptions.getOutput()).withoutSharding());
 
     p.run();
   }
@@ -262,12 +271,12 @@ public class VerifyBamId {
    */
   static PCollection<KV<Position, AlleleFreq>> getFreq(
       PCollection<Variant> variants, double minFreq) {
-    return variants.apply(Filter.byPredicate(VariantFunctions.IS_PASSING).named("PassingFilter"))
-        .apply(Filter.byPredicate(VariantFunctions.IS_ON_CHROMOSOME).named("OnChromosomeFilter"))
-        .apply(Filter.byPredicate(VariantFunctions.IS_NOT_LOW_QUALITY).named("NotLowQualityFilter"))
-        .apply(Filter.byPredicate(VariantFunctions.IS_SINGLE_ALTERNATE_SNP).named("SNPFilter"))
+    return variants.apply("PassingFilter", Filter.by(VariantFunctions.IS_PASSING))
+        .apply("OnChromosomeFilter", Filter.by(VariantFunctions.IS_ON_CHROMOSOME))
+        .apply("NotLowQualityFilter", Filter.by(VariantFunctions.IS_NOT_LOW_QUALITY))
+        .apply("SNPFilter", Filter.by(VariantFunctions.IS_SINGLE_ALTERNATE_SNP))
         .apply(ParDo.of(new GetAlleleFreq()))
-        .apply(Filter.byPredicate(new FilterFreq(minFreq)));
+        .apply(Filter.by(new FilterFreq(minFreq)));
   }
 
   /**
@@ -286,12 +295,12 @@ public class VerifyBamId {
     // Runs filters on input Reads, splits into individual aligned bases (emitting the
     // base and quality) and grabs a sample of them based on a hash mod of Position.
     PCollection<KV<Position, ReadBaseQuality>> joinReadCounts =
-        reads.apply(Filter.byPredicate(ReadFunctions.IS_ON_CHROMOSOME).named("IsOnChromosome"))
-        .apply(Filter.byPredicate(ReadFunctions.IS_NOT_QC_FAILURE).named("IsNotQCFailure"))
-        .apply(Filter.byPredicate(ReadFunctions.IS_NOT_DUPLICATE).named("IsNotDuplicate"))
-        .apply(Filter.byPredicate(ReadFunctions.IS_PROPER_PLACEMENT).named("IsProperPlacement"))
+        reads.apply("IsOnChromosome", Filter.by(ReadFunctions.IS_ON_CHROMOSOME))
+        .apply("IsNotQCFailure", Filter.by(ReadFunctions.IS_NOT_QC_FAILURE))
+        .apply("IsNotDuplicate", Filter.by(ReadFunctions.IS_NOT_DUPLICATE))
+        .apply("IsProperPlacement", Filter.by(ReadFunctions.IS_PROPER_PLACEMENT))
         .apply(ParDo.of(new SplitReads()))
-        .apply(Filter.byPredicate(new SampleReads(samplingFraction, samplingPrefix)));
+        .apply(Filter.by(new SampleReads(samplingFraction, samplingPrefix)));
 
     TupleTag<ReadBaseQuality> readCountsTag = new TupleTag<>();
     TupleTag<AlleleFreq> refFreqTag = new TupleTag<>();
@@ -307,7 +316,7 @@ public class VerifyBamId {
    * Split reads into individual aligned bases and emit base + quality.
    */
   static class SplitReads extends DoFn<Read, KV<Position, ReadBaseQuality>> {
-    @Override
+    @ProcessElement
     public void processElement(ProcessContext c) throws Exception {
       List<ReadBaseWithReference> readBases = ReadFunctions.extractReadBases(c.element());
       if (!readBases.isEmpty()) {
@@ -365,7 +374,7 @@ public class VerifyBamId {
    * Map a variant to a Position, AlleleFreq pair.
    */
   static class GetAlleleFreq extends DoFn<Variant, KV<Position, AlleleFreq>> {
-    @Override
+    @ProcessElement
     public void processElement(ProcessContext c) throws Exception {
       ListValue lv = c.element().getInfo().get("AF");
       if (lv != null && lv.getValuesCount() > 0) {
@@ -426,7 +435,7 @@ public class VerifyBamId {
       this.refFreqTag = refFreqTag;
     }
 
-    @Override
+    @ProcessElement
     public void processElement(ProcessContext c) throws Exception {
       AlleleFreq af = null;
       af = c.element().getValue().getOnly(refFreqTag, null);
@@ -490,7 +499,7 @@ public class VerifyBamId {
       this.view = view;
     }
 
-    @Override
+    @ProcessElement
     public void processElement(ProcessContext c) throws Exception {
       float[] steps = new float[]{0.1f, 0.05f, 0.01f, 0.005f, 0.001f};
       for (float step : steps) {

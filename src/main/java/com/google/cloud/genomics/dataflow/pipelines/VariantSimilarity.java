@@ -15,14 +15,15 @@
  */
 package com.google.cloud.genomics.dataflow.pipelines;
 
-import com.google.cloud.dataflow.sdk.Pipeline;
-import com.google.cloud.dataflow.sdk.io.TextIO;
-import com.google.cloud.dataflow.sdk.options.Default;
-import com.google.cloud.dataflow.sdk.options.Description;
-import com.google.cloud.dataflow.sdk.options.PipelineOptionsFactory;
-import com.google.cloud.dataflow.sdk.transforms.Create;
-import com.google.cloud.dataflow.sdk.transforms.ParDo;
-import com.google.cloud.dataflow.sdk.values.PCollection;
+import org.apache.beam.sdk.Pipeline;
+import org.apache.beam.sdk.PipelineResult;
+import org.apache.beam.sdk.io.TextIO;
+import org.apache.beam.sdk.options.Default;
+import org.apache.beam.sdk.options.Description;
+import org.apache.beam.sdk.options.PipelineOptionsFactory;
+import org.apache.beam.sdk.transforms.Create;
+import org.apache.beam.sdk.transforms.ParDo;
+import org.apache.beam.sdk.values.PCollection;
 import com.google.cloud.genomics.dataflow.functions.SitesToShards;
 import com.google.cloud.genomics.dataflow.functions.pca.ExtractSimilarCallsets;
 import com.google.cloud.genomics.dataflow.functions.pca.OutputPCoAFile;
@@ -63,11 +64,11 @@ public class VariantSimilarity {
     // Options for the output destination.
     GCSOutputOptions {
 
-    @Override
-    @Description("The ID of the Google Genomics variant set this pipeline is accessing. "
-        + "Defaults to 1000 Genomes.")
-    @Default.String("10473108253681171589")
-    String getVariantSetId();
+    @Description("Whether to wait until the pipeline completes. This is useful "
+      + "for test purposes.")
+    @Default.Boolean(false)
+    boolean getWait();
+    void setWait(boolean wait);
 
     public static class Methods {
       public static void validateOptions(Options options) {
@@ -108,8 +109,7 @@ public class VariantSimilarity {
     PCollection<StreamVariantsRequest> requests;
     if(null != options.getSitesFilepath()) {
       // Compute PCA on a list of sites.
-      requests = p.apply(TextIO.Read.named("ReadSites")
-          .from(options.getSitesFilepath()))
+      requests = p.apply("ReadSites", TextIO.read().from(options.getSitesFilepath()))
           .apply(new SitesToShards.SitesToStreamVariantsShardsTransform(prototype));
     } else {
       // Compute PCA over genomic regions.
@@ -125,6 +125,9 @@ public class VariantSimilarity {
         .apply(ParDo.of(new ExtractSimilarCallsets()))
         .apply(new OutputPCoAFile(dataIndices, options.getOutput()));
 
-    p.run();
+    PipelineResult result = p.run();
+    if(options.getWait()) {
+      result.waitUntilFinish();
+    }
   }
 }

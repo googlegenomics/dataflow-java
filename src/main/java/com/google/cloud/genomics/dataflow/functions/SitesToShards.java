@@ -13,14 +13,14 @@
  */
 package com.google.cloud.genomics.dataflow.functions;
 
-import com.google.cloud.dataflow.sdk.options.Description;
-import com.google.cloud.dataflow.sdk.options.PipelineOptions;
-import com.google.cloud.dataflow.sdk.transforms.DoFn;
-import com.google.cloud.dataflow.sdk.transforms.MapElements;
-import com.google.cloud.dataflow.sdk.transforms.PTransform;
-import com.google.cloud.dataflow.sdk.transforms.ParDo;
-import com.google.cloud.dataflow.sdk.transforms.SimpleFunction;
-import com.google.cloud.dataflow.sdk.values.PCollection;
+import org.apache.beam.sdk.options.Description;
+import org.apache.beam.sdk.options.PipelineOptions;
+import org.apache.beam.sdk.transforms.DoFn;
+import org.apache.beam.sdk.transforms.MapElements;
+import org.apache.beam.sdk.transforms.PTransform;
+import org.apache.beam.sdk.transforms.ParDo;
+import org.apache.beam.sdk.transforms.SimpleFunction;
+import org.apache.beam.sdk.values.PCollection;
 import com.google.cloud.genomics.utils.Contig;
 import com.google.genomics.v1.StreamReadsRequest;
 import com.google.genomics.v1.StreamVariantsRequest;
@@ -67,7 +67,7 @@ public class SitesToShards {
    */
   public static class SitesToContigsFn extends DoFn<String, Contig> {
 
-    @Override
+    @ProcessElement
     public void processElement(DoFn<String, Contig>.ProcessContext context) throws Exception {
       String line = context.element();
       Matcher m = SITE_PATTERN.matcher(line);
@@ -120,7 +120,7 @@ public class SitesToShards {
     }
 
     @Override
-    public PCollection<StreamVariantsRequest> apply(PCollection<String> lines) {
+    public PCollection<StreamVariantsRequest> expand(PCollection<String> lines) {
       return lines.apply(ParDo.of(new SitesToContigsFn()))
           .apply("Contigs to StreamVariantsRequests",
           MapElements.via(new ContigsToStreamVariantsRequestsFn(prototype)));
@@ -166,7 +166,7 @@ public class SitesToShards {
     }
 
     @Override
-    public PCollection<StreamReadsRequest> apply(PCollection<String> lines) {
+    public PCollection<StreamReadsRequest> expand(PCollection<String> lines) {
       return lines.apply(ParDo.of(new SitesToContigsFn()))
           .apply("Contigs to StreamReadsRequests",
               MapElements.via(new ContigsToStreamReadsRequestsFn(prototype)));

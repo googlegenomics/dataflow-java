@@ -13,7 +13,7 @@
  */
 package com.google.cloud.genomics.dataflow.functions;
 
-import com.google.cloud.dataflow.sdk.transforms.SerializableFunction;
+import org.apache.beam.sdk.transforms.SerializableFunction;
 import com.google.cloud.genomics.utils.grpc.VariantUtils;
 import com.google.genomics.v1.Variant;
 

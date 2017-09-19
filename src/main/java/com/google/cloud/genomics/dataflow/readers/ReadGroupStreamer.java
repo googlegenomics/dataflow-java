@@ -13,12 +13,12 @@
  */
 package com.google.cloud.genomics.dataflow.readers;
 
-import com.google.cloud.dataflow.sdk.transforms.DoFn;
-import com.google.cloud.dataflow.sdk.transforms.GroupByKey;
-import com.google.cloud.dataflow.sdk.transforms.PTransform;
-import com.google.cloud.dataflow.sdk.transforms.ParDo;
-import com.google.cloud.dataflow.sdk.values.KV;
-import com.google.cloud.dataflow.sdk.values.PCollection;
+import org.apache.beam.sdk.transforms.DoFn;
+import org.apache.beam.sdk.transforms.GroupByKey;
+import org.apache.beam.sdk.transforms.PTransform;
+import org.apache.beam.sdk.transforms.ParDo;
+import org.apache.beam.sdk.values.KV;
+import org.apache.beam.sdk.values.PCollection;
 import com.google.cloud.genomics.dataflow.utils.ShardOptions;
 import com.google.cloud.genomics.utils.OfflineAuth;
 import com.google.cloud.genomics.utils.ShardBoundary;
@@ -65,7 +65,7 @@ public class ReadGroupStreamer extends PTransform<PCollection<String>, PCollecti
   }
 
   @Override
-  public PCollection<Read> apply(PCollection<String> readGroupSetIds) {
+  public PCollection<Read> expand(PCollection<String> readGroupSetIds) {
     return readGroupSetIds.apply(ParDo.of(new CreateReadRequests()))
         // Force a shuffle operation here to break the fusion of these steps.
         // By breaking fusion, the work will be distributed to all available workers.
@@ -76,7 +76,7 @@ public class ReadGroupStreamer extends PTransform<PCollection<String>, PCollecti
 
   private class CreateReadRequests extends DoFn<String, KV<Integer, StreamReadsRequest>> {
 
-    @Override
+    @ProcessElement
     public void processElement(DoFn<String, KV<Integer, StreamReadsRequest>>.ProcessContext c)
         throws Exception {
       ShardOptions options = c.getPipelineOptions().as(ShardOptions.class);
@@ -96,7 +96,7 @@ public class ReadGroupStreamer extends PTransform<PCollection<String>, PCollecti
   }
 
   private class ConvergeStreamReadsRequestList extends DoFn<KV<Integer, Iterable<StreamReadsRequest>>, StreamReadsRequest> {
-    @Override
+    @ProcessElement
     public void processElement(ProcessContext c) {
       for (StreamReadsRequest r : c.element().getValue()) {
         c.output(r);

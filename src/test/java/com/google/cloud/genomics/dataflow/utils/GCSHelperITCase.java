@@ -15,7 +15,7 @@
  */
 package com.google.cloud.genomics.dataflow.utils;
 
-import com.google.cloud.dataflow.sdk.options.PipelineOptionsFactory;
+import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import com.google.cloud.genomics.utils.OfflineAuth;
 
 import org.junit.Assert;

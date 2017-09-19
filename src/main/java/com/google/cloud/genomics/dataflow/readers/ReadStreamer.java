@@ -13,13 +13,12 @@
  */
 package com.google.cloud.genomics.dataflow.readers;
 
-import com.google.cloud.dataflow.sdk.transforms.Aggregator;
-import com.google.cloud.dataflow.sdk.transforms.DoFn;
-import com.google.cloud.dataflow.sdk.transforms.Max;
-import com.google.cloud.dataflow.sdk.transforms.PTransform;
-import com.google.cloud.dataflow.sdk.transforms.ParDo;
-import com.google.cloud.dataflow.sdk.transforms.Sum;
-import com.google.cloud.dataflow.sdk.values.PCollection;
+import org.apache.beam.sdk.metrics.Metrics;
+import org.apache.beam.sdk.transforms.DoFn;
+import org.apache.beam.sdk.transforms.PTransform;
+import org.apache.beam.sdk.transforms.ParDo;
+import org.apache.beam.sdk.transforms.Sum;
+import org.apache.beam.sdk.values.PCollection;
 import com.google.cloud.genomics.utils.OfflineAuth;
 import com.google.cloud.genomics.utils.ShardBoundary;
 import com.google.cloud.genomics.utils.grpc.ReadStreamIterator;
@@ -62,7 +61,7 @@ PTransform<PCollection<StreamReadsRequest>, PCollection<Read>> {
   }
 
   @Override
-  public PCollection<Read> apply(PCollection<StreamReadsRequest> input) {
+  public PCollection<Read> expand(PCollection<StreamReadsRequest> input) {
     return input.apply(ParDo.of(new RetrieveReads()))
         .apply(ParDo.of(new ConvergeReadsList()));
   }
@@ -70,20 +69,9 @@ PTransform<PCollection<StreamReadsRequest>, PCollection<Read>> {
 
   private class RetrieveReads extends DoFn<StreamReadsRequest, List<Read>> {
 
-    protected Aggregator<Integer, Integer> initializedShardCount;
-    protected Aggregator<Integer, Integer> finishedShardCount;
-    protected Aggregator<Long, Long> shardTimeMaxSec;
-
-    public RetrieveReads() {
-      initializedShardCount = createAggregator("Initialized Shard Count", new Sum.SumIntegerFn());
-      finishedShardCount = createAggregator("Finished Shard Count", new Sum.SumIntegerFn());
-      shardTimeMaxSec = createAggregator("Maximum Shard Processing Time (sec)", new Max.MaxLongFn());
-    }
-
-    @Override
+    @ProcessElement
     public void processElement(ProcessContext c) throws IOException, GeneralSecurityException {
-      initializedShardCount.addValue(1);
-      shardTimeMaxSec.addValue(0L);
+      Metrics.counter(RetrieveReads.class, "Initialized Shard Count").inc();
       Stopwatch stopWatch = Stopwatch.createStarted();
       Iterator<StreamReadsResponse> iter = ReadStreamIterator.enforceShardBoundary(auth, c.element(), shardBoundary, fields);
       while (iter.hasNext()) {
@@ -91,8 +79,9 @@ PTransform<PCollection<StreamReadsRequest>, PCollection<Read>> {
         c.output(readResponse.getAlignmentsList());
       }
       stopWatch.stop();
-      shardTimeMaxSec.addValue(stopWatch.elapsed(TimeUnit.SECONDS));
-      finishedShardCount.addValue(1);
+      Metrics.distribution(RetrieveReads.class, "Shard Processing Time (sec)")
+          .update(stopWatch.elapsed(TimeUnit.SECONDS));
+      Metrics.counter(RetrieveReads.class, "Finished Shard Count").inc();
     }
   }
 
@@ -101,18 +90,11 @@ PTransform<PCollection<StreamReadsRequest>, PCollection<Read>> {
    * order to increase throughput.
    */
   private class ConvergeReadsList extends DoFn<List<Read>, Read> {
-
-    protected Aggregator<Long, Long> itemCount;
-
-    public ConvergeReadsList() {
-      itemCount = createAggregator("Number of reads", new Sum.SumLongFn());
-    }
-
-    @Override
+    @ProcessElement
     public void processElement(ProcessContext c) {
       for (Read r : c.element()) {
         c.output(r);
-        itemCount.addValue(1L);
+        Metrics.counter(ConvergeReadsList.class, "Number of reads").inc();
       }
     }
   }

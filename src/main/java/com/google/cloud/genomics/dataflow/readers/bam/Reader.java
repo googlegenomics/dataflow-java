@@ -17,7 +17,9 @@ package com.google.cloud.genomics.dataflow.readers.bam;
 
 import com.google.api.services.storage.Storage;
 import com.google.api.services.storage.Storage.Objects;
-import com.google.cloud.dataflow.sdk.transforms.DoFn;
+import htsjdk.samtools.SAMException;
+import org.apache.beam.sdk.metrics.Metrics;
+import org.apache.beam.sdk.transforms.DoFn;
 import com.google.cloud.genomics.utils.Contig;
 import com.google.cloud.genomics.utils.grpc.ReadUtils;
 import com.google.common.base.Stopwatch;
@@ -31,6 +33,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
+import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
@@ -173,8 +176,13 @@ public class Reader {
       recordsAfterEnd++;
       return;
     }
-    c.output(ReadUtils.makeReadGrpc(record));
-    readsGenerated++;
+    try {
+      c.output(ReadUtils.makeReadGrpc(record));
+      readsGenerated++;
+    } catch(SAMException e) {
+      LOG.log(Level.WARNING, "Caught and handled SAMException", e);
+      Metrics.counter(ReadBAMTransform.class, "SAMException").inc();
+    }
   }
 
   void dumpStats() {

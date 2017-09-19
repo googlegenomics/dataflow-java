@@ -20,16 +20,17 @@ import com.google.api.services.genomics.model.AnnotationSet;
 import com.google.api.services.genomics.model.ListBasesResponse;
 import com.google.api.services.genomics.model.SearchAnnotationsRequest;
 import com.google.api.services.genomics.model.VariantAnnotation;
-import com.google.cloud.dataflow.sdk.Pipeline;
-import com.google.cloud.dataflow.sdk.io.TextIO;
-import com.google.cloud.dataflow.sdk.options.Default;
-import com.google.cloud.dataflow.sdk.options.Description;
-import com.google.cloud.dataflow.sdk.options.PipelineOptionsFactory;
-import com.google.cloud.dataflow.sdk.transforms.Create;
-import com.google.cloud.dataflow.sdk.transforms.DoFn;
-import com.google.cloud.dataflow.sdk.transforms.GroupByKey;
-import com.google.cloud.dataflow.sdk.transforms.ParDo;
-import com.google.cloud.dataflow.sdk.values.KV;
+import org.apache.beam.sdk.Pipeline;
+import org.apache.beam.sdk.coders.Coder;
+import org.apache.beam.sdk.io.TextIO;
+import org.apache.beam.sdk.options.Default;
+import org.apache.beam.sdk.options.Description;
+import org.apache.beam.sdk.options.PipelineOptionsFactory;
+import org.apache.beam.sdk.transforms.Create;
+import org.apache.beam.sdk.transforms.DoFn;
+import org.apache.beam.sdk.transforms.GroupByKey;
+import org.apache.beam.sdk.transforms.ParDo;
+import org.apache.beam.sdk.values.KV;
 import com.google.cloud.genomics.dataflow.coders.GenericJsonCoder;
 import com.google.cloud.genomics.dataflow.utils.AnnotationUtils;
 import com.google.cloud.genomics.dataflow.utils.AnnotationUtils.VariantEffect;
@@ -96,18 +97,6 @@ public final class AnnotateVariants extends DoFn<StreamVariantsRequest, KV<Strin
     // Options for the output destination.
     GCSOutputOptions {
 
-    @Override
-    @Description("The ID of the Google Genomics variant set this pipeline is accessing. "
-        + "Defaults to 1000 Genomes.")
-    @Default.String("10473108253681171589")
-    String getVariantSetId();
-
-    @Override
-    @Description("The names of the Google Genomics call sets this pipeline is working with, comma "
-        + "delimited.  Defaults to 1000 Genomes HG00261.")
-    @Default.String("HG00261")
-    String getCallSetNames();
-
     @Description("The IDs of the Google Genomics transcript sets this pipeline is working with, "
         + "comma delimited. Defaults to UCSC refGene (hg19).")
     @Default.String("CIjfoPXj9LqPlAEQ5vnql4KewYuSAQ")
@@ -149,7 +138,7 @@ public final class AnnotateVariants extends DoFn<StreamVariantsRequest, KV<Strin
     refBaseCache = Maps.newHashMap();
   }
 
-  @Override
+  @ProcessElement
   public void processElement(
       DoFn<StreamVariantsRequest, KV<String, VariantAnnotation>>.ProcessContext c) throws Exception {
     Genomics genomics = GenomicsFactory.builder().build().fromOfflineAuth(auth);
@@ -320,19 +309,27 @@ public final class AnnotateVariants extends DoFn<StreamVariantsRequest, KV<Strin
               ShardUtils.getVariantRequests(prototype, options.getBasesPerShard(), options.getReferences());
 
     Pipeline p = Pipeline.create(options);
-    p.getCoderRegistry().setFallbackCoderProvider(GenericJsonCoder.PROVIDER);
-
+    p.getCoderRegistry().registerCoderForClass(Annotation.class,
+      (Coder<Annotation>) GenericJsonCoder.of(Annotation.class));
+    p.getCoderRegistry().registerCoderForClass(AnnotationSet.class,
+      (Coder<AnnotationSet>) GenericJsonCoder.of(AnnotationSet.class));
+    p.getCoderRegistry().registerCoderForClass(ListBasesResponse.class,
+      (Coder<ListBasesResponse>) GenericJsonCoder.of(ListBasesResponse.class));
+    p.getCoderRegistry().registerCoderForClass(SearchAnnotationsRequest.class,
+      (Coder<SearchAnnotationsRequest>) GenericJsonCoder.of(SearchAnnotationsRequest.class));
+    p.getCoderRegistry().registerCoderForClass(VariantAnnotation.class,
+      (Coder<VariantAnnotation>) GenericJsonCoder.of(VariantAnnotation.class));
     p.begin()
       .apply(Create.of(requests))
       .apply(ParDo.of(new AnnotateVariants(auth, callSetIds, transcriptSetIds, variantAnnotationSetIds)))
       .apply(GroupByKey.<String, VariantAnnotation>create())
       .apply(ParDo.of(new DoFn<KV<String, Iterable<VariantAnnotation>>, String>() {
-        @Override
+        @ProcessElement
         public void processElement(ProcessContext c) {
           c.output(c.element().getKey() + ": " + c.element().getValue());
         }
       }))
-      .apply(TextIO.Write.to(options.getOutput()));
+      .apply(TextIO.write().to(options.getOutput()));
     p.run();
   }
 

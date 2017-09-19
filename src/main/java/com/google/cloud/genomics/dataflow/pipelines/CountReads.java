@@ -15,18 +15,21 @@ package com.google.cloud.genomics.dataflow.pipelines;
 
 import com.google.api.services.storage.Storage;
 import com.google.api.services.storage.model.StorageObject;
-import com.google.cloud.dataflow.sdk.Pipeline;
-import com.google.cloud.dataflow.sdk.io.TextIO;
-import com.google.cloud.dataflow.sdk.options.Default;
-import com.google.cloud.dataflow.sdk.options.Description;
-import com.google.cloud.dataflow.sdk.options.PipelineOptionsFactory;
-import com.google.cloud.dataflow.sdk.transforms.Count;
-import com.google.cloud.dataflow.sdk.transforms.Create;
-import com.google.cloud.dataflow.sdk.transforms.DoFn;
-import com.google.cloud.dataflow.sdk.transforms.ParDo;
-import com.google.cloud.dataflow.sdk.util.gcsfs.GcsPath;
-import com.google.cloud.dataflow.sdk.values.PCollection;
+import com.google.common.collect.Lists;
+import org.apache.beam.sdk.Pipeline;
+import org.apache.beam.sdk.PipelineResult;
+import org.apache.beam.sdk.io.TextIO;
+import org.apache.beam.sdk.options.Default;
+import org.apache.beam.sdk.options.Description;
+import org.apache.beam.sdk.options.PipelineOptionsFactory;
+import org.apache.beam.sdk.transforms.Count;
+import org.apache.beam.sdk.transforms.Create;
+import org.apache.beam.sdk.transforms.DoFn;
+import org.apache.beam.sdk.transforms.ParDo;
+import org.apache.beam.sdk.util.gcsfs.GcsPath;
+import org.apache.beam.sdk.values.PCollection;
 import com.google.cloud.genomics.dataflow.readers.ReadGroupStreamer;
+import com.google.cloud.genomics.dataflow.readers.bam.BAMShard;
 import com.google.cloud.genomics.dataflow.readers.bam.ReadBAMTransform;
 import com.google.cloud.genomics.dataflow.readers.bam.Reader;
 import com.google.cloud.genomics.dataflow.readers.bam.ReaderOptions;
@@ -46,6 +49,7 @@ import htsjdk.samtools.ValidationStringency;
 
 import java.io.IOException;
 import java.math.BigInteger;
+import java.net.URISyntaxException;
 import java.security.GeneralSecurityException;
 import java.util.Collections;
 import java.util.logging.Logger;
@@ -65,26 +69,34 @@ public class CountReads {
         + "Default (empty) indicates all ReadGroupSets.")
     @Default.String("")
     String getReadGroupSetId();
-
     void setReadGroupSetId(String readGroupSetId);
 
     @Description("The Google Cloud Storage path to the BAM file to get reads data from, if not using ReadGroupSet.")
     @Default.String("")
     String getBAMFilePath();
-
     void setBAMFilePath(String filePath);
 
     @Description("Whether to shard BAM file reading.")
     @Default.Boolean(true)
     boolean isShardBAMReading();
-
     void setShardBAMReading(boolean newValue);
+
+    @Description("For shareded BAM file input, the maximum size in bytes of a shard processed by "
+        + "a single worker. (For --readGroupSetId shard size is controlled by --basesPerShard.)")
+    @Default.Integer(10 * 1024 * 1024)  // 10 MB
+    int getMaxShardSizeBytes();
+    void setMaxShardSizeBytes(int maxShardSizeBytes);
 
     @Description("Whether to include unmapped mate pairs of mapped reads to match expectations of Picard tools.")
     @Default.Boolean(false)
     boolean isIncludeUnmapped();
-
     void setIncludeUnmapped(boolean newValue);
+
+    @Description("Whether to wait until the pipeline completes. This is useful "
+      + "for test purposes.")
+    @Default.Boolean(false)
+    boolean getWait();
+    void setWait(boolean wait);
 
     public static class Methods {
       public static void validateOptions(Options options) {
@@ -102,7 +114,7 @@ public class CountReads {
   private static Options pipelineOptions;
   private static OfflineAuth auth;
 
-  public static void main(String[] args) throws GeneralSecurityException, IOException {
+  public static void main(String[] args) throws GeneralSecurityException, IOException, URISyntaxException {
     // Register the options so that they show up via --help
     PipelineOptionsFactory.register(Options.class);
     pipelineOptions = PipelineOptionsFactory.fromArgs(args)
@@ -138,15 +150,18 @@ public class CountReads {
 
     PCollection<Read> reads = getReads();
     PCollection<Long> readCount = reads.apply(Count.<Read>globally());
-    PCollection<String> readCountText = readCount.apply(ParDo.of(new DoFn<Long, String>() {
-      @Override
+    PCollection<String> readCountText = readCount.apply("toString", ParDo.of(new DoFn<Long, String>() {
+      @ProcessElement
       public void processElement(DoFn<Long, String>.ProcessContext c) throws Exception {
         c.output(String.valueOf(c.element()));
       }
-    }).named("toString"));
-    readCountText.apply(TextIO.Write.to(pipelineOptions.getOutput()).named("WriteOutput").withoutSharding());
+    }));
+    readCountText.apply("WriteOutput", TextIO.write().to(pipelineOptions.getOutput()).withoutSharding());
 
-    p.run();
+    PipelineResult result = p.run();
+    if(pipelineOptions.getWait()) {
+      result.waitUntilFinish();
+    }
   }
 
   private static boolean GCSURLExists(String url) {
@@ -164,7 +179,7 @@ public class CountReads {
     }
   }
 
-  private static PCollection<Read> getReads() throws IOException {
+  private static PCollection<Read> getReads() throws IOException, URISyntaxException {
     if (!pipelineOptions.getBAMFilePath().isEmpty()) {
       return getReadsFromBAMFile();
     }
@@ -181,7 +196,7 @@ public class CountReads {
     return reads;
   }
 
-  private static PCollection<Read> getReadsFromBAMFile() throws IOException {
+  private static PCollection<Read> getReadsFromBAMFile() throws IOException, URISyntaxException {
     LOG.info("getReadsFromBAMFile");
 
     final Iterable<Contig> contigs = Contig.parseContigsFromCommandLine(pipelineOptions.getReferences());
@@ -190,12 +205,22 @@ public class CountReads {
         pipelineOptions.isIncludeUnmapped());
     if (pipelineOptions.isShardBAMReading()) {
       LOG.info("Sharded reading of "+ pipelineOptions.getBAMFilePath());
+
+      ShardingPolicy policy = new ShardingPolicy() {
+        final int MAX_BYTES_PER_SHARD = pipelineOptions.getMaxShardSizeBytes();
+        @Override
+        public Boolean apply(BAMShard shard) {
+          return shard.approximateSizeInBytes() > MAX_BYTES_PER_SHARD;
+        }
+      };
+
       return ReadBAMTransform.getReadsFromBAMFilesSharded(p,
+          pipelineOptions,
           auth,
-          contigs,
+          Lists.newArrayList(contigs),
           readerOptions,
           pipelineOptions.getBAMFilePath(),
-          ShardingPolicy.BYTE_SIZE_POLICY);
+          policy);
     } else {  // For testing and comparing sharded vs. not sharded only
       LOG.info("Unsharded reading of " + pipelineOptions.getBAMFilePath());
       return p.apply(

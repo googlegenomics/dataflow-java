@@ -36,6 +36,7 @@ import java.util.logging.Logger;
  */
 public class BAMIO {
   public static final String BAM_INDEX_FILE_MIME_TYPE = "application/octet-stream";
+  public static final String BAM_FILE_SUFFIX = ".bam";
   public static class ReaderAndIndex {
     public SamReader reader;
     public SeekableStream index;

@@ -17,9 +17,9 @@ package com.google.cloud.genomics.dataflow.readers;
 
 import com.google.api.client.json.GenericJson;
 import com.google.api.services.genomics.Genomics;
-import com.google.cloud.dataflow.sdk.transforms.Aggregator;
-import com.google.cloud.dataflow.sdk.transforms.DoFn;
-import com.google.cloud.dataflow.sdk.transforms.Sum;
+import org.apache.beam.sdk.metrics.Metrics;
+import org.apache.beam.sdk.transforms.DoFn;
+import org.apache.beam.sdk.transforms.Sum;
 import com.google.cloud.genomics.utils.GenomicsFactory;
 import com.google.cloud.genomics.utils.OfflineAuth;
 
@@ -32,30 +32,25 @@ public abstract class GenomicsApiReader<I extends GenericJson, O extends Generic
   // Used for access to the genomics API
   protected final OfflineAuth auth;
   protected final String fields;
-  protected Aggregator<Integer, Integer> initializedRequestsCount;
-  protected Aggregator<Integer, Integer> unsuccessfulResponsesCount;
-  protected Aggregator<Integer, Integer> ioExceptionsCount;
-  protected Aggregator<Long, Long> itemCount;
 
   public GenomicsApiReader(OfflineAuth auth, String fields) {
     this.auth = auth;
     this.fields = fields;
-    initializedRequestsCount = createAggregator("Genomics API Initialized Request Count", new Sum.SumIntegerFn());
-    unsuccessfulResponsesCount = createAggregator("Genomics API Unsuccessful Response Count", new Sum.SumIntegerFn());
-    ioExceptionsCount = createAggregator("Genomics API IOException Response Count", new Sum.SumIntegerFn());
-    itemCount = createAggregator("Genomics API Item Count", new Sum.SumLongFn());
   }
 
-  @Override
+  @ProcessElement
   public void processElement(ProcessContext c) {
     GenomicsFactory factory = GenomicsFactory.builder().build();
     Genomics genomics = factory.fromOfflineAuth(auth);
 
     processApiCall(genomics, c, c.element());
 
-    initializedRequestsCount.addValue(factory.initializedRequestsCount());
-    unsuccessfulResponsesCount.addValue(factory.unsuccessfulResponsesCount());
-    ioExceptionsCount.addValue(factory.ioExceptionsCount());
+    Metrics.counter(GenomicsApiReader.class, "Genomics API Initialized Request Count")
+        .inc(factory.initializedRequestsCount());
+    Metrics.counter(GenomicsApiReader.class, "Genomics API Unsuccessful Response Count")
+        .inc(factory.unsuccessfulResponsesCount());
+    Metrics.counter(GenomicsApiReader.class, "Genomics API IOException Response Count")
+        .inc(factory.ioExceptionsCount());
     LOG.info("ApiReader processed " + factory.initializedRequestsCount() + " requests ("
         + factory.unsuccessfulResponsesCount() + " server errors and "
         + factory.ioExceptionsCount() + " IO exceptions)");

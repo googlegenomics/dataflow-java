@@ -13,9 +13,9 @@
  */
 package com.google.cloud.genomics.dataflow.utils;
 
-import com.google.cloud.dataflow.sdk.options.Description;
-import com.google.cloud.dataflow.sdk.options.Validation;
-import com.google.cloud.dataflow.sdk.util.gcsfs.GcsPath;
+import org.apache.beam.sdk.options.Description;
+import org.apache.beam.sdk.options.Validation;
+import org.apache.beam.sdk.util.gcsfs.GcsPath;
 import com.google.common.base.Preconditions;
 import com.google.common.base.Strings;
 

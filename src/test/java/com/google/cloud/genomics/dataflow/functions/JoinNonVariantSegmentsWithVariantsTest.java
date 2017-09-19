@@ -20,14 +20,16 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertThat;
 import static org.junit.Assert.assertTrue;
 
-import com.google.cloud.dataflow.sdk.Pipeline;
-import com.google.cloud.dataflow.sdk.testing.DataflowAssert;
-import com.google.cloud.dataflow.sdk.testing.TestPipeline;
-import com.google.cloud.dataflow.sdk.transforms.Create;
-import com.google.cloud.dataflow.sdk.transforms.DoFnTester;
-import com.google.cloud.dataflow.sdk.transforms.SerializableFunction;
-import com.google.cloud.dataflow.sdk.values.KV;
-import com.google.cloud.dataflow.sdk.values.PCollection;
+import org.apache.beam.sdk.Pipeline;
+import org.apache.beam.sdk.options.PipelineOptionsFactory;
+import org.apache.beam.sdk.testing.PAssert;
+import org.apache.beam.sdk.testing.TestPipeline;
+import org.apache.beam.sdk.testing.TestPipelineOptions;
+import org.apache.beam.sdk.transforms.Create;
+import org.apache.beam.sdk.transforms.DoFnTester;
+import org.apache.beam.sdk.transforms.SerializableFunction;
+import org.apache.beam.sdk.values.KV;
+import org.apache.beam.sdk.values.PCollection;
 import com.google.cloud.genomics.utils.grpc.VariantUtils;
 import com.google.common.collect.Lists;
 import com.google.genomics.v1.Variant;
@@ -35,9 +37,7 @@ import com.google.genomics.v1.VariantCall;
 
 import org.hamcrest.CoreMatchers;
 import org.hamcrest.collection.IsIterableWithSize;
-import org.junit.Assert;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.*;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 
@@ -78,6 +78,14 @@ public class JoinNonVariantSegmentsWithVariantsTest {
   private Variant blockRecord1;
   private Variant blockRecord2;
   private Variant[] input;
+
+  @Rule
+  public final transient TestPipeline p = TestPipeline.create();
+
+  @BeforeClass
+  public static void setUpBeforeClass() {
+    PipelineOptionsFactory.register(TestPipelineOptions.class);
+  }
 
   @Before
   public void setUp() {
@@ -149,20 +157,20 @@ public class JoinNonVariantSegmentsWithVariantsTest {
   }
 
   @Test
-  public void testCombineVariantsFn() {
+  public void testCombineVariantsFn() throws Exception {
     DoFnTester<KV<KV<String, Long>, Iterable<Variant>>, Variant> fn =
       DoFnTester.of(new JoinNonVariantSegmentsWithVariants.CombineVariantsFn());
 
-    Assert.assertThat(fn.processBatch(KV.of(KV.of("chr7", 200000L), (Iterable<Variant>) Arrays.asList(input))),
+    Assert.assertThat(fn.processBundle(KV.of(KV.of("chr7", 200000L), (Iterable<Variant>) Arrays.asList(input))),
         CoreMatchers.hasItems(expectedSnp1, expectedSnp2, expectedInsert));
   }
 
   @Test
-  public void testBinVariantsFn() {
+  public void testBinVariantsFn() throws Exception {
     DoFnTester<Variant, KV<KV<String, Long>, Variant>> binVariantsFn =
         DoFnTester.of(new JoinNonVariantSegmentsWithVariants.BinShuffleAndCombineTransform.BinVariantsFn());
 
-    List<KV<KV<String, Long>, Variant>> binVariantsOutput = binVariantsFn.processBatch(input);
+    List<KV<KV<String, Long>, Variant>> binVariantsOutput = binVariantsFn.processBundle(input);
     assertThat(binVariantsOutput, CoreMatchers.hasItem(KV.of(KV.of("chr7", 200000L), snp1)));
     assertThat(binVariantsOutput, CoreMatchers.hasItem(KV.of(KV.of("chr7", 200000L), snp2)));
     assertThat(binVariantsOutput, CoreMatchers.hasItem(KV.of(KV.of("chr7", 200000L), insert)));
@@ -176,13 +184,10 @@ public class JoinNonVariantSegmentsWithVariantsTest {
 
   @Test
   public void testBinShuffleAndCombine() {
+    PCollection<Variant> mergedVariants = p.apply(Create.of(Arrays.asList(input)))
+      .apply(new JoinNonVariantSegmentsWithVariants.BinShuffleAndCombineTransform());
 
-    Pipeline p = TestPipeline.create();
-
-    PCollection<Variant> mergedVariants = p.apply(Create.of(input))
-        .apply(new JoinNonVariantSegmentsWithVariants.BinShuffleAndCombineTransform());
-
-    DataflowAssert.that(mergedVariants).satisfies(
+    PAssert.that(mergedVariants).satisfies(
         new AssertThatHasExpectedContentsForTestJoinVariants());
 
     p.run();

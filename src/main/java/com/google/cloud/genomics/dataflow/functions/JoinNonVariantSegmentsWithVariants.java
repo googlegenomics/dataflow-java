@@ -13,15 +13,15 @@
  */
 package com.google.cloud.genomics.dataflow.functions;
 
-import com.google.cloud.dataflow.sdk.options.Default;
-import com.google.cloud.dataflow.sdk.options.Description;
-import com.google.cloud.dataflow.sdk.options.PipelineOptions;
-import com.google.cloud.dataflow.sdk.transforms.DoFn;
-import com.google.cloud.dataflow.sdk.transforms.GroupByKey;
-import com.google.cloud.dataflow.sdk.transforms.PTransform;
-import com.google.cloud.dataflow.sdk.transforms.ParDo;
-import com.google.cloud.dataflow.sdk.values.KV;
-import com.google.cloud.dataflow.sdk.values.PCollection;
+import org.apache.beam.sdk.options.Default;
+import org.apache.beam.sdk.options.Description;
+import org.apache.beam.sdk.options.PipelineOptions;
+import org.apache.beam.sdk.transforms.DoFn;
+import org.apache.beam.sdk.transforms.GroupByKey;
+import org.apache.beam.sdk.transforms.PTransform;
+import org.apache.beam.sdk.transforms.ParDo;
+import org.apache.beam.sdk.values.KV;
+import org.apache.beam.sdk.values.PCollection;
 import com.google.cloud.genomics.utils.OfflineAuth;
 import com.google.cloud.genomics.utils.ShardBoundary;
 import com.google.cloud.genomics.utils.grpc.MergeNonVariantSegmentsWithSnps;
@@ -100,7 +100,7 @@ public class JoinNonVariantSegmentsWithVariants {
      *     merged into the SNP variants with which they overlap.
      */
     @Override
-    public PCollection<Variant> apply(PCollection<Variant> input) {
+    public PCollection<Variant> expand(PCollection<Variant> input) {
       return input
           .apply(ParDo.of(new BinVariantsFn()))
           .apply(GroupByKey.<KV<String, Long>, Variant>create())
@@ -119,7 +119,7 @@ public class JoinNonVariantSegmentsWithVariants {
         return Math.round(Math.floor(variant.getEnd() / binSize));
       }
 
-      @Override
+      @ProcessElement
       public void processElement(ProcessContext context) {
         Options options =
             context.getPipelineOptions().as(Options.class);
@@ -164,7 +164,7 @@ public class JoinNonVariantSegmentsWithVariants {
     }
 
     @Override
-    public PCollection<Variant> apply(PCollection<StreamVariantsRequest> input) {
+    public PCollection<Variant> expand(PCollection<StreamVariantsRequest> input) {
       return input
           .apply(ParDo.of(new RetrieveFn(auth, fields)))
           .apply(ParDo.of(new CombineVariantsFn()));
@@ -180,7 +180,7 @@ public class JoinNonVariantSegmentsWithVariants {
         this.fields = fields;
       }
 
-      @Override
+      @ProcessElement
       public void processElement(DoFn<StreamVariantsRequest, KV<KV<String, Long>, Iterable<Variant>>>.ProcessContext context)
           throws Exception {
         StreamVariantsRequest request = context.element();
@@ -208,14 +208,13 @@ public class JoinNonVariantSegmentsWithVariants {
   public static final class CombineVariantsFn extends DoFn<KV<KV<String, Long>, Iterable<Variant>>, Variant> {
     private VariantMergeStrategy merger;
 
-    @Override
-    public void startBundle(DoFn<KV<KV<String, Long>, Iterable<Variant>>, Variant>.Context c) throws Exception {
-      super.startBundle(c);
+    @StartBundle
+    public void startBundle(DoFn<KV<KV<String, Long>, Iterable<Variant>>, Variant>.StartBundleContext c) throws Exception {
       Options options = c.getPipelineOptions().as(Options.class);
       merger = options.getVariantMergeStrategy().newInstance();
     }
 
-    @Override
+    @ProcessElement
     public void processElement(ProcessContext context) throws Exception {
       merger.merge(context.element().getKey().getValue(), context.element().getValue(), new DataflowVariantEmitter(context));
     }

@@ -19,8 +19,8 @@ import com.google.api.client.json.GenericJson;
 import com.google.api.client.util.Key;
 import com.google.api.client.util.Value;
 import com.google.api.services.genomics.model.Position;
-import com.google.cloud.dataflow.sdk.coders.AvroCoder;
-import com.google.cloud.dataflow.sdk.coders.DefaultCoder;
+import org.apache.beam.sdk.coders.AvroCoder;
+import org.apache.beam.sdk.coders.DefaultCoder;
 import com.google.cloud.genomics.dataflow.coders.GenericJsonCoder;
 
 import java.util.Objects;

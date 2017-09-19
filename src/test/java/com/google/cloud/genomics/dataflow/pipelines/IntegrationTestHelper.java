@@ -22,11 +22,11 @@ import com.google.api.client.util.BackOff;
 import com.google.api.client.util.ExponentialBackOff;
 import com.google.api.client.util.Lists;
 import com.google.api.services.storage.Storage;
-import com.google.cloud.dataflow.sdk.options.GcsOptions;
-import com.google.cloud.dataflow.sdk.options.PipelineOptionsFactory;
-import com.google.cloud.dataflow.sdk.util.GcsUtil;
-import com.google.cloud.dataflow.sdk.util.Transport;
-import com.google.cloud.dataflow.sdk.util.gcsfs.GcsPath;
+import org.apache.beam.sdk.extensions.gcp.options.GcsOptions;
+import org.apache.beam.sdk.options.PipelineOptionsFactory;
+import org.apache.beam.sdk.util.GcsUtil;
+import org.apache.beam.sdk.util.Transport;
+import org.apache.beam.sdk.util.gcsfs.GcsPath;
 import com.google.cloud.genomics.dataflow.readers.bam.BAMIO;
 import com.google.cloud.genomics.dataflow.utils.GenomicsOptions;
 
@@ -51,7 +51,7 @@ public class IntegrationTestHelper {
   public static final String PLATINUM_GENOMES_DATASET = "3049512673186936334";
   public static final String PLATINUM_GENOMES_BRCA1_REFERENCES = "chr17:41196311:41277499";
   public static final int PLATINUM_GENOMES_NUMBER_OF_SAMPLES = 17;
-  public static final String A_FEW_PLATINUM_GENOMES_CALLSET_NAMES = "NA12877,NA12880,NA12890";
+  public static final String A_FEW_PLATINUM_GENOMES_CALLSET_NAMES = "NA12877,NA12889,NA12890";
 
   private GenomicsOptions popts = PipelineOptionsFactory.create().as(GenomicsOptions.class);
   GcsUtil gcsUtil;

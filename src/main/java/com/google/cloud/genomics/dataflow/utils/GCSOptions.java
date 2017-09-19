@@ -22,10 +22,10 @@ import com.google.api.services.dataflow.DataflowScopes;
 import com.google.api.services.genomics.GenomicsScopes;
 import com.google.api.services.storage.Storage;
 import com.google.api.services.storage.StorageScopes;
-import com.google.cloud.dataflow.sdk.options.Default;
-import com.google.cloud.dataflow.sdk.options.DefaultValueFactory;
-import com.google.cloud.dataflow.sdk.options.PipelineOptions;
-import com.google.cloud.dataflow.sdk.transforms.DoFn;
+import org.apache.beam.sdk.options.Default;
+import org.apache.beam.sdk.options.DefaultValueFactory;
+import org.apache.beam.sdk.options.PipelineOptions;
+import org.apache.beam.sdk.transforms.DoFn;
 import com.google.cloud.genomics.utils.GenomicsFactory;
 import com.google.cloud.genomics.utils.OfflineAuth;
 import com.google.common.collect.ImmutableList;
@@ -118,7 +118,7 @@ public interface GCSOptions extends GenomicsOptions {
     }
 
     public static Storage.Objects createStorageClient(
-        DoFn<?, ?>.Context context, OfflineAuth auth) {
+        DoFn<?, ?>.StartBundleContext context, OfflineAuth auth) {
       final GCSOptions gcsOptions =
           context.getPipelineOptions().as(GCSOptions.class);
       return createStorageClient(gcsOptions, auth);

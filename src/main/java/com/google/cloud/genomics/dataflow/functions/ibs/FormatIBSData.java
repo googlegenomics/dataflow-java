@@ -14,8 +14,8 @@
 
 package com.google.cloud.genomics.dataflow.functions.ibs;
 
-import com.google.cloud.dataflow.sdk.transforms.DoFn;
-import com.google.cloud.dataflow.sdk.values.KV;
+import org.apache.beam.sdk.transforms.DoFn;
+import org.apache.beam.sdk.values.KV;
 import com.google.common.base.Joiner;
 
 /**
@@ -23,7 +23,7 @@ import com.google.common.base.Joiner;
  * outputs the results to a file.
  */
 public final class FormatIBSData extends DoFn<KV<KV<String, String>, KV<Double, Integer>>, String> {
-  @Override
+  @ProcessElement
   public void processElement(ProcessContext c) {
     KV<KV<String, String>, KV<Double, Integer>> result = c.element();
     String call1 = result.getKey().getKey();

@@ -15,13 +15,12 @@
  */
 package com.google.cloud.genomics.dataflow.functions;
 
-import com.google.cloud.dataflow.sdk.options.Default;
-import com.google.cloud.dataflow.sdk.options.Description;
-import com.google.cloud.dataflow.sdk.options.PipelineOptions;
-import com.google.cloud.dataflow.sdk.transforms.Aggregator;
-import com.google.cloud.dataflow.sdk.transforms.DoFn;
-import com.google.cloud.dataflow.sdk.transforms.Sum.SumIntegerFn;
-import com.google.cloud.dataflow.sdk.values.KV;
+import org.apache.beam.sdk.options.Default;
+import org.apache.beam.sdk.options.Description;
+import org.apache.beam.sdk.options.PipelineOptions;
+import org.apache.beam.sdk.metrics.Metrics;
+import org.apache.beam.sdk.transforms.DoFn;
+import org.apache.beam.sdk.values.KV;
 import com.google.cloud.genomics.utils.Contig;
 import com.google.genomics.v1.Read;
 
@@ -43,35 +42,26 @@ public class KeyReadsFn extends DoFn<Read, KV<Contig,Read>> {
     void setLociPerWritingShard(long lociPerShard);
   }
 
-  private Aggregator<Integer, Integer> readCountAggregator;
-  private Aggregator<Integer, Integer> unmappedReadCountAggregator;
   private long lociPerShard;
   private long count;
   private long minPos = Long.MAX_VALUE;
   private long maxPos = Long.MIN_VALUE;
 
-
-
-  public KeyReadsFn() {
-    readCountAggregator = createAggregator("Keyed reads", new SumIntegerFn());
-    unmappedReadCountAggregator = createAggregator("Keyed unmapped reads", new SumIntegerFn());
-  }
-
-  @Override
-  public void startBundle(Context c) {
+  @StartBundle
+  public void startBundle(StartBundleContext c) {
     lociPerShard = c.getPipelineOptions()
       .as(Options.class)
       .getLociPerWritingShard();
     count = 0;
   }
 
-  @Override
-  public void finishBundle(Context c) {
+  @FinishBundle
+  public void finishBundle(FinishBundleContext c) {
     LOG.info("KeyReadsDone: Processed " + count + " reads" + "min=" + minPos +
         " max=" + maxPos);
   }
 
-  @Override
+  @ProcessElement
   public void processElement(DoFn<Read, KV<Contig, Read>>.ProcessContext c)
     throws Exception {
     final Read read = c.element();
@@ -83,9 +73,9 @@ public class KeyReadsFn extends DoFn<Read, KV<Contig,Read>> {
         KV.of(
             shardKeyForRead(read, lociPerShard),
             read));
-    readCountAggregator.addValue(1);
+    Metrics.counter(KeyReadsFn.class, "Keyed reads").inc();
     if (isUnmapped(read)) {
-      unmappedReadCountAggregator.addValue(1);
+      Metrics.counter(KeyReadsFn.class, "Keyed unmapped reads").inc();
     }
   }
 

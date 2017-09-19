@@ -15,8 +15,8 @@ limitations under the License.
 */
 package com.google.cloud.genomics.dataflow.functions.ibs;
 
-import com.google.cloud.dataflow.sdk.transforms.SerializableFunction;
-import com.google.cloud.dataflow.sdk.values.KV;
+import org.apache.beam.sdk.transforms.SerializableFunction;
+import org.apache.beam.sdk.values.KV;
 
 /**
  * Sums up a number of pairs of a double and an int to a single pair.

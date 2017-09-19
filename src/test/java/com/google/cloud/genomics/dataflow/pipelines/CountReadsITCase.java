@@ -129,7 +129,8 @@ public class CountReadsITCase {
         "--project=" + helper.getTestProject(),
         "--output=" + OUTPUT,
         "--numWorkers=2",
-        "--runner=BlockingDataflowPipelineRunner",
+        "--runner=DataflowRunner",
+        "--wait=true",
         "--stagingLocation=" + helper.getTestStagingGcsFolder(),
         "--references=" + contig,
         "--BAMFilePath=" + bamFilename
@@ -169,7 +170,8 @@ public class CountReadsITCase {
         "--project=" + helper.getTestProject(),
         "--output=" + OUTPUT,
         "--numWorkers=2",
-        "--runner=BlockingDataflowPipelineRunner",
+        "--runner=DataflowRunner",
+        "--wait=true",
         "--stagingLocation=" + helper.getTestStagingGcsFolder(),
         "--references=" + contig,
         "--readGroupSetId=" + readGroupSetId

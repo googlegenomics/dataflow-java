@@ -21,6 +21,8 @@ import com.google.common.collect.Lists;
 import htsjdk.samtools.BAMFileIndexImpl;
 import htsjdk.samtools.Chunk;
 import htsjdk.samtools.SAMFileSpanImpl;
+import org.apache.beam.sdk.coders.DefaultCoder;
+import org.apache.beam.sdk.coders.SerializableCoder;
 
 import java.io.Serializable;
 import java.util.List;
@@ -32,6 +34,7 @@ import java.util.List;
  * At the end of the process, the shard is finalized (@see #finalize)
  * and SAMFileSpan that has all the chunks we want to read is produced.
  */
+@DefaultCoder(SerializableCoder.class)
 public class BAMShard implements Serializable {
   public String file;
   public SAMFileSpanImpl span;

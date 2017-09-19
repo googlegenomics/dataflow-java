@@ -13,13 +13,13 @@
  */
 package com.google.cloud.genomics.dataflow.readers;
 
-import com.google.cloud.dataflow.sdk.transforms.Aggregator;
-import com.google.cloud.dataflow.sdk.transforms.DoFn;
-import com.google.cloud.dataflow.sdk.transforms.Max;
-import com.google.cloud.dataflow.sdk.transforms.PTransform;
-import com.google.cloud.dataflow.sdk.transforms.ParDo;
-import com.google.cloud.dataflow.sdk.transforms.Sum;
-import com.google.cloud.dataflow.sdk.values.PCollection;
+import org.apache.beam.sdk.metrics.Metrics;
+import org.apache.beam.sdk.transforms.DoFn;
+import org.apache.beam.sdk.transforms.Max;
+import org.apache.beam.sdk.transforms.PTransform;
+import org.apache.beam.sdk.transforms.ParDo;
+import org.apache.beam.sdk.transforms.Sum;
+import org.apache.beam.sdk.values.PCollection;
 import com.google.cloud.genomics.utils.OfflineAuth;
 import com.google.cloud.genomics.utils.ShardBoundary;
 import com.google.cloud.genomics.utils.grpc.VariantStreamIterator;
@@ -67,29 +67,21 @@ PTransform<PCollection<StreamVariantsRequest>, PCollection<Variant>> {
   }
 
   @Override
-  public PCollection<Variant> apply(PCollection<StreamVariantsRequest> input) {
+  public PCollection<Variant> expand(PCollection<StreamVariantsRequest> input) {
     return input.apply(ParDo.of(new RetrieveVariants()))
         .apply(ParDo.of(new ConvergeVariantsList()));
   }
 
   private class RetrieveVariants extends DoFn<StreamVariantsRequest, List<Variant>> {
-
-    protected Aggregator<Integer, Integer> initializedShardCount;
-    protected Aggregator<Integer, Integer> finishedShardCount;
-    protected Aggregator<Long, Long> shardTimeMaxSec;
     DescriptiveStatistics stats;
 
     public RetrieveVariants() {
-      initializedShardCount = createAggregator("Initialized Shard Count", new Sum.SumIntegerFn());
-      finishedShardCount = createAggregator("Finished Shard Count", new Sum.SumIntegerFn());
-      shardTimeMaxSec = createAggregator("Maximum Shard Processing Time (sec)", new Max.MaxLongFn());
       stats = new DescriptiveStatistics(500);
     }
 
-    @Override
+    @ProcessElement
     public void processElement(ProcessContext c) throws IOException, GeneralSecurityException, InterruptedException {
-      initializedShardCount.addValue(1);
-      shardTimeMaxSec.addValue(0L);
+      Metrics.counter(RetrieveVariants.class, "Initialized Shard Count").inc();
       Stopwatch stopWatch = Stopwatch.createStarted();
       Iterator<StreamVariantsResponse> iter = VariantStreamIterator.enforceShardBoundary(auth, c.element(), shardBoundary, fields);
       while (iter.hasNext()) {
@@ -97,9 +89,10 @@ PTransform<PCollection<StreamVariantsRequest>, PCollection<Variant>> {
         c.output(variantResponse.getVariantsList());
       }
       stopWatch.stop();
-      shardTimeMaxSec.addValue(stopWatch.elapsed(TimeUnit.SECONDS));
+      Metrics.distribution(RetrieveVariants.class, "Shard Processing Time (sec)")
+          .update(stopWatch.elapsed(TimeUnit.SECONDS));
+      Metrics.counter(RetrieveVariants.class, "Finished Shard Count").inc();
       stats.addValue(stopWatch.elapsed(TimeUnit.SECONDS));
-      finishedShardCount.addValue(1);
       LOG.info("Shard Duration in Seconds - Min: " + stats.getMin() + " Max: " + stats.getMax() +
           " Avg: " + stats.getMean() + " StdDev: " + stats.getStandardDeviation());
     }
@@ -111,17 +104,11 @@ PTransform<PCollection<StreamVariantsRequest>, PCollection<Variant>> {
    */
   private class ConvergeVariantsList extends DoFn<List<Variant>, Variant> {
 
-    protected Aggregator<Long, Long> itemCount;
-
-    public ConvergeVariantsList() {
-      itemCount = createAggregator("Number of variants", new Sum.SumLongFn());
-    }
-
-    @Override
+    @ProcessElement
     public void processElement(ProcessContext c) {
       for (Variant v : c.element()) {
         c.output(v);
-        itemCount.addValue(1L);
+        Metrics.counter(ConvergeVariantsList.class, "Number of variants").inc();
       }
     }
   }
