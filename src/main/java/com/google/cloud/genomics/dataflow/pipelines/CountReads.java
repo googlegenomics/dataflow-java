@@ -83,7 +83,7 @@ public class CountReads {
 
     @Description("For shareded BAM file input, the maximum size in bytes of a shard processed by "
         + "a single worker. (For --readGroupSetId shard size is controlled by --basesPerShard.)")
-    @Default.Integer(10 * 1024 * 1024)  // 10 MB
+    @Default.Integer(100 * 1024 * 1024)  // 100 MB
     int getMaxShardSizeBytes();
     void setMaxShardSizeBytes(int maxShardSizeBytes);
 

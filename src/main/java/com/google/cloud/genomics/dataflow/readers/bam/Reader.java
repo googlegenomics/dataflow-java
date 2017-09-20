@@ -182,6 +182,10 @@ public class Reader {
     } catch(SAMException e) {
       LOG.log(Level.WARNING, "Caught and handled SAMException", e);
       Metrics.counter(ReadBAMTransform.class, "SAMException").inc();
+    } catch (ArrayIndexOutOfBoundsException e) {
+      // TODO https://github.com/googlegenomics/dataflow-java/issues/216 may fix this array OOB bug in samtools.
+      LOG.log(Level.WARNING, "Caught and handled ArrayIndexOutOfBoundsException from samtools", e);
+      Metrics.counter(ReadBAMTransform.class, "SAM ArrayOOBException").inc();
     }
   }
 

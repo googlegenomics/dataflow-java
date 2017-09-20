@@ -17,6 +17,10 @@ package com.google.cloud.genomics.dataflow.readers.bam;
 
 import com.google.api.services.storage.Storage;
 import com.google.cloud.genomics.dataflow.functions.BreakFusionTransform;
+import com.google.common.base.CharMatcher;
+import com.google.common.base.Splitter;
+import com.google.common.collect.ImmutableSet;
+import com.google.common.io.Files;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.extensions.gcp.options.GcsOptions;
 import org.apache.beam.sdk.options.PipelineOptions;
@@ -36,9 +40,11 @@ import com.google.cloud.genomics.utils.Contig;
 import com.google.cloud.genomics.utils.OfflineAuth;
 import com.google.genomics.v1.Read;
 
+import java.io.File;
 import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.nio.charset.Charset;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -134,7 +140,7 @@ public class ReadBAMTransform extends PTransform<PCollection<BAMShard>, PCollect
    * @param auth
    * @param contigs
    * @param options
-   * @param bamFileOrGlob
+   * @param bamFileListOrGlob
    * @param shardingPolicy
    * @return
    * @throws IOException
@@ -146,26 +152,47 @@ public class ReadBAMTransform extends PTransform<PCollection<BAMShard>, PCollect
       OfflineAuth auth,
       final List<Contig> contigs,
       ReaderOptions options,
-      String bamFileOrGlob,
+      String bamFileListOrGlob,
       final ShardingPolicy shardingPolicy) throws IOException, URISyntaxException {
       ReadBAMTransform readBAMSTransform = new ReadBAMTransform(options);
       readBAMSTransform.setAuth(auth);
 
+      List<String> prefixes = null;
+      File f = new File(bamFileListOrGlob);
+      if (f.exists() && !f.isDirectory()) {
+        String fileContents = Files.toString(f, Charset.defaultCharset());
+        prefixes = ImmutableSet
+            .<String>builder()
+            .addAll(
+                Splitter.on(CharMatcher.breakingWhitespace()).omitEmptyStrings().trimResults()
+                    .split(fileContents))
+            .build().asList();
+      } else {
+        prefixes = ImmutableSet
+            .<String>builder()
+            .add(bamFileListOrGlob)
+            .build()
+            .asList();
+      }
+
+
       Set<String> uris = new HashSet<>();
       GcsUtil gcsUtil = pipelineOptions.as(GcsOptions.class).getGcsUtil();
-      URI absoluteUri = new URI(bamFileOrGlob);
-      URI gcsUriGlob = new URI(
-          absoluteUri.getScheme(),
-          absoluteUri.getAuthority(),
-          absoluteUri.getPath() + "*",
-          absoluteUri.getQuery(),
-          absoluteUri.getFragment());
-      for (GcsPath entry : gcsUtil.expand(GcsPath.fromUri(gcsUriGlob))) {
-        // Even if provided with an exact match to a particular BAM file, the glob operation will
-        // still look for any files with that prefix, therefore also finding the corresponding
-        // .bai file. Ensure only BAMs are added to the list.
-        if (entry.toString().endsWith(BAMIO.BAM_FILE_SUFFIX)) {
-          uris.add(entry.toString());
+      for (String prefix : prefixes) {
+        URI absoluteUri = new URI(prefix);
+        URI gcsUriGlob = new URI(
+            absoluteUri.getScheme(),
+            absoluteUri.getAuthority(),
+            absoluteUri.getPath() + "*",
+            absoluteUri.getQuery(),
+            absoluteUri.getFragment());
+        for (GcsPath entry : gcsUtil.expand(GcsPath.fromUri(gcsUriGlob))) {
+          // Even if provided with an exact match to a particular BAM file, the glob operation will
+          // still look for any files with that prefix, therefore also finding the corresponding
+          // .bai file. Ensure only BAMs are added to the list.
+          if (entry.toString().endsWith(BAMIO.BAM_FILE_SUFFIX)) {
+            uris.add(entry.toString());
+          }
         }
       }
 
