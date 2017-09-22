@@ -59,7 +59,6 @@ import com.google.genomics.v1.CigarUnit;
 import com.google.genomics.v1.Read;
 
 import java.io.IOException;
-import java.net.URI;
 import java.net.URISyntaxException;
 import java.security.GeneralSecurityException;
 import java.util.HashMap;
@@ -93,8 +92,8 @@ public class CalculateCoverage {
    */
   public static interface Options extends ShardOptions {
 
-    @Description("Cloud storage prefix containing BAM and BAI files from which to read."
-        + "(e.g. gs://genomics-public-data/platinum-genomes/bam/)"
+    @Description("Cloud storage prefix containing BAM and BAI files from which to read or a path "
+        + "to a local file containing the newline-separated prefixes."
         + " Use one of --bamInput, --inputDatasetId, or --readGroupSetIds.")
     @Default.String("")
     String getBamInput();
