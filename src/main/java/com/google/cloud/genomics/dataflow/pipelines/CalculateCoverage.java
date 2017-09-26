@@ -271,7 +271,8 @@ public class CalculateCoverage {
     // Create our destination AnnotationSet for the associated ReferenceSet.
     AnnotationSet annotationSet = createAnnotationSet(referenceSetId);
 
-    PCollection<KV<PosRgsMq, Double>> coverageMeans = reads.apply("CalculateCoverateMean", new CalculateCoverageMean());
+    PCollection<KV<PosRgsMq, Double>> coverageMeans = reads.apply("CalculateCoverateMean",
+        new CalculateCoverageMean(options.getBucketWidth()));
     PCollection<KV<Position, KV<PosRgsMq.MappingQuality, List<Double>>>> quantiles
         = coverageMeans.apply("CalculateQuantiles", new CalculateQuantiles(options.getNumQuantiles()));
     PCollection<KV<Position, Iterable<KV<PosRgsMq.MappingQuality, List<Double>>>>> answer =
@@ -315,10 +316,15 @@ public class CalculateCoverage {
    */
   public static class CalculateCoverageMean extends PTransform<PCollection<Read>,
       PCollection<KV<PosRgsMq, Double>>> {
+    private final long bucketWidth;
+
+    public CalculateCoverageMean(long bucketWidth) {
+      this.bucketWidth = bucketWidth;
+    }
 
     @Override
     public PCollection<KV<PosRgsMq, Double>> expand(PCollection<Read> input) {
-      return input.apply(ParDo.of(new CoverageCounts()))
+      return input.apply(ParDo.of(new CoverageCounts(bucketWidth)))
           .apply(Combine.<PosRgsMq, Long>perKey(new SumCounts()))
           .apply(ParDo.of(new CoverageMeans()));
     }
@@ -328,6 +334,11 @@ public class CalculateCoverage {
 
     private static final int LOW_MQ = 10;
     private static final int HIGH_MQ = 30;
+    private final long bucketWidth;
+
+    public CoverageCounts(long bucketWidth) {
+      this.bucketWidth = bucketWidth;
+    }
 
     @ProcessElement
     public void processElement(ProcessContext c) {
@@ -346,40 +357,16 @@ public class CalculateCoverage {
               break;
           }
         }
-        // Get options for getting references/bucket width
-        Options pOptions = c.getPipelineOptions().as(Options.class);
         // Calculate readEnd by shifting readStart by readLength
         long readStart = c.element().getAlignment().getPosition().getPosition();
         long readEnd = readStart + readLength;
-        // Get starting and ending references
-        long refStart = 0;
-        long refEnd = Long.MAX_VALUE;
-        if (!pOptions.isAllReferences()) {
-          // If we aren't using all references, parse the references to get proper start and end
-          Iterable<Contig> contigs = Contig.parseContigsFromCommandLine(pOptions.getReferences());
-          for (Contig ct : contigs) {
-            if (ct.referenceName
-                .equals(c.element().getAlignment().getPosition().getReferenceName())) {
-              refStart = ct.start;
-              refEnd = ct.end;
-            }
-          }
-        }
         // Calculate the index of the first bucket this read falls into
-        long bucket = ((readStart - refStart)
-            / pOptions.getBucketWidth()) * pOptions.getBucketWidth() + refStart;
+        long bucket = readStart / bucketWidth * bucketWidth;
         long readCurr = readStart;
-        if (readStart < refStart) {
-          // If the read starts before the first bucket, start our calculations at the start of
-          // the reference, since we know the read has to overlap there or else it wouldn't
-          // be in our data set.
-          bucket = refStart;
-          readCurr = refStart;
-        }
-        while (readCurr < readEnd && readCurr < refEnd) {
+        while (readCurr < readEnd) {
           // Loop over read to generate output for each bucket
           long baseCount = 0;
-          long dist = Math.min(bucket + pOptions.getBucketWidth(), readEnd) - readCurr;
+          long dist = Math.min(bucket + bucketWidth, readEnd) - readCurr;
           readCurr += dist;
           baseCount += dist;
           Position position = new Position()
@@ -400,7 +387,7 @@ public class CalculateCoverage {
           c.output(KV.of(new PosRgsMq(position, c.element().getReadGroupSetId(), mqEnum), baseCount));
           c.output(KV.of(new PosRgsMq(
               position, c.element().getReadGroupSetId(), PosRgsMq.MappingQuality.A), baseCount));
-          bucket += pOptions.getBucketWidth();
+          bucket += bucketWidth;
         }
       }
     }
