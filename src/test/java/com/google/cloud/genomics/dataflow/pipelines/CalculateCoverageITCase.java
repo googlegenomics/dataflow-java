@@ -86,7 +86,7 @@ public class CalculateCoverageITCase {
         "--inputDatasetId=" + helper.PLATINUM_GENOMES_DATASET,
         "--annotationSetName='Test API'",
         };
-    testBase(ARGS, 1);
+    testBase(ARGS, 2);
   }
 
   @Test
@@ -100,7 +100,7 @@ public class CalculateCoverageITCase {
         "--referenceSetId=CNfS6aHAoved2AEQ6PnzkOzw15rqAQ",
         "--annotationSetName='Test BAMs'",
     };
-    testBase(ARGS, 1);
+    testBase(ARGS, 2);
   }
 
   @Test
@@ -114,7 +114,7 @@ public class CalculateCoverageITCase {
         "--referenceSetId=CNfS6aHAoved2AEQ6PnzkOzw15rqAQ",
         "--annotationSetName='Test BAMs'",
     };
-    testBase(ARGS, 1);
+    testBase(ARGS, 2);
   }
 
   @Test
@@ -128,7 +128,7 @@ public class CalculateCoverageITCase {
         "--referenceSetId=CNfS6aHAoved2AEQ6PnzkOzw15rqAQ",
         "--annotationSetName='Test file of BAMs'",
     };
-    testBase(ARGS, 1);
+    testBase(ARGS, 2);
   }
 
   @Test
