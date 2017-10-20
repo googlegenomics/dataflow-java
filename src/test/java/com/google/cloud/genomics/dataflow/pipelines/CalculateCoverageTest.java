@@ -224,7 +224,8 @@ public class CalculateCoverageTest {
     expectedOutput.add(KV.of(pTest, 1.0));
 
     PCollection<Read> inputReads = p.apply(Create.of(testSet));
-    PCollection<KV<PosRgsMq, Double>> output = inputReads.apply(new CalculateCoverageMean());
+    PCollection<KV<PosRgsMq, Double>> output = inputReads.apply(
+        new CalculateCoverageMean(popts.getBucketWidth()));
     PAssert.that(output).containsInAnyOrder(expectedOutput);
     p.run();
   }
@@ -284,7 +285,7 @@ public class CalculateCoverageTest {
 
     PCollection<Read> reads = p.apply(Create.of(input));
     PCollection<KV<PosRgsMq, Double>> coverageMeans = reads.apply(
-        new CalculateCoverage.CalculateCoverageMean());
+        new CalculateCoverage.CalculateCoverageMean(popts.getBucketWidth()));
 
     PCollection<KV<Position, KV<PosRgsMq.MappingQuality, List<Double>>>> quantiles
         = coverageMeans.apply(new CalculateCoverage.CalculateQuantiles(popts.getNumQuantiles()));

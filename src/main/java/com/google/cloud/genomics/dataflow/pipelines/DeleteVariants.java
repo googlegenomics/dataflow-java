@@ -47,9 +47,9 @@ import java.security.GeneralSecurityException;
 public class DeleteVariants {
 
   public static interface Options extends GCSOutputOptions {
-    @Description("The filepath to a comma-separated or tab-separated file of variant ids. "
-        + "The variant id will be retrieved from the first "
-        + "column.  Any other columns will be ignored.")
+    @Description("The Cloud Storage filepath to a comma-separated or tab-separated file of variant ids. "
+        + "The variant id will be retrieved from the first column.  Any other columns will be ignored. "
+        + "The file should not include any header lines.")
     @Required
     String getInput();
     void setInput(String filepath);

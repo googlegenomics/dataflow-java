@@ -7,4 +7,4 @@ jdk:
 script: MAVEN_OPTS=-Dorg.slf4j.simpleLogger.defaultLogLevel=info mvn test javadoc:javadoc
 
 after_success:
-  - mvn clean cobertura:cobertura -Dcobertura.report.format=xml coveralls:cobertura
+  -  MAVEN_OPTS=-Dorg.slf4j.simpleLogger.defaultLogLevel=info mvn clean cobertura:cobertura -Dcobertura.report.format=xml coveralls:cobertura
