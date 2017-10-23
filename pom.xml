@@ -117,8 +117,8 @@
       <artifactId>google-cloud-dataflow-java-sdk-all</artifactId>
       <version>${google.dataflow.version}</version>
     </dependency>
-    <!--- google-cloud-dataflow-java-sdk-all and google-http-client-jackson2 are
-          pulling in different versions of jackson. Force them to all be the same. -->
+    <!-- google-cloud-dataflow-java-sdk-all and google-http-client-jackson2 are
+         pulling in different versions of jackson. Force them to all be the same. -->
     <dependency>
       <groupId>com.fasterxml.jackson.core</groupId>
       <artifactId>jackson-databind</artifactId>
