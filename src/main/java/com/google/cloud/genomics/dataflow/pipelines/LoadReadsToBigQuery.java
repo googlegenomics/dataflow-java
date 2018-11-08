@@ -18,7 +18,29 @@ import com.google.api.services.bigquery.model.TableRow;
 import com.google.api.services.bigquery.model.TableSchema;
 import com.google.api.services.storage.Storage;
 import com.google.api.services.storage.model.StorageObject;
+import com.google.cloud.genomics.dataflow.readers.bam.BAMShard;
+import com.google.cloud.genomics.dataflow.readers.bam.ReadBAMTransform;
+import com.google.cloud.genomics.dataflow.readers.bam.Reader;
+import com.google.cloud.genomics.dataflow.readers.bam.ReaderOptions;
+import com.google.cloud.genomics.dataflow.readers.bam.ShardingPolicy;
+import com.google.cloud.genomics.dataflow.utils.GCSOptions;
+import com.google.cloud.genomics.dataflow.utils.GcsTempPathOptions;
+import com.google.cloud.genomics.dataflow.utils.GenomicsOptions;
+import com.google.cloud.genomics.dataflow.utils.ShardOptions;
+import com.google.cloud.genomics.utils.Contig;
+import com.google.cloud.genomics.utils.OfflineAuth;
+import com.google.common.base.Strings;
 import com.google.common.collect.Lists;
+import com.google.genomics.v1.CigarUnit;
+import com.google.genomics.v1.Read;
+import htsjdk.samtools.ValidationStringency;
+import java.io.IOException;
+import java.math.BigInteger;
+import java.net.URISyntaxException;
+import java.security.GeneralSecurityException;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.logging.Logger;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.PipelineResult;
 import org.apache.beam.sdk.io.gcp.bigquery.BigQueryIO;
@@ -30,56 +52,27 @@ import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.transforms.ParDo;
 import org.apache.beam.sdk.util.gcsfs.GcsPath;
 import org.apache.beam.sdk.values.PCollection;
-import com.google.cloud.genomics.dataflow.readers.bam.BAMShard;
-import com.google.cloud.genomics.dataflow.readers.bam.ReadBAMTransform;
-import com.google.cloud.genomics.dataflow.readers.bam.Reader;
-import com.google.cloud.genomics.dataflow.readers.bam.ReaderOptions;
-import com.google.cloud.genomics.dataflow.readers.bam.ShardingPolicy;
-import com.google.cloud.genomics.dataflow.utils.GCSOptions;
-import com.google.cloud.genomics.dataflow.utils.GCSTempPathOptions;
-import com.google.cloud.genomics.dataflow.utils.GenomicsOptions;
-import com.google.cloud.genomics.dataflow.utils.ShardOptions;
-import com.google.cloud.genomics.utils.Contig;
-import com.google.cloud.genomics.utils.OfflineAuth;
-import com.google.cloud.genomics.utils.ShardBoundary;
-import com.google.common.base.Strings;
-import com.google.genomics.v1.Read;
-import com.google.genomics.v1.CigarUnit;
-
-import htsjdk.samtools.ValidationStringency;
-
-import java.io.IOException;
-import java.math.BigInteger;
-import java.net.URISyntaxException;
-import java.security.GeneralSecurityException;
-import java.util.Collections;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.logging.Logger;
 
 /**
  * Pipeline for loading BAM file (hosted on GCS) into BigQuery.
  *
  */
 public class LoadReadsToBigQuery {
-
-  public static interface Options extends GCSOptions, ShardOptions, GCSTempPathOptions {
+  /*
+   * Pipeline options.
+   */
+  public static interface Options extends GCSOptions, ShardOptions, GcsTempPathOptions {
 
     @Description("The Google Cloud Storage path to the BAM file to get reads data from.")
     @Default.String("")
-    String getBAMFilePath();
-    void setBAMFilePath(String filePath);
+    String getBamFilePath();
+    void setBamFilePath(String filePath);
 
-    @Description("Whether to shard BAM file reading.")
-    @Default.Boolean(true)
-    boolean isShardBAMReading();
-    void setShardBAMReading(boolean newValue);
-
-    @Description("For shareded BAM file input, the maximum size in bytes of a shard processed by "
-        + "a single worker.")
-    @Default.Integer(100 * 1024 * 1024)  // 100 MB
-    int getMaxShardSizeBytes();
-    void setMaxShardSizeBytes(int maxShardSizeBytes);
+    @Description("For sharded BAM file input, the maximum size in megabytes of a shard processed "
+        + "by a single worker. A non-positive value implies no sharding.")
+    @Default.Integer(100)
+    int getMaxShardSizeMB();
+    void setMaxShardSizeMB(int maxShardSizeMB);
 
     @Description("Whether to include unmapped mate pairs of mapped reads to match expectations "
         + "of Picard tools.")
@@ -96,13 +89,10 @@ public class LoadReadsToBigQuery {
     @Default.Boolean(false)
     boolean getWait();
     void setWait(boolean wait);
+  }
 
-    public static class Methods {
-      public static void validateOptions(Options options) {
-        GCSTempPathOptions.Methods.validateOptions(options);
-      }
-    }
-
+  public static void validateOptions(Options options) {
+    GcsTempPathOptions.Methods.validateOptions(options);
   }
 
   // BigQuery schema field type.
@@ -174,7 +164,7 @@ public class LoadReadsToBigQuery {
           // Position record.
           add(getPositionFieldSchema(POSITION));
           add(new TableFieldSchema().setName(MAPPING_QUALITY).setType(INT64));
-          // CIGAR record
+          // CIGAR record.
           TableFieldSchema cigarSchema =
               new TableFieldSchema().setName(CIGAR).setType(RECORD).setMode(REPEATED);
           cigarSchema.setFields(new ArrayList<TableFieldSchema>() {
@@ -213,7 +203,7 @@ public class LoadReadsToBigQuery {
           add(new TableFieldSchema().setName(ALIGNED_SEQUENCE).setType(STRING));
           add(new TableFieldSchema().setName(ALIGNED_QUALITY).setType(INT64).setMode(REPEATED));
           add(getPositionFieldSchema(NEXT_MATE_POSITION));
-          // TODO(nmousavi): store info field into bigquery.
+          // TODO(#222): store info field into bigquery.
         }
       });
     }
@@ -268,42 +258,46 @@ public class LoadReadsToBigQuery {
 
   public static void main(String[] args) throws GeneralSecurityException, IOException,
          URISyntaxException {
-    // Register the options so that they show up via --help
+    // Register the options so that they show up via --help.
     PipelineOptionsFactory.register(Options.class);
     pipelineOptions = PipelineOptionsFactory.fromArgs(args)
         .withValidation().as(Options.class);
-    // Option validation is not yet automatic, we make an explicit call here.
-    Options.Methods.validateOptions(pipelineOptions);
+    // Option validation.
+    validateOptions(pipelineOptions);
     // Needed for BigQuery.
     pipelineOptions.setTempLocation(pipelineOptions.getTempPath());
 
     auth = GenomicsOptions.Methods.getGenomicsAuth(pipelineOptions);
     p = Pipeline.create(pipelineOptions);
 
-    // Ensure data is accessible
-    String BAMFilePath = pipelineOptions.getBAMFilePath();
-    if (!Strings.isNullOrEmpty(BAMFilePath)) {
-      if (GCSURLExists(BAMFilePath)) {
-        System.out.println(BAMFilePath + " is present, good.");
-      } else {
-        System.out.println("Error: " + BAMFilePath + " not found.");
+    // Ensure data is accessible.
+    String BamFilePath = pipelineOptions.getBamFilePath();
+    if (!Strings.isNullOrEmpty(BamFilePath)) {
+      try {
+        GcsUrlExists(BamFilePath);
+      } catch (Exception x) {
+        System.out.println("Error: BAM file " + BamFilePath + " not found. A BAM file is "
+            + "required.");
+        System.out.println("Exception: " + x.getMessage());
         return;
       }
-      if (pipelineOptions.isShardBAMReading()) {
-        // The BAM code expects an index at BAMFilePath+".bai"
+      if (pipelineOptions.getMaxShardSizeMB() > 0) {
+        // The BAM code expects an index at BamFilePath+".bai"
         // and sharded reading will fail if the index isn't there.
-        String BAMIndexPath = BAMFilePath + ".bai";
-        if (GCSURLExists(BAMIndexPath)) {
-          System.out.println(BAMIndexPath + " is present, good.");
-        } else {
-          System.out.println("Error: " + BAMIndexPath + " not found.");
+        String BamIndexPath = BamFilePath + ".bai";
+        try {
+          GcsUrlExists(BamIndexPath);
+        } catch (Exception x) {
+          System.out.println("Error: Index file " + BamIndexPath + " not found. An index is "
+              + "required for sharded export.");
+          System.out.println("Exception: " + x.getMessage());
           return;
         }
       }
     }
 
-    PCollection<Read> reads = getReads();
-    // TODO(nmousavi): validate the given BigQuery table, and fail fast if it is not valid and empty.
+    PCollection<Read> reads = getReadsFromBamFile();
+    // TODO(#221): validate the given BigQuery table, and fail fast if it is not valid and empty.
     reads.apply(ParDo.of(new ReadToRowConverter()))
         .apply(BigQueryIO.writeTableRows()
             .to(pipelineOptions.getBigQueryTablePath())
@@ -311,48 +305,37 @@ public class LoadReadsToBigQuery {
             .withSchema(ReadToRowConverter.getSchema()));
 
     PipelineResult result = p.run();
-    if(pipelineOptions.getWait()) {
+    if (pipelineOptions.getWait()) {
       result.waitUntilFinish();
     }
   }
 
-  private static boolean GCSURLExists(String url) {
-    // Ensure data is accessible
-    try {
-      // If we can read the size, then surely we can read the file
-      GcsPath fn = GcsPath.fromUri(url);
-      Storage.Objects storageClient = GCSOptions.Methods.createStorageClient(pipelineOptions, auth);
-      Storage.Objects.Get getter = storageClient.get(fn.getBucket(), fn.getObject());
-      StorageObject object = getter.execute();
-      BigInteger size = object.getSize();
-      return true;
-    } catch (Exception x) {
-      return false;
-    }
+  private static void GcsUrlExists(String url) throws IOException {
+    // Ensure data is accessible.
+    // If we can read the size, then surely we can read the file.
+    GcsPath fn = GcsPath.fromUri(url);
+    Storage.Objects storageClient = GCSOptions.Methods.createStorageClient(pipelineOptions, auth);
+    Storage.Objects.Get getter = storageClient.get(fn.getBucket(), fn.getObject());
+    StorageObject object = getter.execute();
+    BigInteger size = object.getSize();
   }
 
-  private static PCollection<Read> getReads() throws IOException, URISyntaxException {
-    if (!pipelineOptions.getBAMFilePath().isEmpty()) {
-      return getReadsFromBAMFile();
-    }
-    throw new IOException("BAM file must be specified");
-  }
+  private static PCollection<Read> getReadsFromBamFile() throws IOException, URISyntaxException {
+    LOG.info("getReadsFromBamFile");
 
-  private static PCollection<Read> getReadsFromBAMFile() throws IOException, URISyntaxException {
-    LOG.info("getReadsFromBAMFile");
-
-    final Iterable<Contig> contigs = Contig.parseContigsFromCommandLine(pipelineOptions.getReferences());
+    final Iterable<Contig> contigs =
+        Contig.parseContigsFromCommandLine(pipelineOptions.getReferences());
     final ReaderOptions readerOptions = new ReaderOptions(
         ValidationStringency.LENIENT,
         pipelineOptions.isIncludeUnmapped());
-    if (pipelineOptions.isShardBAMReading()) {
-      LOG.info("Sharded reading of "+ pipelineOptions.getBAMFilePath());
+    if (pipelineOptions.getMaxShardSizeMB() > 0) {
+      LOG.info("Sharded reading of " + pipelineOptions.getBamFilePath());
 
       ShardingPolicy policy = new ShardingPolicy() {
-        final int MAX_BYTES_PER_SHARD = pipelineOptions.getMaxShardSizeBytes();
+        final int MAX_BYTES_PER_SHARD_IN_BYTES = pipelineOptions.getMaxShardSizeMB() * 1024 * 1024;
         @Override
         public Boolean apply(BAMShard shard) {
-          return shard.approximateSizeInBytes() > MAX_BYTES_PER_SHARD;
+          return shard.approximateSizeInBytes() > MAX_BYTES_PER_SHARD_IN_BYTES;
         }
       };
 
@@ -361,15 +344,15 @@ public class LoadReadsToBigQuery {
           auth,
           Lists.newArrayList(contigs),
           readerOptions,
-          pipelineOptions.getBAMFilePath(),
+          pipelineOptions.getBamFilePath(),
           policy);
-    } else {  // For testing and comparing sharded vs. not sharded only
-      LOG.info("Unsharded reading of " + pipelineOptions.getBAMFilePath());
+    } else {  // For testing and comparing sharded vs. not sharded only.
+      LOG.info("Unsharded reading of " + pipelineOptions.getBamFilePath());
       return p.apply(
           Create.of(
               Reader.readSequentiallyForTesting(
                   GCSOptions.Methods.createStorageClient(pipelineOptions, auth),
-                  pipelineOptions.getBAMFilePath(),
+                  pipelineOptions.getBamFilePath(),
                   contigs.iterator().next(),
                   readerOptions)));
     }

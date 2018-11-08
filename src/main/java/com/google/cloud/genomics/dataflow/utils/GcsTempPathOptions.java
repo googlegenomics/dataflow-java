@@ -22,10 +22,10 @@ import com.google.common.base.Strings;
 /**
  * A common options class for all pipelines that write into a temporary GCS files.
  */
-public interface GCSTempPathOptions extends GenomicsOptions {
+public interface GcsTempPathOptions extends GenomicsOptions {
 
   public static class Methods {
-    public static void validateOptions(GCSTempPathOptions options) {
+    public static void validateOptions(GcsTempPathOptions options) {
       try {
         // Check that we can parse the path.
         GcsPath valid = GcsPath.fromUri(options.getTempPath());
