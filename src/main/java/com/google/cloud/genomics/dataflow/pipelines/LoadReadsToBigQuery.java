@@ -59,7 +59,7 @@ import org.apache.beam.sdk.values.PCollection;
  *
  */
 public class LoadReadsToBigQuery {
-  /*
+  /**
    * Pipeline options.
    */
   public static interface Options extends GCSOptions, ShardOptions {
@@ -96,15 +96,21 @@ public class LoadReadsToBigQuery {
     String getTempPath();
     void setTempPath(String tempPath);
 
+    /**
+     * Class to validate options.
+     */
     public static class Methods {
       public static void validateOptions(Options options) {
         // Validate tempPath.
         try {
-        // Check that we can parse the path.
-        GcsPath valid = GcsPath.fromUri(options.getTempPath());
-        // GcsPath allows for empty bucket, but that doesn't make for a good temp path.
-        Preconditions.checkArgument(!Strings.isNullOrEmpty(valid.getBucket()), "Bucket must be specified");
-        } catch (Exception x) {
+          // Check that we can parse the path.
+          GcsPath valid = GcsPath.fromUri(options.getTempPath());
+          // GcsPath allows for empty bucket, but that doesn't make for a good temp path.
+          Preconditions.checkArgument(!Strings.isNullOrEmpty(valid.getBucket()),
+              "Bucket must be specified");
+        } catch (IllegalArgumentException x) {
+          System.out.print("IllegalArgumentException: ");
+          System.out.println(x.getMessage());
           Preconditions.checkState(false,
               "temp path must be a valid Google Cloud Storage URL (starting with gs://)");
         }
@@ -291,7 +297,7 @@ public class LoadReadsToBigQuery {
     String BamFilePath = pipelineOptions.getBamFilePath();
     if (!Strings.isNullOrEmpty(BamFilePath)) {
       try {
-        CheckGcsUrlExists(BamFilePath);
+        checkGcsUrlExists(BamFilePath);
       } catch (Exception x) {
         System.out.println("Error: BAM file " + BamFilePath + " not found. A BAM file is "
             + "required.");
@@ -303,7 +309,7 @@ public class LoadReadsToBigQuery {
         // and sharded reading will fail if the index isn't there.
         String BamIndexPath = BamFilePath + ".bai";
         try {
-          CheckGcsUrlExists(BamIndexPath);
+          checkGcsUrlExists(BamIndexPath);
         } catch (Exception x) {
           System.out.println("Error: Index file " + BamIndexPath + " not found. An index is "
               + "required for sharded export.");
@@ -327,7 +333,7 @@ public class LoadReadsToBigQuery {
     }
   }
 
-  private static void CheckGcsUrlExists(String url) throws IOException {
+  private static void checkGcsUrlExists(String url) throws IOException {
     // Ensure data is accessible.
     // If we can read the size, then surely we can read the file.
     GcsPath fn = GcsPath.fromUri(url);
