@@ -24,11 +24,11 @@ import com.google.cloud.genomics.dataflow.readers.bam.Reader;
 import com.google.cloud.genomics.dataflow.readers.bam.ReaderOptions;
 import com.google.cloud.genomics.dataflow.readers.bam.ShardingPolicy;
 import com.google.cloud.genomics.dataflow.utils.GCSOptions;
-import com.google.cloud.genomics.dataflow.utils.GcsTempPathOptions;
 import com.google.cloud.genomics.dataflow.utils.GenomicsOptions;
 import com.google.cloud.genomics.dataflow.utils.ShardOptions;
 import com.google.cloud.genomics.utils.Contig;
 import com.google.cloud.genomics.utils.OfflineAuth;
+import com.google.common.base.Preconditions;
 import com.google.common.base.Strings;
 import com.google.common.collect.Lists;
 import com.google.genomics.v1.CigarUnit;
@@ -47,6 +47,7 @@ import org.apache.beam.sdk.io.gcp.bigquery.BigQueryIO;
 import org.apache.beam.sdk.options.Default;
 import org.apache.beam.sdk.options.Description;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
+import org.apache.beam.sdk.options.Validation;
 import org.apache.beam.sdk.transforms.Create;
 import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.transforms.ParDo;
@@ -61,7 +62,7 @@ public class LoadReadsToBigQuery {
   /*
    * Pipeline options.
    */
-  public static interface Options extends GCSOptions, ShardOptions, GcsTempPathOptions {
+  public static interface Options extends GCSOptions, ShardOptions {
 
     @Description("The Google Cloud Storage path to the BAM file to get reads data from.")
     @Default.String("")
@@ -89,10 +90,26 @@ public class LoadReadsToBigQuery {
     @Default.Boolean(false)
     boolean getWait();
     void setWait(boolean wait);
-  }
 
-  public static void validateOptions(Options options) {
-    GcsTempPathOptions.Methods.validateOptions(options);
+    @Validation.Required
+    @Description("Google Cloud Storage path to write temp files, if applicable.")
+    String getTempPath();
+    void setTempPath(String tempPath);
+
+    public static class Methods {
+      public static void validateOptions(Options options) {
+        // Validate tempPath.
+        try {
+        // Check that we can parse the path.
+        GcsPath valid = GcsPath.fromUri(options.getTempPath());
+        // GcsPath allows for empty bucket, but that doesn't make for a good temp path.
+        Preconditions.checkArgument(!Strings.isNullOrEmpty(valid.getBucket()), "Bucket must be specified");
+        } catch (Exception x) {
+          Preconditions.checkState(false,
+              "temp path must be a valid Google Cloud Storage URL (starting with gs://)");
+        }
+      }
+    }
   }
 
   // BigQuery schema field type.
@@ -262,8 +279,8 @@ public class LoadReadsToBigQuery {
     PipelineOptionsFactory.register(Options.class);
     pipelineOptions = PipelineOptionsFactory.fromArgs(args)
         .withValidation().as(Options.class);
-    // Option validation.
-    validateOptions(pipelineOptions);
+    // Option validation is not yet automatic, we make an explicit call here.
+    Options.Methods.validateOptions(pipelineOptions);
     // Needed for BigQuery.
     pipelineOptions.setTempLocation(pipelineOptions.getTempPath());
 
@@ -274,7 +291,7 @@ public class LoadReadsToBigQuery {
     String BamFilePath = pipelineOptions.getBamFilePath();
     if (!Strings.isNullOrEmpty(BamFilePath)) {
       try {
-        GcsUrlExists(BamFilePath);
+        CheckGcsUrlExists(BamFilePath);
       } catch (Exception x) {
         System.out.println("Error: BAM file " + BamFilePath + " not found. A BAM file is "
             + "required.");
@@ -286,7 +303,7 @@ public class LoadReadsToBigQuery {
         // and sharded reading will fail if the index isn't there.
         String BamIndexPath = BamFilePath + ".bai";
         try {
-          GcsUrlExists(BamIndexPath);
+          CheckGcsUrlExists(BamIndexPath);
         } catch (Exception x) {
           System.out.println("Error: Index file " + BamIndexPath + " not found. An index is "
               + "required for sharded export.");
@@ -310,7 +327,7 @@ public class LoadReadsToBigQuery {
     }
   }
 
-  private static void GcsUrlExists(String url) throws IOException {
+  private static void CheckGcsUrlExists(String url) throws IOException {
     // Ensure data is accessible.
     // If we can read the size, then surely we can read the file.
     GcsPath fn = GcsPath.fromUri(url);
