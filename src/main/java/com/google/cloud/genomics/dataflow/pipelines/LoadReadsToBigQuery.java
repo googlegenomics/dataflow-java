@@ -109,10 +109,7 @@ public class LoadReadsToBigQuery {
           Preconditions.checkArgument(!Strings.isNullOrEmpty(valid.getBucket()),
               "Bucket must be specified");
         } catch (IllegalArgumentException x) {
-          System.out.print("IllegalArgumentException: ");
-          System.out.println(x.getMessage());
-          Preconditions.checkState(false,
-              "temp path must be a valid Google Cloud Storage URL (starting with gs://)");
+          Preconditions.checkState(false, "the specified temp path is invalid: " + x.getMessage());
         }
       }
     }
@@ -299,9 +296,9 @@ public class LoadReadsToBigQuery {
       try {
         checkGcsUrlExists(BamFilePath);
       } catch (Exception x) {
-        System.out.println("Error: BAM file " + BamFilePath + " not found. A BAM file is "
+        System.err.println("Error: BAM file " + BamFilePath + " not found. A BAM file is "
             + "required.");
-        System.out.println("Exception: " + x.getMessage());
+        System.err.println("Exception: " + x.getMessage());
         return;
       }
       if (pipelineOptions.getMaxShardSizeMB() > 0) {
@@ -311,9 +308,9 @@ public class LoadReadsToBigQuery {
         try {
           checkGcsUrlExists(BamIndexPath);
         } catch (Exception x) {
-          System.out.println("Error: Index file " + BamIndexPath + " not found. An index is "
+          System.err.println("Error: Index file " + BamIndexPath + " not found. An index is "
               + "required for sharded export.");
-          System.out.println("Exception: " + x.getMessage());
+          System.err.println("Exception: " + x.getMessage());
           return;
         }
       }
