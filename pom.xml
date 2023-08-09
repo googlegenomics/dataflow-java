@@ -99,7 +99,7 @@
       <groupId>com.github.samtools</groupId>
       <artifactId>htsjdk</artifactId>
       <!-- TODO: update to the newer version of htsjdk -->
-      <version>1.128</version>
+      <version>3.0.1</version>
       <exclusions>
         <exclusion>
           <groupId>org.testng</groupId>
